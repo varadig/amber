@@ -1,0 +1,385 @@
+package;
+
+import openfl.display.BitmapData;
+
+/**
+ * Kódból generált pixel art (nincsenek képfájlok). A paletta a C64 szürke-lépcsői: a borostyán-shader ezeket színezi át.
+ * Karakterek: '.' átlátszó, '0' fekete, '1' sötétszürke, '2' szürke, '3' világosszürke, '4' fehér.
+ */
+class Art
+{
+	static var cache:Map<String, BitmapData> = new Map();
+
+	static inline function color(ch:String):Int
+	{
+		return switch (ch)
+		{
+			case "0": 0xFF000000;
+			case "1": 0xFF444444;
+			case "2": 0xFF777777;
+			case "3": 0xFFBBBBBB;
+			case "4": 0xFFFFFFFF;
+			case "5": 0xFF202020;
+			case "6": 0xFF303030;
+			default: 0x00000000;
+		}
+	}
+
+	/** Képkockák (azonos méretű sorlisták) egymás mellé, egy sávba; a sorok a legelső sor szélességére igazodnak. */
+	public static function strip(frames:Array<Array<String>>):BitmapData
+	{
+		var w = frames[0][0].length;
+		var h = frames[0].length;
+		var bd = new BitmapData(w * frames.length, h, true, 0x00000000);
+		for (f in 0...frames.length)
+			for (y in 0...h)
+			{
+				var row = y < frames[f].length ? frames[f][y] : "";
+				for (x in 0...w)
+				{
+					var c = color(x < row.length ? row.charAt(x) : ".");
+					if (c != 0)
+						bd.setPixel32(f * w + x, y, c);
+				}
+			}
+		return bd;
+	}
+
+	static function cached(key:String, make:Void->BitmapData):BitmapData
+	{
+		var b = cache.get(key);
+		if (b == null)
+		{
+			b = make();
+			cache.set(key, b);
+		}
+		// másolatot adunk: a Flixel állapotváltáskor felszabadítja (dispose) a használaton kívüli grafikákat, a mester példány így érintetlen marad
+		return b.clone();
+	}
+
+	// --- Hős: 12x14, képkockák: 0 állás, 1-4 futás, 5 ugrás, 6 esés, 7 fal, 8 szökellés (dash), 9 sérülés ---
+	static final BODY = [
+		"...333333...",
+		"..33333333..",
+		"..30000003..",
+		"..30400403..",
+		"..30000003..",
+		"..33333333..",
+		"...222222...",
+		"..22344322..",
+		".2223333222.",
+		"..22222222.."
+	];
+
+	public static function player():BitmapData
+	{
+		return cached("player", () ->
+		{
+			var stand = ["...22..22...", "...22..22...", "...22..22...", "..222..222.."];
+			var runA = ["..22....22..", "..22....22..", "...22..22...", "..222..222.."];
+			var runB = ["...22..22...", "...22..22...", "...22..22...", "...22..22..."];
+			var runC = ["...22..22...", "..22....22..", "..22....22..", ".222....222."];
+			var jump = ["..22....22..", "...22..22...", "............", "............"];
+			var fall = ["..22....22..", "..22....22..", "..22....22..", "..22....22.."];
+			var legs = [stand, runA, runB, runC, runB, jump, fall, stand, runA, fall];
+			var frames:Array<Array<String>> = [];
+			for (i in 0...legs.length)
+			{
+				var body = BODY.copy();
+				if (i == 9)
+					body[3] = "..34044043..".substr(0, 12); // sérülés: összehúzott "szemek"
+				if (i == 8)
+					body[7] = "222344322222"; // dash: kinyúló törzs
+				frames.push(body.concat(legs[i]));
+			}
+			return strip(frames);
+		});
+	}
+
+	// --- Ellenségek ---
+	public static function walker():BitmapData
+	{
+		return cached("walker", () ->
+		{
+			var a = [
+				"....333333....",
+				"..3333333333..",
+				".333333333333.",
+				".330433330433.",
+				".333333333333.",
+				"33333333333333",
+				"33333333333333",
+				".222222222222.",
+				"..2222222222..",
+				"..22......22.."
+			];
+			var b = a.copy();
+			b[9] = "...22....22...";
+			var dead = [
+				"..............",
+				"..............",
+				"..............",
+				"..............",
+				"..............",
+				"..............",
+				"..............",
+				"..333333333333",
+				".330333333033.",
+				"22222222222222"
+			];
+			return strip([a, b, dead]);
+		});
+	}
+
+	public static function flyer():BitmapData
+	{
+		return cached("flyer", () ->
+		{
+			var a = [
+				"33..........33",
+				".333.3333.333.",
+				"..3334444333..",
+				"....304403....",
+				".....3333.....",
+				"......33......",
+				"..............",
+				".............."
+			];
+			var b = [
+				"..............",
+				"..............",
+				"..3334444333..",
+				".33.304403.33.",
+				"33..333333..33",
+				"3....3333....3",
+				"......33......",
+				".............."
+			];
+			return strip([a, b]);
+		});
+	}
+
+	public static function crawler():BitmapData
+	{
+		return cached("crawler", () ->
+		{
+			var a = [
+				"..4..4..4..4..",
+				"..3..3..3..3..",
+				".333333333333.",
+				"33333333333333",
+				"33304333330433",
+				"33333333333333",
+				".222222222222.",
+				"..2222222222..",
+				"..22......22..",
+				".............."
+			];
+			var b = a.copy();
+			b[8] = "...22....22...";
+			return strip([a, b]);
+		});
+	}
+
+	// --- Tárgyak ---
+	public static function gem():BitmapData
+	{
+		return cached("gem", () ->
+		{
+			var a = ["...44...", "..4334..", ".433334.", "43333334", ".433334.", "..4334..", "...44...", "........"];
+			var b = ["...44...", "..4334..", ".434434.", "43344334", ".434434.", "..4334..", "...44...", "........"];
+			return strip([a, a, b, a]);
+		});
+	}
+
+	public static function key():BitmapData
+	{
+		return cached("key", () ->
+		{
+			var a = [".444......", "4...4.....", "4...444444", "4...4.4.4.", ".444......", "..........", "..........", ".........."];
+			return strip([a]);
+		});
+	}
+
+	public static function heart():BitmapData
+	{
+		return cached("heart", () -> strip([[".33..33.", "33333333", "33333333", ".333333.", "..3333..", "...33...", "........", "........"]]));
+	}
+
+	public static function heartEmpty():BitmapData
+	{
+		return cached("heartEmpty", () -> strip([[".11..11.", "1..11..1", "1......1", ".1....1.", "..1..1..", "...11...", "........", "........"]]));
+	}
+
+	public static function spikes():BitmapData
+	{
+		return cached("spikes", () ->
+		{
+			var rows:Array<String> = [];
+			for (r in 0...8)
+			{
+				var line = "";
+				for (s in 0...4)
+					line += r < 2 ? ".44." : (r < 4 ? "3333" : "2222");
+				rows.push(line);
+			}
+			return strip([rows]);
+		});
+	}
+
+	public static function checkpoint():BitmapData
+	{
+		return cached("checkpoint", () ->
+		{
+			function flag(c:String):Array<String>
+			{
+				var rows:Array<String> = [];
+				for (y in 0...16)
+				{
+					var r = "";
+					for (x in 0...8)
+					{
+						var ch = ".";
+						if (x == 1)
+							ch = "3";
+						else if (y >= 1 && y <= 5 && x >= 2 && x <= 7 - (y > 3 ? y - 3 : 0))
+							ch = c;
+						else if (y == 15 && x >= 0 && x <= 3)
+							ch = "2";
+						r += ch;
+					}
+					rows.push(r);
+				}
+				return rows;
+			}
+			return strip([flag("1"), flag("4")]);
+		});
+	}
+
+	/** Ajtó 16x24: 0 zárt (kőív), 1 nyitva (fekete kapu, kavargó pontokkal), 2 nyitva (másik fázis). */
+	public static function door():BitmapData
+	{
+		return cached("door", () ->
+		{
+			function make(open:Int):Array<String>
+			{
+				var rows:Array<String> = [];
+				for (y in 0...24)
+				{
+					var r = "";
+					for (x in 0...16)
+					{
+						var edge = x < 2 || x > 13 || y < 2;
+						var arch = y < 6 && ((x - 7.5) * (x - 7.5) + (y - 6) * (y - 6) > 56);
+						var ch = "2";
+						if (arch)
+							ch = ".";
+						else if (edge)
+							ch = "3";
+						else if (open == 0)
+							ch = (x == 7 || x == 8) && y > 10 && y < 15 ? "0" : "1";
+						else
+						{
+							ch = "0";
+							var ph = open == 1 ? 0 : 3;
+							if ((x * 3 + y * 5 + ph) % 7 == 0)
+								ch = "4";
+							else if ((x * 5 + y * 3 + ph) % 11 == 0)
+								ch = "2";
+						}
+						r += ch;
+					}
+					rows.push(r);
+				}
+				return rows;
+			}
+			return strip([make(0), make(1), make(2)]);
+		});
+	}
+
+	// --- Csempék: 0 üres, 1 talaj teteje, 2 talaj, 3 tégla, 4 egyirányú platform ---
+	public static function tiles():BitmapData
+	{
+		return cached("tiles", () ->
+		{
+			var bd = new BitmapData(16 * 5, 16, true, 0x00000000);
+			function px(t:Int, x:Int, y:Int, ch:String)
+				bd.setPixel32(t * 16 + x, y, color(ch));
+			var seed = 12345;
+			function rnd():Int
+			{
+				seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF;
+				return seed >> 8;
+			}
+			for (y in 0...16)
+				for (x in 0...16)
+				{
+					// 1: talaj teteje (fényes él + szemcsés)
+					var top = y == 0 ? "4" : (y == 1 ? "3" : (y == 2 ? "2" : "1"));
+					if (y > 2 && rnd() % 16 == 0)
+						top = "2";
+					px(1, x, y, top);
+					// 2: talaj
+					var fill = "1";
+					var r = rnd() % 26;
+					if (r == 0)
+						fill = "2";
+					else if (r == 1)
+						fill = "0";
+					px(2, x, y, fill);
+					// 3: tégla
+					var brick = (y % 8 == 7 || (x + (y / 8 >= 1 ? 8 : 0)) % 16 == 15) ? "0" : (y % 8 == 0 ? "3" : "2");
+					px(3, x, y, brick);
+					// 4: egyirányú platform (vékony deszka)
+					if (y < 4)
+						px(4, x, y, y == 0 ? "4" : (y == 1 ? "3" : (y == 2 ? "2" : "1")));
+				}
+			return bd;
+		});
+	}
+
+	/** Háttér-sziluett (távoli romok, csillagpontok): `w` x 340, a paralaxishoz. */
+	public static function backdrop(w:Int, seed0:Int, tone:String, density:Int):BitmapData
+	{
+		var bd = new BitmapData(w, 340, true, 0x00000000);
+		var seed = seed0;
+		function rnd():Int
+		{
+			seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF;
+			return seed >> 8;
+		}
+		var x = 0;
+		while (x < w)
+		{
+			var pw = 8 + rnd() % 22;
+			var ph = 90 + rnd() % 140;
+			var broken = rnd() % 3 == 0 ? rnd() % 20 : 0;
+			for (px in x...Std.int(Math.min(w, x + pw)))
+				for (py in 340 - ph + broken...340)
+					bd.setPixel32(px, py, color(tone));
+			// ablakok / rések
+			if (pw > 12)
+				for (wy in 0...Std.int(ph / 16))
+					if (rnd() % 3 != 0)
+						bd.fillRect(new openfl.geom.Rectangle(x + 3, 340 - ph + broken + 8 + wy * 16, 3, 5), 0xFF000000);
+			x += pw + rnd() % density;
+		}
+		return bd;
+	}
+
+	/** Csillagpontok (halvány) a legtávolabbi rétegre. */
+	public static function stars(w:Int, seed0:Int):BitmapData
+	{
+		var bd = new BitmapData(w, 340, true, 0x00000000);
+		var seed = seed0;
+		for (i in 0...Std.int(w / 9))
+		{
+			seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF;
+			var x = (seed >> 8) % w;
+			seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF;
+			var y = (seed >> 8) % 170;
+			bd.setPixel32(x, y, (i % 5 == 0) ? 0xFF777777 : 0xFF444444);
+		}
+		return bd;
+	}
+}

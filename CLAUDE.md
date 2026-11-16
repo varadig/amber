@@ -1,0 +1,10 @@
+# Amber Ascent: projekt jegyzetek
+
+- Nyelv/engine: Haxe 4.3.6, HaxeFlixel 6.2.1 (lime 8.3.2, openfl 9.5.2). Csak ezekre a verziókra írj kódot.
+- Build: `scripts/build.ps1` (vagy `haxelib run lime build html5 [-Dtest]`); a hibát mindig ellenőrizd (`| grep -E "\.hx:[0-9]+"`), mert a lime csendben a régi JS-t hagyja.
+- Belső felbontás 480x270. Grafika kódból (`Art.hx`, szürke-lépcsők: '0'..'6'), a borostyán szín a kamera-szűrőből jön (`AmberShader`, a `Main` állítja be: a szűrőt a signal-kezelőknek az `addChild(new FlxGame)` ELŐTT kell regisztrálni, különben az első állapot kimarad; állapotváltáskor új kamera jön, ezért `postStateSwitch`).
+- Kommentek magyarul, a játék UI szövegei angolul.
+- Flixel 6: az irányjelzők `flixel.util.FlxDirectionFlags` (`touching.has(FlxDirectionFlags.FLOOR)`); a `FlxObject.hurt` már létezik (a hős sérülése: `Player.takeHit`); a `touching` a `super.update()`-ben nullázódik, ezért a Player az előző képkocka értékét a `super.update` ELŐTT olvassa.
+- A Flixel állapotváltáskor felszabadítja a használaton kívüli grafikákat: az `Art.cached` másolatot ad vissza (különben lerombolt BitmapData-t használna a következő állapot: "reading isEmpty").
+- Felépítés: `PlayState` (pálya, ütközések, HUD, effektek), `Player` (modern mozgás), `Enemy` (WALKER / FLYER / CRAWLER), `LevelData` (determinisztikus szegmens-generátor), `Input` (billentyű + kontroller), `Audio` / `Music` (szintetizált hang, tracker-zene), `TitleState` / `EndState`.
+- Tesztek: `tests/*.ps1` (fejnélküli Edge; teszt-build kell, port 3220). A teszt-buildben a `window.__ps` a PlayState, `window.__cam` a kamera.

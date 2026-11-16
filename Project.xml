@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project>
+	<meta title="Amber Ascent" package="com.varadig.amberascent" version="0.1.0" company="varadig" />
+	<app main="Main" file="AmberAscent" path="export" />
+
+	<window width="960" height="540" fps="60" background="#000000" hardware="true" vsync="true" />
+	<!-- Böngészőben a vászon kitölti az ablakot (0x0), a játék belső felbontása 480x270 -->
+	<window if="html5" width="0" height="0" resizable="true" allow-high-dpi="false" />
+	<window if="desktop" orientation="landscape" fullscreen="false" resizable="true" />
+
+	<source path="source" />
+
+	<!-- Tesztbuild (-Dtest): egyből a játék indul, a PlayState elérhető a window.__ps-en -->
+	<haxedef name="FLX_NO_DEBUG" unless="debug" />
+
+	<haxelib name="lime" version="8.3.2" />
+	<haxelib name="openfl" version="9.5.2" />
+	<haxelib name="flixel" version="6.2.1" />
+</project>
