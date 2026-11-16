@@ -1,16 +1,144 @@
 {
+	// Feladatok: Terminal > Run Task... (vagy Ctrl+Shift+B az alapértelmezett build-hez)
 	"version": "2.0.0",
-	"options": { "env": { "HAXEPATH": "C:\\HaxeToolkit\\haxe", "NEKO_INSTPATH": "C:\\HaxeToolkit\\neko", "PATH": "C:\\HaxeToolkit\\haxe;C:\\HaxeToolkit\\neko;${env:PATH}" } },
+	"options": {
+		"env": {
+			"HAXEPATH": "C:\\HaxeToolkit\\haxe",
+			"NEKO_INSTPATH": "C:\\HaxeToolkit\\neko",
+			"PATH": "C:\\HaxeToolkit\\haxe;C:\\HaxeToolkit\\neko;${env:PATH}"
+		}
+	},
 	"tasks": [
-		{ "label": "Install dependencies (haxelib)", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/setup.ps1"], "problemMatcher": [] },
-		{ "label": "Build HTML5", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/build.ps1"], "group": { "kind": "build", "isDefault": true }, "problemMatcher": [] },
-		{ "label": "Build HTML5 (test)", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/build.ps1", "-Test"], "group": "build", "problemMatcher": [] },
-		{ "label": "Run (local server)", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/play.ps1"], "isBackground": true, "problemMatcher": [] },
-		{ "label": "Stop server", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/stop.ps1"], "problemMatcher": [] },
-		{ "label": "Test (headless)", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/test.ps1"], "group": "test", "problemMatcher": [] },
-		{ "label": "Package for itch.io", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/package-itch.ps1"], "problemMatcher": [] },
-		{ "label": "Publish to itch.io", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/publish-itch.ps1"], "problemMatcher": [] },
-		{ "label": "Release (build + package + publish)", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/release.ps1"], "problemMatcher": [] },
-		{ "label": "Release (build + package, no publish)", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/release.ps1", "-SkipPublish"], "problemMatcher": [] }
+		{
+			"label": "Install dependencies (haxelib)",
+			"detail": "Telepíti a rögzített verziójú lime, openfl, flixel könyvtárakat",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/setup.ps1"],
+			"problemMatcher": []
+		},
+		{
+			"label": "Build HTML5",
+			"detail": "Release build (cheatek nélkül)",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/build.ps1"],
+			"group": { "kind": "build", "isDefault": true },
+			"problemMatcher": []
+		},
+		{
+			"label": "Build HTML5 (dev, cheats)",
+			"detail": "Fejlesztői build cheat-menüvel (F9 / kontroller SELECT) és a címképernyővel; a release-ben a cheatek nincsenek benne",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/build.ps1", "-Cheats"],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "Build HTML5 (test)",
+			"detail": "Tesztbuild: egyből a játék indul, window.__ps / __game elérhető (a tesztekhez)",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/build.ps1", "-Test"],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "Build HTML5 (debug)",
+			"detail": "Debug build (cheatekkel, Flixel debugger)",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/build.ps1", "-Debug"],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "Run (local server)",
+			"detail": "Helyi szerver a legutóbbi buildhez (http://localhost:3220, telefonról is elérhető), megnyitja a böngészőt",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/play.ps1"],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run HTML5 (dev, cheats)",
+			"detail": "Fordít cheat-menüvel, elindítja a helyi szervert és megnyitja a böngészőt",
+			"dependsOrder": "sequence",
+			"dependsOn": ["Build HTML5 (dev, cheats)", "Run (local server)"],
+			"problemMatcher": []
+		},
+		{
+			"label": "Run HTML5 (release)",
+			"detail": "Release build, majd helyi szerver és böngésző (így látja a játékos)",
+			"dependsOrder": "sequence",
+			"dependsOn": ["Build HTML5", "Run (local server)"],
+			"problemMatcher": []
+		},
+		{
+			"label": "Stop server",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/stop.ps1"],
+			"problemMatcher": []
+		},
+		{
+			"label": "Serve on LAN (phone)",
+			"detail": "Szerver a helyi hálózaton élő naplóval (?log=1); a tűzfalhoz: -OpenFirewall rendszergazdai PowerShellből",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/play.ps1", "-NoOpen"],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Test (headless Edge)",
+			"detail": "Teszt-build + a teljes automata ellenőrzés (képernyőképek: tests/out)",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/test.ps1"],
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "Package for itch.io",
+			"detail": "Normál HTML5 build, majd dist/amberascent-html5.zip (index.html a zip gyökerében)",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/package-itch.ps1"],
+			"problemMatcher": []
+		},
+		{
+			"label": "Publish to itch.io",
+			"detail": "Build + feltöltés butlerrel (beállítás: itch.config.json)",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/publish-itch.ps1"],
+			"problemMatcher": []
+		},
+		{
+			"label": "Release (build + package + publish)",
+			"detail": "Teljes kiadás: release build, cheat-mentesség ellenőrzése, itch.io zip, feltöltés butlerrel",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/release.ps1"],
+			"problemMatcher": []
+		},
+		{
+			"label": "Release (build + package, no publish)",
+			"detail": "Mint a teljes kiadás, de feltöltés nélkül: csak a dist/amberascent-html5.zip készül el és ellenőrződik",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/release.ps1", "-SkipPublish"],
+			"problemMatcher": []
+		},
+		{
+			"label": "Clean build output",
+			"type": "shell",
+			"command": "haxelib",
+			"args": ["run", "lime", "clean", "html5"],
+			"problemMatcher": []
+		}
 	]
 }
