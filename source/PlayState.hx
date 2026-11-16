@@ -260,6 +260,7 @@ class PlayState extends FlxState
 	var benchBuilt:Bool = false;
 	var selComp:Int = 0;
 	var hudComp:FlxText;
+	var playerGone:Bool = false;
 	var crumbles:FlxTypedGroup<Crumble>;
 	var movers:FlxTypedGroup<Mover>;
 	var bullets:FlxTypedGroup<Bullet>;
@@ -887,6 +888,7 @@ class PlayState extends FlxState
 		{
 			modeT += elapsed;
 			super.update(elapsed);
+			collideFriends();
 			if (modeT > 0.6 && Input.confirmPressed())
 				nextLevel();
 			return;
@@ -902,6 +904,20 @@ class PlayState extends FlxState
 		if (mode == 3)
 		{
 			super.update(elapsed);
+			collideFriends();
+			if (playerGone)
+			{
+				// a pálya vége: a társak is bemennek az ajtón, utána jön az összesítő
+				modeT += elapsed;
+				var any = false;
+				companions.forEachAlive(c ->
+				{
+					if (c.mode == 3)
+						any = true;
+				});
+				if (!any || modeT > 4.5)
+					levelClear();
+			}
 			return;
 		}
 
@@ -938,6 +954,8 @@ class PlayState extends FlxState
 		FlxG.collide(companions, solidMap);
 		FlxG.collide(companions, platMap);
 		FlxG.collide(companions, gates);
+		FlxG.collide(companions, crumbles);
+		FlxG.collide(companions, movers);
 		companions.forEachAlive(c ->
 		{
 			if (c.kind == Companions.TALL)
@@ -1126,6 +1144,16 @@ class PlayState extends FlxState
 			var p = particles.recycle(Particle);
 			p.fire(x, y, Math.cos(a) * speed, Math.sin(a) * speed, 0, 0.55, 0xFFFFFFFF);
 		}
+	}
+
+	/** A társak ütközése a talajjal, platformokkal és kapukkal (a pálya-vég animáció alatt is, különben leesnének). */
+	function collideFriends():Void
+	{
+		FlxG.collide(companions, solidMap);
+		FlxG.collide(companions, platMap);
+		FlxG.collide(companions, gates);
+		FlxG.collide(companions, crumbles);
+		FlxG.collide(companions, movers);
 	}
 
 	/** Egy társ létrehozása a megadott helyen. */
@@ -1558,12 +1586,17 @@ class PlayState extends FlxState
 		hint.visible = false;
 		door.animation.play("open");
 		Audio.play("door", 1);
+		companions.forEachAlive(c -> c.enterDoor(door.x + 8, door.y + door.height));
 		var tx = door.x + 8 - player.width / 2;
 		var ty = door.y + door.height - player.height;
 		FlxTween.tween(player, {x: tx, y: ty}, 0.3, {onComplete: _ ->
 		{
 			FlxTween.tween(player.scale, {x: 0.1, y: 0.1}, 0.35);
-			FlxTween.tween(player, {alpha: 0}, 0.35, {onComplete: _ -> levelClear()});
+			FlxTween.tween(player, {alpha: 0}, 0.35, {onComplete: _ ->
+			{
+				playerGone = true;
+				modeT = 0;
+			}});
 		}});
 	}
 
