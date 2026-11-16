@@ -98,7 +98,34 @@ class Input
 		var p = pad();
 		if (p == null)
 			return false;
-		return p.pressed.RIGHT_TRIGGER || p.pressed.RIGHT_TRIGGER_BUTTON || p.analog.value.RIGHT_TRIGGER > 0.5;
+		return p.pressed.RIGHT_TRIGGER || p.pressed.RIGHT_TRIGGER_BUTTON || p.analog.value.RIGHT_TRIGGER > 0.6;
+	}
+
+	/** R2: az állapot képkockánként egyszer (a Main preUpdate-je hívja), így az élváltás (r2New) állapotoktól / menüktől függetlenül egyetlen helyen számolódik. */
+	public static var r2New:Bool = false;
+	static var r2Down:Bool = false;
+	static var r2Off:Float = 0;
+
+	/** Az analóg trigger ingadozása ellen: csak akkor számít elengedettnek, ha 0,12 mp-ig nem volt lenyomva (nincs villogás). */
+	public static function pollR2():Void
+	{
+		var held = r2Held();
+		r2New = false;
+		if (held)
+		{
+			r2Off = 0;
+			if (!r2Down)
+			{
+				r2Down = true;
+				r2New = true;
+			}
+		}
+		else if (r2Down)
+		{
+			r2Off += FlxG.elapsed;
+			if (r2Off > 0.12)
+				r2Down = false;
+		}
 	}
 
 	public static function pausePressed():Bool

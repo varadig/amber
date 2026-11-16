@@ -39,6 +39,7 @@ class Main extends Sprite
 			FlxG.sound.volumeUpKeys = [];
 			FlxG.sound.volumeDownKeys = [];
 		});
+		FlxG.signals.preUpdate.add(Input.pollR2);
 		FlxG.signals.postUpdate.add(() ->
 		{
 			clock += FlxG.elapsed;

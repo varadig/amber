@@ -2099,7 +2099,6 @@ class PlayState extends FlxState
 	/** A fáradtság-effekt kézi értéke (-1 = az akkuból számolt). */
 	var cheatTired:Float = -1;
 	var pendingMini:Int = -1;
-	var r2Prev:Bool = false;
 
 	function cheatUpdate():Void
 	{
@@ -2123,10 +2122,7 @@ class PlayState extends FlxState
 			openSubState(MiniGames.make(g, level + 1, (won:Bool) -> {}));
 		}
 		var pad = FlxG.gamepads.lastActive;
-		var r2 = pad != null && Input.r2Held();
-		var r2New = r2 && !r2Prev;
-		r2Prev = r2;
-		if (subState == null && mode == 0 && (FlxG.keys.justPressed.F9 || r2New))
+		if (subState == null && mode == 0 && (FlxG.keys.justPressed.F9 || Input.r2New))
 			openSubState(new CheatSubState(this));
 	}
 
