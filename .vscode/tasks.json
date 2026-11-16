@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"options": { "env": { "HAXEPATH": "C:\\HaxeToolkit\\haxe", "NEKO_INSTPATH": "C:\\HaxeToolkit\\neko", "PATH": "C:\\HaxeToolkit\\haxe;C:\\HaxeToolkit\\neko;${env:PATH}" } },
+	"tasks": [
+		{ "label": "Install dependencies (haxelib)", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/setup.ps1"], "problemMatcher": [] },
+		{ "label": "Build HTML5", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/build.ps1"], "group": { "kind": "build", "isDefault": true }, "problemMatcher": [] },
+		{ "label": "Build HTML5 (test)", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/build.ps1", "-Test"], "group": "build", "problemMatcher": [] },
+		{ "label": "Run (local server)", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/play.ps1"], "isBackground": true, "problemMatcher": [] },
+		{ "label": "Stop server", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/stop.ps1"], "problemMatcher": [] },
+		{ "label": "Test (headless)", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/test.ps1"], "group": "test", "problemMatcher": [] },
+		{ "label": "Package for itch.io", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/package-itch.ps1"], "problemMatcher": [] },
+		{ "label": "Publish to itch.io", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/publish-itch.ps1"], "problemMatcher": [] },
+		{ "label": "Release (build + package + publish)", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/release.ps1"], "problemMatcher": [] },
+		{ "label": "Release (build + package, no publish)", "type": "shell", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/release.ps1", "-SkipPublish"], "problemMatcher": [] }
+	]
+}
