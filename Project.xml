@@ -11,6 +11,9 @@
 	<source path="source" />
 
 	<!-- Tesztbuild (-Dtest): egyből a játék indul, a PlayState elérhető a window.__ps-en -->
+	<!-- Cheatek (CheatSubState, F9): csak debug és teszt (-Dtest) buildben; a release-ben a kód ki sem fordul. -Dcheats-szel kézzel is bekapcsolható. -->
+	<haxedef name="cheats" if="debug" />
+	<haxedef name="cheats" if="test" />
 	<haxedef name="FLX_NO_DEBUG" unless="debug" />
 
 	<haxelib name="lime" version="8.3.2" />

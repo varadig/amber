@@ -40,6 +40,14 @@ class Companion extends FlxSprite
 	var fading:Bool = false;
 	var coyote:Float = 0;
 	var jumpBuf:Float = 0;
+	/** Üresjárat: ha a robot (követve vagy várva) sokáig nem csinál semmit, véletlen apróságot tesz. */
+	var idleT:Float = 0;
+	var idleAct:Int = 0;
+	var idleLeft:Float = 0;
+	var idleDir:Int = 1;
+	var idleHopped:Bool = false;
+	/** A robot aktuális állapota (follow / wait / control / door / look / hop / stroll / beep); a HUD-nak és a teszteknek. */
+	public var state:String = "wait";
 
 	public function new(kind:Int, x:Float, y:Float, level:LevelData, target:FlxSprite)
 	{
@@ -128,6 +136,11 @@ class Companion extends FlxSprite
 		var ty = target.y + target.height / 2;
 		var cx = x + width / 2;
 
+		// üresjárat: a követő (a cél közelében, mozdulatlan célnál) vagy váró robot ismétlődően tesz valami apróságot
+		var quiet = (mode == 0 || mode == 1) && invuln <= 0 && (mode == 1 || (Math.abs(tx - cx) < 70 && Math.abs(target.velocity.x) < 6 && Math.abs(target.velocity.y) < 30));
+		idleTick(elapsed, quiet);
+		var idling = idleAct != 0 && idleMove(onFloor, hitWall);
+
 		if (kind == Companions.ORB)
 		{
 			switch (mode)
@@ -148,6 +161,11 @@ class Companion extends FlxSprite
 				case 0:
 					var gx = tx - targetFace() * 16 - 4;
 					var gy = ty - 22 + Math.sin(bobT * 3) * 3;
+					if (idleAct == 2) // keringés a hős körül
+					{
+						gx += Math.cos(bobT * 8) * 16;
+						gy += Math.sin(bobT * 8) * 10;
+					}
 					velocity.x = clamp((gx - x) * 4, 150);
 					velocity.y = clamp((gy - y) * 4, 150);
 					face = velocity.x >= 0 ? 1 : -1;
@@ -163,6 +181,11 @@ class Companion extends FlxSprite
 				default:
 					velocity.x *= Math.max(0, 1 - 6 * elapsed);
 					velocity.y = Math.cos(bobT * 3) * 4;
+					if (idleAct == 2) // helyben köröz
+					{
+						velocity.x = Math.cos(bobT * 6) * 35;
+						velocity.y = Math.sin(bobT * 6) * 35;
+					}
 			}
 		}
 		else
@@ -173,7 +196,8 @@ class Companion extends FlxSprite
 					control(elapsed, onFloor);
 					setSolidRole(false);
 				case 0:
-					walkToward(tx, kind == Companions.TALL ? 30 : 22, onFloor, hitWall, ty > y + height + 20);
+					if (!idling)
+						walkToward(tx, kind == Companions.TALL ? 30 : 22, onFloor, hitWall, ty > y + height + 20);
 					setSolidRole(false);
 					// elakadás / lemaradás / leesés: a célhoz kerül
 					var dx = tx - cx;
@@ -194,13 +218,79 @@ class Companion extends FlxSprite
 						beginFade();
 				default:
 					// vár: a földön megáll; a magas társ ilyenkor platform
-					if (onFloor)
+					if (onFloor && !idling)
 						velocity.x = 0;
 					setSolidRole(onFloor);
 			}
 		}
+		if (idleAct == 1)
+			face = Math.sin(idleLeft * 7) > 0 ? 1 : -1; // körülnéz
+		state = mode == 4 ? "control" : (mode == 3 ? "door" : (idleAct > 0 ? ["", "look", "hop", "stroll", "beep"][idleAct] : (mode == 0 ? "follow" : "wait")));
 		flipX = face < 0;
 		super.update(elapsed);
+	}
+
+	/** Üresjárat-időzítő: ~4 mp tétlenség után véletlen tevékenység (1 körülnéz, 2 ugrik / keringő ORB, 3 sétál, 4 "pittyeg" = összenyomódik). */
+	function idleTick(elapsed:Float, quiet:Bool):Void
+	{
+		if (!quiet)
+		{
+			idleT = 0;
+			idleAct = 0;
+			return;
+		}
+		if (idleAct == 0)
+		{
+			idleT += elapsed;
+			if (idleT < 4)
+				return;
+			var opts = [1, 2, 4];
+			if (kind != Companions.ORB && mode == 0)
+				opts.push(3);
+			if (kind == Companions.TALL && mode == 1)
+				opts.remove(2); // a váró magas társ platform: nem ugrál
+			idleAct = opts[Std.random(opts.length)];
+			idleLeft = idleAct == 2 && kind != Companions.ORB ? 0.7 : 1.2 + Math.random();
+			idleDir = Std.random(2) * 2 - 1;
+			idleHopped = false;
+			if (idleAct == 4)
+				FlxTween.tween(scale, {y: 0.6}, 0.14, {onComplete: _ -> FlxTween.tween(scale, {y: 1}, 0.2)});
+			return;
+		}
+		idleLeft -= elapsed;
+		if (idleLeft <= 0)
+		{
+			idleAct = 0;
+			idleT = 4 - (1.5 + Math.random() * 3); // a következő apróság 1,5-4,5 mp múlva
+		}
+	}
+
+	/** A földön járó társ üresjárati mozgása; igaz, ha ő mozgatja a robotot (a követés ilyenkor szünetel). */
+	function idleMove(onFloor:Bool, hitWall:Bool):Bool
+	{
+		if (kind == Companions.ORB)
+			return idleAct == 2;
+		if (!onFloor)
+			return false;
+		switch (idleAct)
+		{
+			case 2:
+				if (!idleHopped)
+				{
+					idleHopped = true;
+					velocity.y = -170;
+				}
+				return true;
+			case 3:
+				face = idleDir;
+				velocity.x = idleDir * 28;
+				if (hitWall)
+					idleLeft = 0;
+				return true;
+			default:
+				velocity.x = 0;
+				return true;
+		}
 	}
 
 	/** Irányított mozgás (a földön járó társak): gyorsulás, ugrás (coyote idő, bufferelt gomb, változó magasság). */

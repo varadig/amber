@@ -65,6 +65,14 @@ Minden házban van egy **számítógép** a bejáratnál; a belső terem kaput c
 - **Áramcella + aljzat + emelő:** a cellát az aljzatba kell vinni (Fel / E), az emelő felviszi a magas polcra.
 - **Rács mögötti kamra** (WHEELIE), **magas párkány** (TALL), **magas kar** (ORB), **repedezett fal** (blaszter), **kapu + nyomólap**, **épületek** belső termekkel, leszakadó és mozgó platformok.
 
+## Robotok: állapotok
+- Pályára lépéskor és új társ csatlakozásakor a **követés** az alapértelmezett (Q kapcsolja: FOLLOW / WAIT).
+- Állapotok: követ (`follow`), vár (`wait`), irányított (`control`), ajtóhoz megy (`door`). Ha a követő robot a mozdulatlan hős mellett, vagy a váró robot ~4 mp-ig tétlen, véletlen **üresjárati** apróságot tesz: körülnéz (`look`), ugrik / az ORB kering (`hop`), sétál (`stroll`), vagy összenyomódva "pittyeg" (`beep`). A váró magas robot nem ugrál (platform).
+
+## Kontroller és cheatek
+- A számítógépek mini-játékai kontrollerrel is játszhatók: D-pad / bal pálca, A: művelet, B: vissza.
+- **Cheat-menü** (csak debug / teszt build, F9 vagy kontroller SELECT): HERO (gyógyítás, találat, halál, ajtóhoz ugrás), PARTS (alkatrészek szintenként, mind, csupasz), BATTERY & SCREEN (akku szintek, lemerülés, elektromos kisülés, fáradtság-effekt, homályos látás), ROBOTS (társak, összehívás, követés, sebzés), WORLD (kapuk, terminálok, pálya teljesítése, következő / előző / tetszőleges pálya), ENEMIES (spawn, törlés), MINI-GAMES (mind a négy), TOGGLES (isten-mód, végtelen akku, lassítás).
+
 ## Képernyő-effektek
 - A képernyő domború (CRT-hordó); **sérüléskor** erősebben kidagad, és elektromos kisülés fut át rajta (elcsúszó sávok, remegés, fényes ívek, felvillanás).
 - **Lemerülő akku:** 25% alatt fokozatosan elsötétül és elmosódik a kép (fáradtság, sima átmenettel), leálláskor erősen.

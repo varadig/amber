@@ -263,7 +263,7 @@ class PlayState extends FlxState
 	var playerGone:Bool = false;
 	/** Az éppen irányított robot (a hős vagy egy társ). */
 	var ctrl:FlxSprite;
-	var followAll:Bool = false;
+	var followAll:Bool = true;
 	var heroExited:Bool = false;
 	var heroStuckT:Float = 0;
 	var terminals:FlxTypedGroup<FlxSprite>;
@@ -891,6 +891,9 @@ class PlayState extends FlxState
 		Main.sightTarget = Parts.has(Parts.VISOR) ? (Parts.tier(Parts.VISOR) >= 2 ? 1.2 : 1.0) : 0.4;
 		// fáradtság: a lemerülő akku fokozatosan elsötétíti és elmossa a képet; leálláskor erősen
 		Main.tiredTarget = player != null && player.powerDown > 0 ? 1.0 : (Parts.battery < 25 ? (25 - Parts.battery) / 25 * 0.75 : 0.0);
+		#if cheats
+		cheatUpdate();
+		#end
 		if (Input.pausePressed() && mode == 0)
 		{
 			paused = !paused;
@@ -1952,8 +1955,230 @@ class PlayState extends FlxState
 			FlxG.switchState(() -> new PlayState());
 	}
 
+	#if cheats
+	// ---------------------------------------------------------------- cheatek (csak fejlesztői build) ----------------------------------------------------------------
+	public var cheatGod:Bool = false;
+	public var cheatInfBatt:Bool = false;
+	public var cheatSight:Bool = false;
+	/** A fáradtság-effekt kézi értéke (-1 = az akkuból számolt). */
+	var cheatTired:Float = -1;
+	var pendingMini:Int = -1;
+
+	function cheatUpdate():Void
+	{
+		if (cheatSight)
+			Main.sightTarget = 0.1;
+		if (cheatTired >= 0)
+			Main.tiredTarget = cheatTired;
+		if (cheatGod && player != null)
+		{
+			player.hearts = player.maxHearts;
+			player.invuln = Math.max(player.invuln, 0.1);
+			for (c in companions)
+				c.hearts = c.maxHearts;
+		}
+		if (cheatInfBatt)
+			Parts.battery = 100;
+		if (pendingMini >= 0 && subState == null)
+		{
+			var g = pendingMini;
+			pendingMini = -1;
+			openSubState(MiniGames.make(g, level + 1, (won:Bool) -> {}));
+		}
+		var pad = FlxG.gamepads.lastActive;
+		if (subState == null && mode == 0 && (FlxG.keys.justPressed.F9 || (pad != null && pad.justPressed.BACK)))
+			openSubState(new CheatSubState(this));
+	}
+
+	public function cheatHeal():Void
+	{
+		player.hearts = player.maxHearts;
+		for (c in companions)
+			c.hearts = c.maxHearts;
+		showToast("CHEAT: HEALED", 1.4);
+	}
+
+	public function cheatDamage():Void
+	{
+		player.hearts = Std.int(Math.max(0, player.hearts - 1));
+		player.invuln = 0;
+		damaged();
+	}
+
+	public function cheatKill():Void
+	{
+		player.hearts = 0;
+		die();
+	}
+
+	public function cheatToDoor():Void
+	{
+		player.reset(door.x, door.y + door.height - player.height);
+		player.velocity.set(0, 0);
+	}
+
+	public function cheatUnstick():Void
+	{
+		player.reset(player.x, player.y - 40);
+		player.velocity.set(0, 0);
+	}
+
+	public function cheatPart(id:Int):Void
+	{
+		Parts.add(id);
+		player.applyParts();
+		player.refreshLook();
+		showToast("CHEAT: " + Parts.NAMES[id] + " TIER " + Parts.tier(id), 1.6);
+	}
+
+	public function cheatAllParts():Void
+	{
+		for (i in 0...Parts.COUNT)
+			if (!Parts.has(i))
+				Parts.add(i);
+		player.applyParts();
+		player.refreshLook();
+		showToast("CHEAT: ALL PARTS", 1.6);
+	}
+
+	public function cheatStripParts():Void
+	{
+		Parts.owned = [for (_ in 0...Parts.COUNT) false];
+		Parts.tiers = [for (_ in 0...Parts.COUNT) 0];
+		player.applyParts();
+		player.refreshLook();
+		showToast("CHEAT: NAKED ROBOT", 1.6);
+	}
+
+	public function cheatBattery(v:Float):Void
+	{
+		Parts.battery = v;
+		player.powerDown = 0;
+		showToast("CHEAT: BATTERY " + Std.int(v) + "%", 1.4);
+	}
+
+	public function cheatPowerDown():Void
+	{
+		Parts.battery = 0;
+		player.powerDown = 4.2;
+	}
+
+	public function cheatShock():Void
+	{
+		Main.hitFx = 1;
+		Audio.play("hurt", 1);
+	}
+
+	public function cheatCycleTired():Void
+	{
+		cheatTired = cheatTired < 0 ? 0.0 : (cheatTired < 0.3 ? 0.5 : (cheatTired < 0.8 ? 1.0 : -1.0));
+	}
+
+	public function cheatTiredName():String
+		return cheatTired < 0 ? "AUTO (FROM BATTERY)" : Std.int(cheatTired * 100) + "%";
+
+	public function cheatCompanion(kind:Int):Void
+	{
+		Companions.owned[kind] = true;
+		for (c in companions)
+			if (c.kind == kind && c.alive)
+				return;
+		spawnCompanion(kind, player.x + 24, player.y - 10);
+		showToast("CHEAT: " + Companions.NAMES[kind] + " JOINS", 1.6);
+	}
+
+	public function cheatGather():Void
+	{
+		for (c in companions)
+			if (c.alive)
+			{
+				c.reset(player.x + (c.kind - 1) * 22, player.y - (c.kind == Companions.ORB ? 18 : 4));
+				c.velocity.set(0, 0);
+			}
+	}
+
+	public function cheatFollow():Bool
+		return followAll;
+
+	public function cheatToggleFollow():Void
+		followAll = !followAll;
+
+	public function cheatHurtFriends():Void
+	{
+		for (c in companions)
+			if (c.alive)
+			{
+				c.invuln = 0;
+				if (c.takeHit(c.x + 20))
+					damagedCompanion(c);
+			}
+	}
+
+	public function cheatOpenGates():Void
+	{
+		for (g in gates)
+			setGate(g.gid, true);
+		showToast("CHEAT: GATES OPEN", 1.6);
+	}
+
+	public function cheatSolveTerminals():Void
+	{
+		for (s in terminals)
+			if (!termSolved.exists(s.ID))
+			{
+				termSolved.set(s.ID, true);
+				s.animation.play("done");
+				setGate(s.ID, true);
+			}
+		showToast("CHEAT: TERMINALS SOLVED", 1.6);
+	}
+
+	public function cheatComplete():Void
+	{
+		if (mode == 0)
+			levelClear();
+	}
+
+	public function cheatNextLevel():Void
+		nextLevel();
+
+	public function cheatPrevLevel():Void
+		cheatGoto(Std.int(Math.max(0, level - 1)));
+
+	public function cheatRestart():Void
+		cheatGoto(level);
+
+	public function cheatGoto(n:Int):Void
+	{
+		FlxG.timeScale = 1;
+		level = n;
+		FlxG.switchState(() -> new PlayState());
+	}
+
+	public function cheatEnemy(kind:Int):Void
+	{
+		var en = new Enemy(kind, player.x + 48 * (player.faceDir >= 0 ? 1 : -1), player.y - 10, data);
+		enemies.add(en);
+	}
+
+	public function cheatKillEnemies():Void
+	{
+		for (e in enemies)
+			if (e.alive)
+				e.kill();
+	}
+
+	public function cheatMini(game:Int):Void
+	{
+		pendingMini = game;
+	}
+	#end
+
 	override public function destroy():Void
 	{
+		#if cheats
+		FlxG.timeScale = 1;
+		#end
 		respawn = flixel.util.FlxDestroyUtil.put(respawn);
 		super.destroy();
 	}

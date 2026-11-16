@@ -23,10 +23,10 @@ class MiniGames
 		"AN OLD TRAINING PROGRAM STILL RUNS. DESTROY ALL THE ENEMY TANKS."
 	];
 	public static final HINTS = [
-		"ARROWS: SLIDE A TILE    ESC: LEAVE",
-		"ARROWS: REPEAT THE SEQUENCE    ESC: LEAVE",
-		"ARROWS: MOVE    SPACE: TOGGLE (AND NEIGHBOURS)    ESC: LEAVE",
-		"ARROWS: DRIVE    SPACE: FIRE    ESC: LEAVE"
+		"ARROWS / D-PAD: SLIDE A TILE    ESC / B: LEAVE",
+		"ARROWS / D-PAD: REPEAT THE SEQUENCE    ESC / B: LEAVE",
+		"ARROWS / D-PAD: MOVE    SPACE / A: TOGGLE    ESC / B: LEAVE",
+		"ARROWS / D-PAD: DRIVE    SPACE / A: FIRE    ESC / B: LEAVE"
 	];
 
 	public static function make(game:Int, diff:Int, onDone:Bool->Void):MiniGame
@@ -128,12 +128,39 @@ class MiniGame extends FlxSubState
 			onDone(ok);
 	}
 
+	// egységes lépésenkénti (just) bemenet: billentyűzet (nyilak / WASD), D-pad, bal pálca (élváltás), művelet (Space / Z / Enter / A), vissza (Esc / B)
+	var jl:Bool = false;
+	var jr:Bool = false;
+	var ju:Bool = false;
+	var jd:Bool = false;
+	var jact:Bool = false;
+	var jback:Bool = false;
+	var stickPrev:Int = 0;
+
+	function pollNav():Void
+	{
+		var p = FlxG.gamepads.lastActive;
+		var k = FlxG.keys.justPressed;
+		var sx = p != null ? p.analog.value.LEFT_STICK_X : 0.0;
+		var sy = p != null ? p.analog.value.LEFT_STICK_Y : 0.0;
+		var s = sx < -0.5 ? 1 : (sx > 0.5 ? 2 : (sy < -0.5 ? 3 : (sy > 0.5 ? 4 : 0)));
+		var fresh = s != stickPrev;
+		stickPrev = s;
+		jl = k.LEFT || k.A || (p != null && p.justPressed.DPAD_LEFT) || (fresh && s == 1);
+		jr = k.RIGHT || k.D || (p != null && p.justPressed.DPAD_RIGHT) || (fresh && s == 2);
+		ju = k.UP || k.W || (p != null && p.justPressed.DPAD_UP) || (fresh && s == 3);
+		jd = k.DOWN || k.S || (p != null && p.justPressed.DPAD_DOWN) || (fresh && s == 4);
+		jact = k.SPACE || k.Z || k.ENTER || (p != null && (p.justPressed.A || p.justPressed.X));
+		jback = k.ESCAPE || (p != null && (p.justPressed.B || p.justPressed.BACK));
+	}
+
 	override public function update(elapsed:Float):Void
 	{
 		super.update(elapsed);
+		pollNav();
 		if (closed)
 			return;
-		if (FlxG.keys.justPressed.ESCAPE && !finished)
+		if (jback && !finished)
 		{
 			leave(false);
 			return;
@@ -201,13 +228,13 @@ class SlideGame extends MiniGame
 	{
 		var blank = tiles.indexOf(0);
 		var from = -1;
-		if (FlxG.keys.justPressed.LEFT && blank % 3 < 2)
+		if (jl && blank % 3 < 2)
 			from = blank + 1;
-		else if (FlxG.keys.justPressed.RIGHT && blank % 3 > 0)
+		else if (jr && blank % 3 > 0)
 			from = blank - 1;
-		else if (FlxG.keys.justPressed.UP && blank < 6)
+		else if (ju && blank < 6)
 			from = blank + 3;
-		else if (FlxG.keys.justPressed.DOWN && blank >= 3)
+		else if (jd && blank >= 3)
 			from = blank - 3;
 		if (from < 0)
 			return;
@@ -278,7 +305,7 @@ class SimonGame extends MiniGame
 					}
 				}
 			case 1:
-				var p = FlxG.keys.justPressed.UP ? 0 : (FlxG.keys.justPressed.RIGHT ? 1 : (FlxG.keys.justPressed.DOWN ? 2 : (FlxG.keys.justPressed.LEFT ? 3 : -1)));
+				var p = ju ? 0 : (jr ? 1 : (jd ? 2 : (jl ? 3 : -1)));
 				if (p < 0)
 					return;
 				lit = p;
@@ -358,29 +385,28 @@ class LightsGame extends MiniGame
 
 	override function tick(dt:Float):Void
 	{
-		var k = FlxG.keys.justPressed;
 		var moved = false;
-		if (k.LEFT && cx > 0)
+		if (jl && cx > 0)
 		{
 			cx--;
 			moved = true;
 		}
-		else if (k.RIGHT && cx < 3)
+		else if (jr && cx < 3)
 		{
 			cx++;
 			moved = true;
 		}
-		else if (k.UP && cy > 0)
+		else if (ju && cy > 0)
 		{
 			cy--;
 			moved = true;
 		}
-		else if (k.DOWN && cy < 3)
+		else if (jd && cy < 3)
 		{
 			cy++;
 			moved = true;
 		}
-		if (k.SPACE || k.Z || k.ENTER)
+		if (jact)
 		{
 			toggle(cx, cy);
 			Audio.play("blip", 0.9);
@@ -478,8 +504,7 @@ class TankGame extends MiniGame
 		}
 		moveCd -= dt;
 		shootCd -= dt;
-		var k = FlxG.keys.pressed;
-		var nd = k.LEFT ? 3 : (k.RIGHT ? 1 : (k.UP ? 0 : (k.DOWN ? 2 : -1)));
+		var nd = Input.left() ? 3 : (Input.right() ? 1 : (Input.up() ? 0 : (Input.down() ? 2 : -1)));
 		if (nd >= 0 && moveCd <= 0)
 		{
 			pd = nd;
@@ -490,8 +515,7 @@ class TankGame extends MiniGame
 			}
 			moveCd = 0.13;
 		}
-		var j = FlxG.keys.justPressed;
-		if ((j.SPACE || j.Z || j.ENTER) && shootCd <= 0)
+		if (jact && shootCd <= 0)
 		{
 			bullets.push({x: px + dx(pd) * 0.6, y: py + dy(pd) * 0.6, d: pd, own: true});
 			shootCd = 0.4;
