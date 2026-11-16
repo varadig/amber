@@ -1,8 +1,6 @@
 package;
 
 import flixel.FlxG;
-import flixel.input.gamepad.FlxGamepadInputID;
-import flixel.input.keyboard.FlxKey;
 
 /** Billentyűzet + kontroller egységes kezelése. */
 class Input
@@ -44,6 +42,12 @@ class Input
 	{
 		var p = pad();
 		return FlxG.keys.anyJustPressed([X, SHIFT, K]) || (p != null && (p.justPressed.X || p.justPressed.B));
+	}
+
+	public static function shootPressed():Bool
+	{
+		var p = pad();
+		return FlxG.keys.anyJustPressed([V, J, CONTROL]) || (p != null && p.justPressed.Y);
 	}
 
 	public static function pausePressed():Bool

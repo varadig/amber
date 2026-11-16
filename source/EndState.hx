@@ -15,10 +15,10 @@ class EndState extends FlxState
 		super.create();
 		bgColor = 0xFF000000;
 		FlxG.camera.fade(0xFF000000, 0.5, true);
-		var a = new FlxText(0, 70, 480, "THE AMBER CORE", 16);
+		var a = new FlxText(0, 70, 480, "ALL PARTS FOUND", 16);
 		a.setFormat(null, 16, 0xFFFFFFFF, CENTER);
 		add(a);
-		var b = new FlxText(0, 100, 480, "IS LIT AGAIN", 16);
+		var b = new FlxText(0, 100, 480, "THE ROBOT IS WHOLE AGAIN", 16);
 		b.setFormat(null, 16, 0xFFBBBBBB, CENTER);
 		add(b);
 		var c = new FlxText(0, 150, 480, "FINAL SCORE " + PlayState.totalScore, 8);
@@ -38,6 +38,7 @@ class EndState extends FlxState
 		{
 			PlayState.level = 0;
 			PlayState.totalScore = 0;
+			Parts.reset();
 			FlxG.switchState(() -> new TitleState());
 		}
 	}

@@ -71,28 +71,220 @@ class Art
 		"..22222222.."
 	];
 
-	public static function player():BitmapData
+	/**
+	 * A hős: 12x14, képkockák: 0 állás, 1-4 futás, 5 ugrás, 6 esés, 7 fal-kapaszkodás, 8 szökellés (dash), 9 sérülés.
+	 * `mask`: a birtokolt alkatrészek bitmaszkja (Parts.mask()). Csupaszon (mask = 0) vak (nincs szem-fény), nincs mag-fény, csak csonk-lábai vannak;
+	 * az alkatrészek láthatóan rákerülnek: szem (VISOR), mellkas-fény (CORE), lábak (LEGS), hátsó fúvóka (THRUSTER), karmok (CLAWS), kar-ágyú (BLASTER).
+	 */
+	public static function player(mask:Int = 0):BitmapData
 	{
-		return cached("player", () ->
+		return cached("player" + mask, () ->
 		{
+			function has(id:Int):Bool
+				return (mask & (1 << id)) != 0;
 			var stand = ["...22..22...", "...22..22...", "...22..22...", "..222..222.."];
 			var runA = ["..22....22..", "..22....22..", "...22..22...", "..222..222.."];
 			var runB = ["...22..22...", "...22..22...", "...22..22...", "...22..22..."];
 			var runC = ["...22..22...", "..22....22..", "..22....22..", ".222....222."];
 			var jump = ["..22....22..", "...22..22...", "............", "............"];
 			var fall = ["..22....22..", "..22....22..", "..22....22..", "..22....22.."];
+			var stub = ["............", "............", "...22..22...", "...22..22..."];
 			var legs = [stand, runA, runB, runC, runB, jump, fall, stand, runA, fall];
+			if (!has(Parts.LEGS))
+				legs = [for (_ in legs) stub];
 			var frames:Array<Array<String>> = [];
 			for (i in 0...legs.length)
 			{
 				var body = BODY.copy();
-				if (i == 9)
-					body[3] = "..34044043..".substr(0, 12); // sérülés: összehúzott "szemek"
+				if (!has(Parts.VISOR))
+					body[3] = "..30000003..";
+				else if (i == 9)
+					body[3] = "..34044043..";
+				if (!has(Parts.CORE))
+				{
+					body[7] = "..22222222..";
+					body[8] = ".2222222222.";
+				}
 				if (i == 8)
-					body[7] = "222344322222"; // dash: kinyúló törzs
-				frames.push(body.concat(legs[i]));
+					body[7] = has(Parts.CORE) ? "222344322222" : "222222222222";
+				var rows = body.concat(legs[i]);
+				function setc(r:Int, c:Int, ch:String):Void
+				{
+					var s = rows[r];
+					rows[r] = s.substr(0, c) + ch + s.substr(c + 1);
+				}
+				if (has(Parts.THRUSTER))
+				{
+					setc(7, 0, "3");
+					setc(7, 1, "3");
+					setc(8, 0, "4");
+					setc(8, 1, "3");
+				}
+				if (has(Parts.CLAWS))
+				{
+					setc(6, 11, "3");
+					setc(7, 10, "3");
+					setc(7, 11, "3");
+					setc(8, 10, "3");
+				}
+				if (has(Parts.BLASTER))
+				{
+					setc(8, 10, "4");
+					setc(8, 11, "4");
+					setc(7, 11, "4");
+				}
+				if (i == 7)
+				{
+					// kapaszkodás: a fal felőli (jobb) kar felnyúl és markol, a test a falhoz simul
+					setc(1, 10, "4");
+					setc(1, 11, "4");
+					setc(2, 11, "3");
+					setc(3, 11, "3");
+					setc(4, 11, "3");
+					setc(5, 10, "3");
+					setc(5, 11, "3");
+					setc(6, 10, "3");
+					setc(12, 9, "2");
+				}
+				frames.push(rows);
 			}
 			return strip(frames);
+		});
+	}
+
+	/** Alkatrész-ikonok 10x10: LEGS, CORE, VISOR, THRUSTER, CLAWS, BLASTER, CHIP, GEAR, ANTENNA, JET CELL. */
+	public static function partIcons():BitmapData
+	{
+		return cached("partIcons", () -> strip([
+			["..444444..", "..4....4..", "...4444...", "..4....4..", "...4444...", "..4....4..", "...4444...", "..444444..", "..4....4..", ".44....44."],
+			["...4444...", "..433334..", ".43444434.", ".43422434.", ".43422434.", ".43444434.", "..433334..", "...4444...", "..........", ".........."],
+			["..........", "..444444..", ".43333334.", "4332442334", "4332442334", ".43333334.", "..444444..", "..........", "..........", ".........."],
+			["..444444..", "..433334..", "...4334...", "...4334...", "..433334..", "..444444..", "...3333...", "....33....", "....3.....", ".........."],
+			["4444......", "4..44.....", "4....44...", ".....44...", "....44....", "...44.....", "..44......", "..4.......", ".44.......", ".4........"],
+			["..........", "..........", ".44444444.", "4333333344", ".4444433..", "....4334..", "....4334..", "....444...", "..........", ".........."],
+			["..4.4.4.4.", ".44444444.", "4433333344", ".43444434.", "4433333344", ".43444434.", "4433333344", ".44444444.", "..4.4.4.4.", ".........."],
+			["...4444...", ".44.44.44.", "..444444..", "4443333444", "4443443444", "4443333444", "..444444..", ".44.44.44.", "...4444...", ".........."],
+			["....4.....", "...4.4....", "..4...4...", "....4.....", "....4.....", "....4.....", "...444....", "..43334...", "..44444...", ".........."],
+			["...4444...", "..433334..", "..433334..", "..434434..", "..433334..", "..433334..", "...4444...", "...3333...", "....33....", "....3....."]
+		]));
+	}
+
+	/** Repedezett blokk 16x16 (blaszterrel kilőhető). */
+	public static function cracked():BitmapData
+	{
+		return cached("cracked", () ->
+		{
+			var rows:Array<String> = [];
+			for (y in 0...16)
+			{
+				var r = "";
+				for (x in 0...16)
+				{
+					var ch = "2";
+					if (x == 0 || y == 0)
+						ch = "3";
+					else if (x == 15 || y == 15)
+						ch = "1";
+					else if ((x == y + 1 && y > 2 && y < 12) || (x == 15 - y && y > 4) || (y == 8 && x > 5 && x < 11))
+						ch = "0";
+					r += ch;
+				}
+				rows.push(r);
+			}
+			return strip([rows]);
+		});
+	}
+
+	/** Kapu-elem 16x16 (rács). */
+	public static function gate():BitmapData
+	{
+		return cached("gate", () ->
+		{
+			var rows:Array<String> = [];
+			for (y in 0...16)
+			{
+				var r = "";
+				for (x in 0...16)
+					r += y == 0 ? "4" : ((x % 4) >= 2 ? "3" : "0");
+				rows.push(r);
+			}
+			return strip([rows]);
+		});
+	}
+
+	/** Nyomólap 16x6: 0 felemelve, 1 lenyomva. */
+	public static function plate():BitmapData
+	{
+		return cached("plate", () ->
+		{
+			function make(down:Bool):Array<String>
+			{
+				var rows:Array<String> = [];
+				for (y in 0...6)
+				{
+					var r = "";
+					for (x in 0...16)
+					{
+						var top = down ? 3 : 0;
+						var ch = ".";
+						if (y >= top)
+						{
+							var k = y - top;
+							ch = k == 0 ? (x >= 2 && x <= 13 ? "4" : ".") : (k == 1 ? (x >= 1 && x <= 14 ? "3" : ".") : "2");
+						}
+						r += ch;
+					}
+					rows.push(r);
+				}
+				return rows;
+			}
+			return strip([make(false), make(true)]);
+		});
+	}
+
+	/** Leszakadó platform 48x10 (repedezett). */
+	public static function crumble():BitmapData
+	{
+		return cached("crumble", () ->
+		{
+			var rows:Array<String> = [];
+			for (y in 0...10)
+			{
+				var r = "";
+				for (x in 0...48)
+				{
+					var ch = y == 0 ? "4" : (y == 1 ? "3" : (y < 8 ? "2" : "1"));
+					if (y >= 2 && y < 8 && ((x + y * 5) % 11 == 0 || (x % 16 == 8 && y % 2 == 0)))
+						ch = "0";
+					r += ch;
+				}
+				rows.push(r);
+			}
+			return strip([rows]);
+		});
+	}
+
+	/** Mozgó platform 48x8 (fényjelzőkkel). */
+	public static function mover():BitmapData
+	{
+		return cached("mover", () ->
+		{
+			var rows:Array<String> = [];
+			for (y in 0...8)
+			{
+				var r = "";
+				for (x in 0...48)
+				{
+					var ch = y == 0 ? "4" : (y < 2 ? "3" : (y < 7 ? "2" : "1"));
+					if (y >= 2 && y < 6 && (x % 8 == 3 || x % 8 == 4) && y % 2 == 0)
+						ch = "4";
+					if (x < 2 || x > 45)
+						ch = y < 7 ? "3" : "1";
+					r += ch;
+				}
+				rows.push(r);
+			}
+			return strip([rows]);
 		});
 	}
 

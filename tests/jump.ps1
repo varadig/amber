@@ -5,7 +5,7 @@ try {
     Start-Cdp $Url $Out
     Start-Sleep -Seconds 5
     # sík talajra állunk (a pálya eleje: 8 oszlop sík)
-    Js "(function(){var p=window.__ps; p.player.reset(24, p.data.top[1]*16-14);})()" | Out-Null
+    Js "(function(){var p=window.__ps; window.__parts[0]=true; p.player.refreshLook(); p.player.reset(24, p.data.top[1]*16-14);})()" | Out-Null
     Start-Sleep -Milliseconds 700
     $y0 = [double](Js "window.__ps.player.y"); $x0 = [double](Js "window.__ps.player.x")
     Key "keyDown" "ArrowRight" "ArrowRight" 39

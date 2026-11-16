@@ -6,17 +6,20 @@ C64-hangulatú, borostyán-fekete monitoros platformer (HaxeFlixel 6.2.1, HTML5)
 | | |
 |---|---|
 | Mozgás | nyilak / WASD (kontroller: D-pad, bal pálca) |
-| Ugrás | Z / Space / Fel / C (kontroller: A); változó ugrásmagasság, fal-ugrás |
-| Szökellés (dash) | X / Shift / K (kontroller: X, B); kiüti az ellenséget, közben sérthetetlen; levegőben egyszer, leszállás / fal / ellenség után újra |
+| Ugrás | Z / Space / Fel / C (kontroller: A) |
+| Szökellés (dash; THRUSTER kell) | X / Shift / K (kontroller: X, B) |
+| Lövés (BLASTER kell) | V / J / Ctrl (kontroller: Y) |
+| Repülés (JET CELL) | az ugrás gomb nyomva tartva a levegőben |
+| Fal-kapaszkodás / fal-ugrás (CLAWS kell) | a fal felé tartva + ugrás |
 | Lefelé a platformról | Le + ugrás |
 | Szünet / visszaállás ellenőrzőpontra | P vagy Esc / R |
-| Teljes képernyő | F |
 
-## Játékmenet
-- **Ellenségre ugrás (stomp):** a slime és a repülő legyőzhető rálépéssel (pattanás, nyomva tartott ugrásnál magasabbra; a levegőben láncolt találatok szorzót adnak). A tüskés csúszómászóra nem lehet ráugrani, csak a szökellés üti ki.
-- **Fal-csúszás és fal-ugrás:** a függőleges aknákból (kutak) így lehet kimászni.
-- **Torony:** minden pályán egy egyirányú platformokból épített torony tetején van a kulcs; az ajtó csak vele nyílik.
-- **Szívek / ellenőrzőpontok:** 3 szív; leesés vagy sérülés levon egyet, ellenőrzőpontnál folytatod. Mind a gyémánt: +500 bónusz.
+## Játékmenet: alkatrész-küldetések
+- A robot **csupaszon** indul: lassú, csak picit ugrik, vak (nincs szem-fény), nincs mag-fény. Minden pályán **alkatrészeket** kell megtalálni (a HUD tetején a foglalatok, a pálya elején a küldetés listája); az ajtó csak akkor nyílik, ha mind megvan.
+- Az alkatrészek **képességeket** adnak és látszanak a roboton: LEGS (ugrás, futás), VISOR (alkatrész-iránytű), THRUSTER (dash), CLAWS (fal-kapaszkodás és fal-ugrás), BLASTER (lövés); a CORE / CHIP / GEAR / ANTENNA csak küldetés-alkatrész. A birtokolt alkatrészek pályák között megmaradnak, halál után a pálya elejének állapotára állnak vissza.
+- **Küldetés-szobák** (pályánként receptek, `LevelData.RECIPES`): nyitott (őrökkel), torony (teljes ugrás), kút (fal-ugrás kell a kijutáshoz), kamra (repedezett falat ki kell lőni), égi platform (a szobában JET CELL: korlátozott ideig repülhetsz), kapu + nyomólap (a lap egy magasabb platformon van).
+- Ellenségre ugrás, dash és lövés is kiüti őket; a tüskés csúszómászóra nem lehet ráugrani. Gyémántok: opcionális pontok (mind: +500).
+- Különleges platformok: **leszakadó híd** (2. pályától: a ráállás után lehullik, később visszatér) és **mozgó platform** (3. pályától).
 
 ## Megjelenés és hang
 - A pixel art C64 szürke-lépcsőkben készül kódból (`Art.hx`), a borostyán színt a `AmberShader.hx` adja (kamera-szűrő: fényesség → borostyán, ragyogás, pásztázó-vonalak, hordó-torzítás, vibrálás).

@@ -6,18 +6,18 @@ import flixel.math.FlxMath;
 import flixel.util.FlxDirectionFlags;
 
 /**
- * A hős: modern platformer-mozgás. Gyorsulás / lassulás, coyote idő, bufferelt ugrás, változó ugrásmagasság, csúcspont-lebegés,
- * fal-csúszás és fal-ugrás, levegős szökellés (dash; kioltja az ellenséget), lefelé ejtés az egyirányú platformokon,
- * ellenség-ugrálás (stomp) pattanással, sérülés utáni sérthetetlenség.
+ * A hős: modern platformer-mozgás, de a képességei az alkatrészein múlnak (`Parts`): csupaszon lassú és csak picit ugrik;
+ * LEGS: teljes ugrás és gyors futás; THRUSTER: szökellés (dash; kioltja az ellenséget); CLAWS: fal-csúszás és fal-ugrás (kapaszkodó póz);
+ * BLASTER: lövés; a JET CELL ideiglenes repülést ad (ugrás gomb nyomva tartva). Mindenkinek jár: coyote idő, bufferelt ugrás,
+ * változó ugrásmagasság, csúcspont-lebegés, lefelé ejtés az egyirányú platformokon, ellenségre ugrás (stomp), sérülés utáni sérthetetlenség.
  */
 class Player extends FlxSprite
 {
-	static inline var RUN = 118.0;
-	static inline var JUMP = 332.0;
 	static inline var GRAV = 960.0;
 	static inline var MAX_FALL = 360.0;
 	static inline var DASH_SPEED = 300.0;
 	static inline var DASH_TIME = 0.16;
+	public static inline var FLIGHT_TIME = 5.0;
 
 	public var hearts:Int = 3;
 	public var maxHearts:Int = 3;
@@ -25,6 +25,9 @@ class Player extends FlxSprite
 	public var dashing:Bool = false;
 	public var dropT:Float = 0;
 	public var onFloor:Bool = false;
+	public var flightT:Float = 0;
+	public var clinging:Bool = false;
+	public var frozen:Bool = false;
 	public var stunned(get, never):Bool;
 
 	/** Események (a PlayState köti be). */
@@ -33,20 +36,26 @@ class Player extends FlxSprite
 	public var onDash:Void->Void;
 	public var onWallJump:Void->Void;
 	public var onTrail:Void->Void;
+	public var onThrust:Void->Void;
+	public var onSlide:Int->Void;
+	public var onShoot:Float->Float->Int->Void;
 
 	var coyote:Float = 0;
 	var buffer:Float = 0;
 	var wallCoyote:Float = 0;
 	var wallDir:Int = 0;
+	var lastWallJump:Int = 0;
 	var dashT:Float = 0;
 	var dashCd:Float = 0;
+	var shootCd:Float = 0;
 	var canDash:Bool = true;
 	var stun:Float = 0;
 	var wasOnFloor:Bool = false;
 	var lastVy:Float = 0;
 	var trailT:Float = 0;
+	var slideT:Float = 0;
 	var face:Int = 1;
-	var wallSliding:Bool = false;
+	var lookMask:Int = -1;
 
 	function get_stunned():Bool
 		return stun > 0;
@@ -54,7 +63,22 @@ class Player extends FlxSprite
 	public function new(x:Float, y:Float)
 	{
 		super(x, y);
-		loadGraphic(Art.player(), true, 12, 14, false, "player");
+		width = 8;
+		height = 12;
+		offset.set(2, 2);
+		acceleration.y = GRAV;
+		maxVelocity.set(400, MAX_FALL + 200);
+		refreshLook();
+	}
+
+	/** A megjelenés az aktuálisan birtokolt alkatrészekhez igazítva (csupasz alváz -> felszerelt robot). */
+	public function refreshLook():Void
+	{
+		var m = Parts.mask();
+		if (m == lookMask)
+			return;
+		lookMask = m;
+		loadGraphic(Art.player(m), true, 12, 14, false, "player" + m);
 		width = 8;
 		height = 12;
 		offset.set(2, 2);
@@ -65,17 +89,29 @@ class Player extends FlxSprite
 		animation.add("wall", [7], 1);
 		animation.add("dash", [8], 1);
 		animation.add("hurt", [9], 1);
-		acceleration.y = GRAV;
-		maxVelocity.set(400, MAX_FALL + 200);
 	}
+
+	/** Futósebesség: csupaszon lassú. */
+	function runSpeed():Float
+		return Parts.has(Parts.LEGS) ? 118.0 : 78.0;
+
+	/** Ugrás-erő: csupaszon csak egy kis szökkenés. */
+	function jumpPower():Float
+		return Parts.has(Parts.LEGS) ? 332.0 : 215.0;
 
 	override public function update(elapsed:Float):Void
 	{
+		if (frozen)
+		{
+			super.update(elapsed);
+			return;
+		}
 		// az előző képkocka ütközései (a super.update nullázza a `touching`-ot)
 		var t = touching;
 		onFloor = t.has(FlxDirectionFlags.FLOOR);
-		var wallL = t.has(FlxDirectionFlags.LEFT);
-		var wallR = t.has(FlxDirectionFlags.RIGHT);
+		var hasClaws = Parts.has(Parts.CLAWS);
+		var wallL = hasClaws && t.has(FlxDirectionFlags.LEFT);
+		var wallR = hasClaws && t.has(FlxDirectionFlags.RIGHT);
 
 		if (invuln > 0)
 		{
@@ -90,6 +126,8 @@ class Player extends FlxSprite
 			dropT -= elapsed;
 		if (dashCd > 0)
 			dashCd -= elapsed;
+		if (shootCd > 0)
+			shootCd -= elapsed;
 
 		if (onFloor)
 		{
@@ -97,6 +135,7 @@ class Player extends FlxSprite
 				onLand(lastVy);
 			coyote = 0.10;
 			canDash = true;
+			lastWallJump = 0;
 		}
 		else
 			coyote -= elapsed;
@@ -105,7 +144,7 @@ class Player extends FlxSprite
 		var dir = (Input.right() ? 1 : 0) - (Input.left() ? 1 : 0);
 		if (stun > 0)
 			dir = 0;
-		if (dir != 0)
+		if (dir != 0 && !clinging)
 			face = dir;
 		var jumpHeld = Input.jumpHeld();
 		if (Input.jumpPressed())
@@ -113,7 +152,7 @@ class Player extends FlxSprite
 		else
 			buffer -= elapsed;
 
-		// fal-érintés (rövid utólagos fal-ugrás ablakkal)
+		// fal-érintés (a karmokkal; rövid utólagos fal-ugrás ablakkal)
 		var touchingWall = !onFloor && ((wallL && dir <= 0) || (wallR && dir >= 0)) && (wallL || wallR);
 		if (touchingWall)
 		{
@@ -122,7 +161,10 @@ class Player extends FlxSprite
 		}
 		else
 			wallCoyote -= elapsed;
-		wallSliding = touchingWall && velocity.y > 0 && dir == wallDir;
+		// kapaszkodás: a fal felé tartva a fal mellett a hős megkapaszkodik (kapaszkodó póz, lassú csúszás)
+		clinging = touchingWall && dir == wallDir && stun <= 0 && !dashing && velocity.y > -120;
+		if (clinging)
+			face = wallDir;
 
 		if (dashing)
 		{
@@ -139,14 +181,14 @@ class Player extends FlxSprite
 			if (dashT <= 0)
 			{
 				dashing = false;
-				velocity.x = face * RUN * 1.1;
+				velocity.x = face * runSpeed() * 1.1;
 			}
 		}
 		else
 		{
 			acceleration.y = GRAV;
 			// vízszintes mozgás: gyorsulás / lassulás (a talajon fürgébb)
-			var target = dir * RUN;
+			var target = dir * runSpeed();
 			var accel = onFloor ? 1250.0 : 820.0;
 			if (dir == 0)
 				accel = onFloor ? 1500.0 : 260.0;
@@ -160,31 +202,53 @@ class Player extends FlxSprite
 			else if (Math.abs(velocity.y) < 45 && jumpHeld)
 				acceleration.y = GRAV * 0.55;
 
-			if (wallSliding)
-				velocity.y = Math.min(velocity.y, 48);
+			if (clinging)
+			{
+				velocity.y = Math.min(velocity.y, 42);
+				slideT -= elapsed;
+				if (slideT <= 0 && onSlide != null)
+				{
+					slideT = 0.07;
+					onSlide(wallDir);
+				}
+			}
 
 			// ugrás
 			if (buffer > 0 && stun <= 0)
 			{
 				if (coyote > 0)
 				{
-					velocity.y = -JUMP;
+					velocity.y = -jumpPower();
 					coyote = 0;
 					buffer = 0;
 					onFloor = false;
 					if (onJump != null)
 						onJump();
 				}
-				else if (wallCoyote > 0)
+				else if (wallCoyote > 0 && wallDir != lastWallJump)
 				{
-					velocity.y = -JUMP * 0.95;
+					// fal-ugrás: ugyanarról az oldalról nem ismételhető (a földet érésig), így egy fallal nem lehet végtelenül felmászni
+					velocity.y = -jumpPower() * 0.95;
 					velocity.x = -wallDir * 150;
 					face = -wallDir;
+					lastWallJump = wallDir;
 					wallCoyote = 0;
 					buffer = 0;
 					canDash = true;
 					if (onWallJump != null)
 						onWallJump();
+				}
+			}
+			// repülés (JET CELL): az ugrás gomb nyomva tartva felfelé hajt, amíg el nem fogy az üzemanyag
+			if (flightT > 0 && jumpHeld && stun <= 0 && !onFloor && buffer <= 0)
+			{
+				if (velocity.y > -125)
+				{
+					velocity.y = Math.max(-125, velocity.y - 1500 * elapsed);
+					acceleration.y = 0;
+					flightT -= elapsed;
+					if (onThrust != null)
+						onThrust();
 				}
 			}
 			// lefelé ejtés az egyirányú platformról
@@ -195,8 +259,8 @@ class Player extends FlxSprite
 				coyote = 0;
 				y += 2;
 			}
-			// dash
-			if (Input.dashPressed() && canDash && dashCd <= 0 && stun <= 0)
+			// dash (THRUSTER)
+			if (Parts.has(Parts.THRUSTER) && Input.dashPressed() && canDash && dashCd <= 0 && stun <= 0)
 			{
 				dashing = true;
 				dashT = DASH_TIME;
@@ -206,6 +270,13 @@ class Player extends FlxSprite
 				velocity.y = 0;
 				if (onDash != null)
 					onDash();
+			}
+			// lövés (BLASTER)
+			if (Parts.has(Parts.BLASTER) && Input.shootPressed() && shootCd <= 0 && stun <= 0)
+			{
+				shootCd = 0.26;
+				if (onShoot != null)
+					onShoot(x + width / 2 + face * 6, y + 5, face);
 			}
 		}
 
@@ -218,7 +289,7 @@ class Player extends FlxSprite
 			animation.play("hurt");
 		else if (dashing)
 			animation.play("dash");
-		else if (!onFloor && wallSliding)
+		else if (clinging)
 			animation.play("wall");
 		else if (!onFloor)
 			animation.play(velocity.y < 0 ? "jump" : "fall");
@@ -227,7 +298,7 @@ class Player extends FlxSprite
 		else
 			animation.play("idle");
 		if (animation.name == "run")
-			animation.timeScale = FlxMath.bound(Math.abs(velocity.x) / RUN, 0.5, 1.3);
+			animation.timeScale = FlxMath.bound(Math.abs(velocity.x) / runSpeed(), 0.5, 1.3);
 		// a hős látható mérete: nyújtás / nyomódás az ugrás-landolás pillanatában
 		scale.x = FlxMath.lerp(scale.x, 1, 0.3);
 		scale.y = FlxMath.lerp(scale.y, 1, 0.3);
@@ -248,7 +319,7 @@ class Player extends FlxSprite
 	/** Ellenségre ugrás utáni pattanás (a gomb nyomva tartásával magasabbra). */
 	public function bounce():Void
 	{
-		velocity.y = Input.jumpHeld() ? -JUMP * 0.92 : -JUMP * 0.62;
+		velocity.y = Input.jumpHeld() ? -jumpPower() * 0.92 : -jumpPower() * 0.62;
 		canDash = true;
 		coyote = 0;
 		dashing = false;
@@ -277,5 +348,7 @@ class Player extends FlxSprite
 		stun = 0;
 		dashing = false;
 		canDash = true;
+		clinging = false;
+		frozen = false;
 	}
 }

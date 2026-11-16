@@ -69,6 +69,10 @@ class Audio
 		add("door", [{dur: 0.7, wave: SQUARE, duty: 0.25, f0: 392, arp: [0, 4, 7, 12, 16, 12, 16, 19, 24], arpRate: 16, arpHold: true, decay: 0.7, vol: 0.38, vibrato: 0.12}, {dur: 0.7, wave: TRI, f0: 196, arp: [0, 7, 12, 19], arpRate: 8, arpHold: true, decay: 0.8, vol: 0.3}]);
 		add("blip", [{dur: 0.035, wave: SQUARE, duty: 0.5, f0: 1760, decay: 1, vol: 0.18}]);
 		add("select", [{dur: 0.12, wave: SQUARE, duty: 0.5, f0: 880, arp: [0, 7], arpRate: 18, arpHold: true, decay: 1, vol: 0.3}]);
+		add("shoot", [{dur: 0.1, wave: SQUARE, duty: 0.125, f0: 1800, f1: 500, decay: 1.3, vol: 0.3, crush: 2}, {dur: 0.06, wave: NOISE, f0: 5000, f1: 1500, vol: 0.18}]);
+		add("break", [{dur: 0.3, wave: NOISE, f0: 3500, f1: 200, decay: 1.2, vol: 0.55, crush: 3}, {dur: 0.2, wave: SINE, f0: 120, f1: 40, decay: 1.2, vol: 0.5}]);
+		add("plate", [{dur: 0.25, wave: SQUARE, duty: 0.5, f0: 220, f1: 440, decay: 1, vol: 0.3, crush: 2}, {dur: 0.3, wave: NOISE, f0: 800, f1: 200, attack: 0.05, decay: 1, vol: 0.3}]);
+		add("crumble", [{dur: 0.35, wave: NOISE, f0: 1200, f1: 300, decay: 0.8, vol: 0.3, crush: 4}]);
 		add("fall", [{dur: 0.5, wave: SAW, f0: 600, f1: 60, decay: 0.8, vol: 0.4, crush: 2}]);
 		musicSound = toSound(Music.render(), 2, 0.55);
 	}

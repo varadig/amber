@@ -94,7 +94,7 @@ class Enemy extends FlxSprite
 				{
 					var ahead = Std.int((x + width / 2 + dir * (width / 2 + 3)) / LevelData.T);
 					var footRow = Std.int((y + height + 2) / LevelData.T);
-					if (hitWall || !level.isSolid(ahead, footRow))
+					if (hitWall || !level.isStandable(ahead, footRow))
 						dir = -dir;
 				}
 				velocity.x = dir * speed;

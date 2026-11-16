@@ -13,9 +13,44 @@ typedef EnemySpawn =
 	y:Float
 }
 
+typedef PartSpawn =
+{
+	icon:Int,
+	label:String,
+	x:Float,
+	y:Float
+}
+
+/** Mozgó platform: kezdőpont (px), szélesség (csempe), tengely ("x" / "y"), mozgástartomány (px), sebesség (px/mp). */
+typedef MoverDef =
+{
+	x:Float,
+	y:Float,
+	w:Int,
+	axis:String,
+	range:Float,
+	speed:Float
+}
+
+/** Egy küldetés-szoba: típus (start / open / tower / well / vault / sky / gated), az alkatrész ikonja és neve, őrzött-e. */
+typedef RoomDef =
+{
+	room:String,
+	icon:Int,
+	label:String,
+	?guard:Bool
+}
+
 /**
- * Egy pálya adatai (csempe-koordináták: 16 px). A pályát szegmensekből építi egy determinisztikus generátor (a pálya sorszáma a mag),
- * és minden szegmens a hős képességeire van méretezve: ugrás ~3,6 csempe magas, ~4 csempe széles; fal-ugrás, szökellés (dash) extra.
+ * Egy pálya adatai (csempe-koordináták: 16 px). A pályát szegmensekből és küldetés-szobákból építi egy determinisztikus generátor
+ * (a pálya sorszáma a mag). Minden szoba a hős képességeire méretezett:
+ *  - open: az alkatrész a földön, esetleg őrökkel
+ *  - tower: egyirányú platformokból épült torony teteje (teljes ugrás kell)
+ *  - well: mély akna alján (fal-ugrás / repülés kell a kijutáshoz)
+ *  - vault: téglafalú kamra repedezett fallal (a blaszterrel kell kilőni)
+ *  - sky: magasan lebegő platform, a szobában repülő-cella (korlátozott ideig repülni lehet)
+ *  - gated: kapu zárja az utat, a kaput egy nyomólap nyitja egy magasabb platformon
+ * Szegmensek: sík, lépcső, szakadék, szigetek, tüskék, aréna, kút, leszakadó híd (1. pálya után), mozgó platform (2. pálya után).
  */
 class LevelData
 {
@@ -27,6 +62,38 @@ class LevelData
 	public static inline var CRAWLER = 2;
 
 	public static final NAMES = ["RUSTED CAVES", "COPPER WELLS", "NEON RUINS", "DEEP STATIC", "THE AMBER CORE"];
+
+	/** Pályánként a küldetés-szobák sorrendben (az ajtóhoz mindegyik alkatrész kell). */
+	public static final RECIPES:Array<Array<RoomDef>> = [
+		[
+			{room: "start", icon: Parts.LEGS, label: "LEGS"},
+			{room: "open", icon: Parts.CORE, label: "CORE", guard: true},
+			{room: "tower", icon: Parts.VISOR, label: "VISOR"}
+		],
+		[
+			{room: "open", icon: Parts.THRUSTER, label: "THRUSTER", guard: true},
+			{room: "tower", icon: Parts.CLAWS, label: "CLAWS"},
+			{room: "well", icon: Parts.CHIP, label: "MEMORY"}
+		],
+		[
+			{room: "open", icon: Parts.BLASTER, label: "BLASTER"},
+			{room: "vault", icon: Parts.GEAR, label: "SERVO"},
+			{room: "sky", icon: Parts.ANTENNA, label: "ANTENNA"}
+		],
+		[
+			{room: "open", icon: Parts.VISOR, label: "SENSOR", guard: true},
+			{room: "gated", icon: Parts.CORE, label: "REACTOR"},
+			{room: "vault", icon: Parts.CHIP, label: "CIRCUIT"},
+			{room: "sky", icon: Parts.GEAR, label: "ACTUATOR"}
+		],
+		[
+			{room: "tower", icon: Parts.ANTENNA, label: "RADIO"},
+			{room: "well", icon: Parts.CORE, label: "FUEL CELL"},
+			{room: "gated", icon: Parts.CHIP, label: "BRAIN"},
+			{room: "vault", icon: Parts.VISOR, label: "EYE"},
+			{room: "sky", icon: Parts.GEAR, label: "MOTOR"}
+		]
+	];
 
 	public var level:Int;
 	public var name:String;
@@ -42,14 +109,21 @@ class LevelData
 	public var enemies:Array<EnemySpawn> = [];
 	public var spikes:Array<Pt> = [];
 	public var checkpoints:Array<Pt> = [];
-	public var key:Pt;
+	public var parts:Array<PartSpawn> = [];
+	public var cells:Array<Pt> = [];
+	public var crackeds:Array<Pt> = [];
+	public var gates:Array<Pt> = [];
+	public var plates:Array<Pt> = [];
+	/** Leszakadó platform-darabok (px; 3 csempe szélesek). */
+	public var crumbles:Array<Pt> = [];
+	public var movers:Array<MoverDef> = [];
 	public var door:Pt;
 	public var spawn:Pt;
 
 	var seed:Int;
 	var cur:Int = 18;
 	var platList:Array<{x:Int, y:Int, w:Int}> = [];
-	var tilePlats:Array<{x:Int, y:Int}> = [];
+	var bricks:Array<{x:Int, y:Int}> = [];
 
 	function new(level:Int)
 	{
@@ -76,8 +150,16 @@ class LevelData
 	function gem(col:Float, row:Float):Void
 		gems.push({x: col * T + 4, y: row * T + 4});
 
-	/** Szilárd csempe-e a (tx, ty) (az ellenségek éldetektálásához; az egyirányú platform is számít). */
+	/** Szilárd csempe-e a (tx, ty) (az ellenségek éldetektálásához és a lövedékekhez). */
 	public function isSolid(tx:Int, ty:Int):Bool
+	{
+		if (tx < 0 || tx >= w || ty < 0 || ty >= H)
+			return false;
+		return solid[ty * w + tx] != 0;
+	}
+
+	/** Szilárd vagy egyirányú platform (az ellenség talaj-ellenőrzéséhez). */
+	public function isStandable(tx:Int, ty:Int):Bool
 	{
 		if (tx < 0 || tx >= w || ty < 0 || ty >= H)
 			return false;
@@ -92,50 +174,32 @@ class LevelData
 		return d;
 	}
 
+	function checkpointAt(c0:Int):Void
+		checkpoints.push({x: (c0 + 1) * T + 4, y: cur * T - 16});
+
 	function build():Void
 	{
 		var L = level;
+		var rooms = RECIPES[L % RECIPES.length].copy();
 		flat(8, cur);
-		spawn = {x: 3 * T + 2, y: cur * T - 14};
-		var nSeg = 9 + 2 * L;
-		var climbAt = Std.int(nSeg * 0.5);
-		var enemyChance = 0.55 + 0.08 * L;
-		for (s in 0...nSeg)
+		spawn = {x: 3 * T + 2, y: cur * T - 30};
+		// az első szoba a kezdő sík szakaszon (a csupasz hős itt találja meg az első alkatrészt)
+		if (rooms[0].room == "start")
 		{
-			if (s == climbAt)
-			{
-				climb();
-				continue;
-			}
-			// minden harmadik szegmens nyugodt, ellenőrzőpontos sík szakasz
-			if (s % 3 == 2)
-			{
-				var c0 = top.length;
-				flat(ri(6, 8), cur);
-				checkpoints.push({x: (c0 + 1) * T + 4, y: cur * T - 16});
-				gem(c0 + 3, cur - 2);
-				gem(c0 + 4, cur - 2);
-				if (L >= 1 && rnd() < 0.25)
-					hearts.push({x: (c0 + 5) * T + 4, y: cur * T - 12});
-				continue;
-			}
-			var wells = L >= 2 ? 1 : 0;
-			var pick = rnd() * (3 + 3 + 3 + (L >= 1 ? 2 : 0) + 2 + 2 + wells);
-			if (pick < 3)
-				segFlat(enemyChance, enemies.length < 2 + L);
-			else if (pick < 6)
-				segStep();
-			else if (pick < 9)
-				segPit(L);
-			else if (pick < 9 + (L >= 1 ? 2 : 0))
-				segIslands();
-			else if (pick < 11 + (L >= 1 ? 2 : 0))
-				segSpikes(L);
-			else if (pick < 13 + (L >= 1 ? 2 : 0))
-				segArena(L);
-			else
-				segWell();
+			var r = rooms.shift();
+			parts.push({icon: r.icon, label: r.label, x: 6 * T + 3, y: cur * T - 14});
+			gem(4, cur - 2);
 		}
+		var si = 0;
+		var fillers = 2 + (L >= 2 ? 1 : 0);
+		for (r in rooms)
+		{
+			for (k in 0...fillers)
+				filler(si++);
+			room(r);
+		}
+		for (k in 0...2)
+			filler(si++);
 		// vég: sík szakasz az ajtóval
 		var c0 = top.length;
 		flat(12, cur);
@@ -143,6 +207,71 @@ class LevelData
 		w = top.length;
 		fill();
 	}
+
+	function room(r:RoomDef):Void
+	{
+		switch (r.room)
+		{
+			case "tower":
+				roomTower(r);
+			case "well":
+				roomWell(r);
+			case "vault":
+				roomVault(r);
+			case "sky":
+				roomSky(r);
+			case "gated":
+				roomGated(r);
+			default:
+				roomOpen(r);
+		}
+	}
+
+	function filler(s:Int):Void
+	{
+		var L = level;
+		// minden harmadik szegmens nyugodt, ellenőrzőpontos sík szakasz
+		if (s % 3 == 2)
+		{
+			var c0 = top.length;
+			flat(ri(6, 8), cur);
+			checkpointAt(c0);
+			gem(c0 + 3, cur - 2);
+			gem(c0 + 4, cur - 2);
+			if (L >= 1 && rnd() < 0.3)
+				hearts.push({x: (c0 + 5) * T + 4, y: cur * T - 12});
+			return;
+		}
+		// a későbbi pályák különleges platformjai
+		if (L >= 1 && rnd() < 0.22)
+		{
+			segCrumble();
+			return;
+		}
+		if (L >= 2 && rnd() < 0.22)
+		{
+			segMover();
+			return;
+		}
+		var wells = L >= 2 ? 1 : 0;
+		var pick = rnd() * (3 + 3 + 3 + (L >= 1 ? 2 : 0) + 2 + 2 + wells);
+		if (pick < 3)
+			segFlat(0.55 + 0.08 * L, enemies.length < 2 + L);
+		else if (pick < 6)
+			segStep();
+		else if (pick < 9)
+			segPit(L);
+		else if (pick < 9 + (L >= 1 ? 2 : 0))
+			segIslands();
+		else if (pick < 11 + (L >= 1 ? 2 : 0))
+			segSpikes(L);
+		else if (pick < 13 + (L >= 1 ? 2 : 0))
+			segArena(L);
+		else
+			segWell();
+	}
+
+	// --- Szegmensek ---
 
 	function segFlat(chance:Float, force:Bool):Void
 	{
@@ -158,12 +287,11 @@ class LevelData
 
 	function segStep():Void
 	{
-		var opts = [];
+		var opts:Array<Int> = [];
 		for (dy in [-2, -1, 1, 2])
 			if (cur + dy >= 15 && cur + dy <= 20)
 				opts.push(dy);
-		var dy = opts[ri(0, opts.length - 1)];
-		cur += dy;
+		cur += opts[ri(0, opts.length - 1)];
 		var c0 = top.length;
 		flat(4, cur);
 		gem(c0 + 1, cur - 2);
@@ -190,9 +318,7 @@ class LevelData
 		var rowPrev = cur;
 		for (i in 0...n)
 		{
-			for (k in 0...2)
-				top.push(99);
-			for (k in 0...3)
+			for (k in 0...5)
 				top.push(99);
 			var row = Std.int(Math.max(cur - 3, Math.min(cur + 1, rowPrev + ri(-1, 1))));
 			rowPrev = row;
@@ -244,17 +370,64 @@ class LevelData
 			top.push(cur + 6);
 		gem(c0 + 1, cur + 2);
 		gem(c0 + 1, cur + 4);
-		gems.push({x: c0 * T + 4 - 4, y: (cur + 3) * T + 4});
 		flat(3, cur);
 	}
 
-	function climb():Void
+	/** Leszakadó híd: szakadék fölött 3 egymás melletti, 3 csempe széles darab; a ráállás után rövid idővel lehullik (és később visszatér). */
+	function segCrumble():Void
 	{
-		// a torony alatt a talaj 15..20 sorban legyen
+		flat(2, cur);
+		var c0 = top.length;
+		for (i in 0...9)
+			top.push(99);
+		for (k in 0...3)
+		{
+			crumbles.push({x: (c0 + k * 3) * T, y: cur * T});
+			gem(c0 + k * 3 + 1, cur - 2);
+		}
+		flat(3, cur);
+	}
+
+	/** Mozgó platform: széles szakadék fölött egy 3 csempés platform jár ide-oda (az egyirányú platformot alulról át lehet ugrani). */
+	function segMover():Void
+	{
+		flat(2, cur);
+		var c0 = top.length;
+		for (i in 0...10)
+			top.push(99);
+		movers.push({x: c0 * T + 8, y: cur * T, w: 3, axis: "x", range: 6 * T, speed: 38 + level * 4});
+		gem(c0 + 4, cur - 3);
+		flat(3, cur);
+		if (level >= 3 && rnd() < 0.6)
+			enemies.push({kind: FLYER, x: (c0 + 5) * T, y: (cur - 5) * T});
+	}
+
+	// --- Küldetés-szobák ---
+
+	function roomOpen(r:RoomDef):Void
+	{
+		var c0 = top.length;
+		flat(10, cur);
+		checkpointAt(c0);
+		parts.push({icon: r.icon, label: r.label, x: (c0 + 6) * T + 3, y: cur * T - 14});
+		if (r.guard == true)
+		{
+			enemies.push({kind: WALKER, x: (c0 + 4) * T, y: cur * T - 10});
+			enemies.push({kind: WALKER, x: (c0 + 8) * T, y: cur * T - 10});
+			if (level >= 2)
+				enemies.push({kind: FLYER, x: (c0 + 6) * T, y: (cur - 5) * T});
+		}
+		gem(c0 + 3, cur - 3);
+		gem(c0 + 9, cur - 3);
+	}
+
+	function roomTower(r:RoomDef):Void
+	{
 		if (cur < 15)
 			cur = 15;
 		var c0 = top.length;
 		flat(14, cur);
+		checkpointAt(c0);
 		for (k in 1...5)
 		{
 			var row = cur - 3 * k;
@@ -266,12 +439,72 @@ class LevelData
 				gem(px + 2, row - 2);
 			}
 			else
-				key = {x: (px + 1) * T + 3, y: (row - 1) * T + 4};
+				parts.push({icon: r.icon, label: r.label, x: (px + 1) * T + 3, y: row * T - 14});
 		}
 		gem(c0 + 5, cur - 2);
 	}
 
-	/** A talaj- és platform-csempék feltöltése. */
+	function roomWell(r:RoomDef):Void
+	{
+		flat(3, cur);
+		checkpointAt(top.length - 3);
+		var c0 = top.length;
+		for (i in 0...3)
+			top.push(cur + 6);
+		parts.push({icon: r.icon, label: r.label, x: (c0 + 1) * T + 3, y: (cur + 6) * T - 14});
+		gem(c0 + 1, cur + 2);
+		gem(c0 + 1, cur + 4);
+		flat(4, cur);
+	}
+
+	function roomVault(r:RoomDef):Void
+	{
+		var c0 = top.length;
+		flat(15, cur);
+		checkpointAt(c0);
+		// kamra: tető és jobb fal tégla, a bal fal két repedezett blokk (blaszterrel kilőhető); a kamra 3 csempe magas, átugorható
+		for (x in c0 + 5...c0 + 12)
+			bricks.push({x: x, y: cur - 3});
+		bricks.push({x: c0 + 11, y: cur - 2});
+		bricks.push({x: c0 + 11, y: cur - 1});
+		crackeds.push({x: (c0 + 5) * T, y: (cur - 2) * T});
+		crackeds.push({x: (c0 + 5) * T, y: (cur - 1) * T});
+		parts.push({icon: r.icon, label: r.label, x: (c0 + 8) * T + 3, y: cur * T - 14});
+		gem(c0 + 7, cur - 5);
+		gem(c0 + 9, cur - 5);
+	}
+
+	function roomSky(r:RoomDef):Void
+	{
+		if (cur < 15)
+			cur = 15;
+		var c0 = top.length;
+		flat(14, cur);
+		checkpointAt(c0);
+		cells.push({x: (c0 + 3) * T + 3, y: cur * T - 14});
+		var row = cur - 12;
+		platList.push({x: c0 + 9, y: row, w: 3});
+		parts.push({icon: r.icon, label: r.label, x: (c0 + 10) * T + 3, y: row * T - 14});
+		for (i in 0...4)
+			gem(c0 + 4 + i * 0.5, cur - 3 - i * 2.5);
+	}
+
+	function roomGated(r:RoomDef):Void
+	{
+		var c0 = top.length;
+		flat(16, cur);
+		checkpointAt(c0);
+		// nyomólap egy magasabb platformon, a kapu az út közepén (6 csempe magas: átugorhatatlan)
+		platList.push({x: c0 + 2, y: cur - 3, w: 4});
+		platList.push({x: c0 + 1, y: cur - 1, w: 2});
+		plates.push({x: (c0 + 4) * T, y: (cur - 3) * T - 6});
+		for (k in 1...7)
+			gates.push({x: (c0 + 9) * T, y: (cur - k) * T});
+		parts.push({icon: r.icon, label: r.label, x: (c0 + 13) * T + 3, y: cur * T - 14});
+		gem(c0 + 11, cur - 2);
+	}
+
+	/** A talaj-, tégla- és platform-csempék feltöltése. */
 	function fill():Void
 	{
 		solid = [for (i in 0...(w * H)) 0];
@@ -284,6 +517,9 @@ class LevelData
 			for (y in t...H)
 				solid[y * w + x] = (y == t) ? 1 : 2;
 		}
+		for (b in bricks)
+			if (b.x >= 0 && b.x < w && b.y >= 0 && b.y < H)
+				solid[b.y * w + b.x] = 3;
 		for (p in platList)
 			for (i in 0...p.w)
 			{
