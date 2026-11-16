@@ -69,6 +69,14 @@ typedef SwitchDef =
 	label:String
 }
 
+typedef TermDef =
+{
+	x:Float,
+	y:Float,
+	id:Int,
+	game:Int
+}
+
 typedef BenchDef =
 {
 	x:Float,
@@ -146,13 +154,15 @@ class LevelData
 		[
 			{room: "start", icon: Parts.LEGS, label: "LEGS"},
 			{room: "crate", icon: Parts.CORE, label: "CORE"},
-			{room: "tower", icon: Parts.VISOR, label: "VISOR"}
+			{room: "tower", icon: Parts.VISOR, label: "VISOR"},
+			{room: "building", icon: -1, label: "ARCHIVE"}
 		],
 		// 2. pálya: még saját alkatrészek, kulcs- és sorrend-rejtvény
 		[
 			{room: "lock", icon: Parts.THRUSTER, label: "THRUSTER"},
 			{room: "seq", icon: Parts.CLAWS, label: "CLAWS"},
-			{room: "well", icon: Parts.CHIP, label: "PROCESSOR"}
+			{room: "well", icon: Parts.CHIP, label: "PROCESSOR"},
+			{room: "building", icon: -1, label: "ARCHIVE"}
 		],
 		// 3. pálya: a maradék saját alkatrész + az első társ (WHEELIE) alkatrészei
 		[
@@ -171,7 +181,8 @@ class LevelData
 			{room: "crate", icon: Parts.HEAD, label: "HEAD LAMP", friend: 1},
 			{room: "bench", icon: Parts.HEAD, label: "WORKBENCH", friend: 1},
 			{room: "ledge", icon: Parts.LEGS, label: "SPRINGS"},
-			{room: "tunnel", icon: Parts.CORE, label: "REACTOR"}
+			{room: "tunnel", icon: Parts.CORE, label: "REACTOR"},
+			{room: "building", icon: -1, label: "ARCHIVE"}
 		],
 		// 5. pálya: a harmadik társ (ORB) és a végső fejlesztések
 		[
@@ -244,6 +255,8 @@ class LevelData
 	public var crates:Array<Pt> = [];
 	public var grates:Array<Pt> = [];
 	public var benches:Array<BenchDef> = [];
+	/** Az épületek számítógépei (mini-játék): a megoldás kinyitja a belső terem kapuját. */
+	public var terminals:Array<TermDef> = [];
 	public var texts:Array<TextDef> = [];
 	/** Leszakadó platform-darabok (px; 3 csempe szélesek). */
 	public var crumbles:Array<Pt> = [];
@@ -644,9 +657,15 @@ class LevelData
 		var y0 = yBot - 10;
 		decor.push({x: c0 + 8, y: cur - 7, w: 9, h: 7});
 		buildings.push({sx: (c0 + 12) * T, sy: cur * T - 24, ix: (x0 + 1) * T, iy: yBot * T - 24, x0: x0, y0: y0, w: wI, h: 10});
+		// a terminál (mini-játék) nyitja a belső terem kapuját: mögötte a polcok, az alkatrész, az őrök és a jutalom
+		var tid = nextId++;
+		terminals.push({x: (x0 + 3) * T, y: yBot * T - 16, id: tid, game: (level + buildings.length) % 4});
+		for (row in y0...yBot)
+			gates.push({x: (x0 + 4) * T, y: row * T, id: tid, lock: false});
 		platList.push({x: x0 + 5, y: yBot - 3, w: 4});
 		platList.push({x: x0 + 11, y: yBot - 6, w: 4});
-		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (x0 + 12) * T + 3, y: (yBot - 6) * T - 14});
+		if (r.icon >= 0)
+			parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (x0 + 12) * T + 3, y: (yBot - 6) * T - 14});
 		gem(x0 + 6, yBot - 5);
 		gem(x0 + 7, yBot - 5);
 		gem(x0 + 12, yBot - 8);
@@ -664,7 +683,7 @@ class LevelData
 			for (i in 0...2)
 				spikes.push({x: (x0 + 15 + i) * T, y: yBot * T - 8});
 		hearts.push({x: (x0 + 19) * T + 4, y: yBot * T - 12});
-		batteries.push({x: (x0 + 3) * T + 4, y: yBot * T - 14});
+		batteries.push({x: (x0 + 2) * T + 4, y: yBot * T - 14});
 		batteries.push({x: (x0 + 13) * T + 4, y: (yBot - 6) * T - 14});
 	}
 

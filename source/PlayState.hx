@@ -266,6 +266,9 @@ class PlayState extends FlxState
 	var followAll:Bool = false;
 	var heroExited:Bool = false;
 	var heroStuckT:Float = 0;
+	var terminals:FlxTypedGroup<FlxSprite>;
+	var termGame:Map<Int, Int> = new Map();
+	var termSolved:Map<Int, Bool> = new Map();
 	var marker:FlxText;
 	var crumbles:FlxTypedGroup<Crumble>;
 	var movers:FlxTypedGroup<Mover>;
@@ -443,6 +446,22 @@ class PlayState extends FlxState
 			benches.add(s);
 		}
 		add(benches);
+		terminals = new FlxTypedGroup();
+		for (tm in data.terminals)
+		{
+			var s = new FlxSprite(tm.x, tm.y);
+			s.loadGraphic(Art.terminal(), true, 16, 16, false, "terminal");
+			s.animation.add("on", [1], 1);
+			s.animation.add("done", [2], 1);
+			s.animation.play("on");
+			s.ID = tm.id;
+			termGame.set(tm.id, tm.game);
+			terminals.add(s);
+			var lb = new FlxText(tm.x - 24, tm.y - 12, 64, "COMPUTER", 8);
+			lb.setFormat(null, 8, 0xFF999999, CENTER);
+			add(lb);
+		}
+		add(terminals);
 		for (tx in data.texts)
 		{
 			var lb = new FlxText(tx.x, tx.y, 220, tx.text, 8);
@@ -870,8 +889,8 @@ class PlayState extends FlxState
 	{
 		// látás: VISOR nélkül homályos kép (a shader uSight értéke); a LENS (II. szint) kicsit fényesít
 		Main.sightTarget = Parts.has(Parts.VISOR) ? (Parts.tier(Parts.VISOR) >= 2 ? 1.2 : 1.0) : 0.4;
-		if (player != null && player.powerDown > 0)
-			Main.sightTarget = 0.12;
+		// fáradtság: a lemerülő akku fokozatosan elsötétíti és elmossa a képet; leálláskor erősen
+		Main.tiredTarget = player != null && player.powerDown > 0 ? 1.0 : (Parts.battery < 25 ? (25 - Parts.battery) / 25 * 0.75 : 0.0);
 		if (Input.pausePressed() && mode == 0)
 		{
 			paused = !paused;
@@ -1189,6 +1208,25 @@ class PlayState extends FlxState
 	}
 
 	/** A társak ütközése a talajjal, platformokkal és kapukkal (a pálya-vég animáció alatt is, különben leesnének). */
+	/** A terminál mini-játéka (házanként más: kirakó, sorrend, lámpák, tank); a megoldás kinyitja a belső terem kapuját. */
+	function openTerminal(s:FlxSprite):Void
+	{
+		var id = s.ID;
+		ctrl.velocity.x = 0;
+		var g = MiniGames.make(termGame.get(id), level + 1, (won:Bool) ->
+		{
+			if (won)
+			{
+				termSolved.set(id, true);
+				s.animation.play("done");
+				setGate(id, true);
+				score += 300;
+				showToast("TERMINAL SOLVED: THE INNER DOOR OPENS", 3.0);
+			}
+		});
+		openSubState(g);
+	}
+
 	function collideFriends():Void
 	{
 		FlxG.collide(companions, solidMap);
@@ -1260,6 +1298,21 @@ class PlayState extends FlxState
 	function updatePuzzles():Void
 	{
 		var act = Input.interactPressed();
+		// számítógép-terminál: az irányított robot használja (mini-játék a játékban)
+		for (s in terminals)
+			if (!termSolved.exists(s.ID) && nearTo(ctrl, s, 14, 20))
+			{
+				if (!hint.visible)
+				{
+					hint.visible = true;
+					hint.text = "UP / E: USE THE COMPUTER";
+				}
+				if (act && !teleporting)
+				{
+					openTerminal(s);
+					return;
+				}
+			}
 		// nyomólapok
 		for (p in plates)
 		{
@@ -1508,6 +1561,7 @@ class PlayState extends FlxState
 
 	function damagedCompanion(c:Companion):Void
 	{
+		Main.hitFx = 1;
 		Audio.play("hurt", 0.8);
 		FlxG.camera.shake(0.008, 0.15);
 		burst(c.x + 4, c.y + 4, 8, 0xFFFFFFFF, 80);
@@ -1660,6 +1714,7 @@ class PlayState extends FlxState
 
 	function damaged():Void
 	{
+		Main.hitFx = 1;
 		Audio.play("hurt", 1);
 		hitstop = 0.08;
 		FlxG.camera.shake(0.012, 0.2);

@@ -12,6 +12,11 @@ class Main extends Sprite
 	/** A látás célértéke (0 homályos .. 1 éles): a PlayState állítja a VISOR szerint; a megjelenített érték simán követi. */
 	public static var sightTarget:Float = 1;
 	static var sightNow:Float = 1;
+	/** Sérülés: 1-re állítva elektromos kisülés-effekt (gyorsan lecseng). */
+	public static var hitFx:Float = 0;
+	/** Fáradtság (lemerülő akku): a kép elsötétül és elmosódik, simán követi a célértéket. */
+	public static var tiredTarget:Float = 0;
+	static var tiredNow:Float = 0;
 
 	public function new()
 	{
@@ -23,6 +28,8 @@ class Main extends Sprite
 		FlxG.signals.postStateSwitch.add(() ->
 		{
 			sightTarget = 1;
+			tiredTarget = 0;
+			hitFx = 0;
 			FlxG.camera.filters = [filter];
 		});
 		FlxG.signals.postGameStart.addOnce(() ->
@@ -38,6 +45,10 @@ class Main extends Sprite
 			amber.uTime.value = [clock];
 			sightNow += (sightTarget - sightNow) * Math.min(1, FlxG.elapsed * 2.5);
 			amber.uSight.value = [sightNow];
+			hitFx = Math.max(0, hitFx - FlxG.elapsed * 2.2);
+			amber.uHit.value = [hitFx];
+			tiredNow += (tiredTarget - tiredNow) * Math.min(1, FlxG.elapsed * 1.3);
+			amber.uTired.value = [tiredNow];
 		});
 
 		// Belső felbontás 480x270 (C64-szerű pixelek), arányos nagyítással

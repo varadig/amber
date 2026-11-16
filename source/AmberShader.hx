@@ -14,14 +14,26 @@ class AmberShader extends FlxShader
 
 		uniform float uTime;
 		uniform float uSight;
+		uniform float uHit;
+		uniform float uTired;
 
 		void main()
 		{
 			vec2 uv = openfl_TextureCoordv;
 			// enyhe hordó-torzítás
 			vec2 c = uv * 2.0 - 1.0;
-			c *= 1.0 + 0.028 * dot(c, c);
+			// a képernyő domborúsága; sérüléskor erősebben kidagad (elektromos kisülés)
+			float gl = uHit * uHit;
+			c *= 1.0 + (0.028 + 0.075 * uHit) * dot(c, c);
 			vec2 q = c * 0.5 + 0.5;
+			if (gl > 0.001)
+			{
+				// kisülés: sávonkénti vízszintes elcsúszás és függőleges remegés
+				float bnd = floor(q.y * 28.0);
+				float r1 = fract(sin(bnd * 12.9898 + floor(uTime * 40.0) * 78.233) * 43758.5453);
+				q.x += (r1 - 0.5) * 0.10 * gl * step(0.55, r1);
+				q.y += 0.012 * gl * sin(uTime * 90.0);
+			}
 			if (q.x < 0.0 || q.x > 1.0 || q.y < 0.0 || q.y > 1.0)
 			{
 				gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
@@ -30,7 +42,8 @@ class AmberShader extends FlxShader
 			vec2 px = vec2(1.0 / 480.0, 1.0 / 270.0);
 			// látás: VISOR nélkül a kép homályos (elmosott), sötétebb és zajos; a LENS (uSight > 1) kicsit fényesít
 			float sight = clamp(uSight, 0.0, 1.0);
-			float rad = (1.0 - sight) * 3.2;
+			float tired = clamp(uTired, 0.0, 1.0);
+			float rad = (1.0 - sight) * 3.2 + tired * 2.6;
 			vec3 s = flixel_texture2D(bitmap, q).rgb * (rad > 0.01 ? 0.34 : 1.0);
 			if (rad > 0.01)
 			{
@@ -52,6 +65,7 @@ class AmberShader extends FlxShader
 			float v = clamp(l + lg * 0.30, 0.0, 1.0) * (uSight > 1.0 ? 1.12 : 1.0);
 			float nz = fract(sin(dot(floor(q * vec2(480.0, 270.0)) + vec2(uTime * 37.0, uTime * 11.0), vec2(12.9898, 78.233))) * 43758.5453);
 			v += (nz - 0.5) * 0.10 * (1.0 - sight);
+			v *= 1.0 - 0.6 * tired;
 			v *= 0.62 + 0.38 * sight;
 
 			// pásztázó-vonalak (belső pixelsoronként)
@@ -63,7 +77,11 @@ class AmberShader extends FlxShader
 			// a legfényesebb részek a sárgásfehér felé tolódnak (foszfor-izzás)
 			col += vec3(1.0, 0.80, 0.40) * pow(max(v - 0.78, 0.0) * 4.5, 2.0) * 0.10;
 			// perem-sötétítés
-			float vig = 1.0 - 0.42 * dot(c * 0.78, c * 0.78);
+			float vig = 1.0 - (0.42 + 0.3 * tired) * dot(c * 0.78, c * 0.78);
+			// kisülés: fényes függőleges ívek és felvillanás
+			float arc = step(0.982 - 0.05 * gl, fract(sin(floor(q.x * 480.0) * 7.13 + floor(uTime * 25.0) * 3.7) * 437.58)) * gl;
+			col += vec3(1.0, 0.85, 0.5) * arc * 0.7;
+			col *= 1.0 + gl * 0.5;
 			col *= vig;
 			// a fekete sem teljesen fekete (csőizzás)
 			col += vec3(0.020, 0.009, 0.0) * vig;
@@ -75,5 +93,7 @@ class AmberShader extends FlxShader
 		super();
 		uTime.value = [0.0];
 		uSight.value = [1.0];
+		uHit.value = [0.0];
+		uTired.value = [0.0];
 	}
 }

@@ -796,6 +796,46 @@ class Art
 		return bd;
 	}
 
+	/** Számítógép-terminál 16x16: 0 kikapcsolt, 1 működik (feladat), 2 megoldva (pipa). */
+	public static function terminal():BitmapData
+	{
+		return cached("terminal", () ->
+		{
+			function make(state:Int):Array<String>
+			{
+				var rows:Array<String> = [];
+				for (y in 0...16)
+				{
+					var r = "";
+					for (x in 0...16)
+					{
+						var ch = ".";
+						if (y >= 1 && y <= 11 && x >= 1 && x <= 14)
+							ch = (y == 1 || y == 11 || x == 1 || x == 14) ? "3" : "2";
+						if (y >= 3 && y <= 9 && x >= 3 && x <= 12)
+							ch = "0";
+						if (state == 1 && y >= 4 && y <= 8 && x >= 4 && x <= 11 && y % 2 == 0 && x < 11 - (y == 8 ? 3 : 0))
+							ch = "4";
+						if (state == 2)
+						{
+							var on = (x == 5 && y == 6) || (x == 6 && y == 7) || (x == 7 && y == 8) || (x == 8 && y == 7) || (x == 9 && y == 6) || (x == 10 && y == 5);
+							if (on)
+								ch = "4";
+						}
+						if (y >= 12 && y <= 13 && x >= 6 && x <= 9)
+							ch = "2";
+						if (y >= 14 && y <= 15 && x >= 3 && x <= 12)
+							ch = y == 14 ? "3" : "2";
+						r += ch;
+					}
+					rows.push(r);
+				}
+				return rows;
+			}
+			return strip([make(0), make(1), make(2)]);
+		});
+	}
+
 	/** Épület-ajtó 16x24 (barna-szürke, kilincs). */
 	public static function bdoor():BitmapData
 	{
