@@ -28,6 +28,8 @@ class Player extends FlxSprite
 	public var flightT:Float = 0;
 	public var clinging:Bool = false;
 	public var frozen:Bool = false;
+	/** Lemerült akku: ennyi másodpercig nem irányítható a robot (újraindulás). */
+	public var powerDown:Float = 0;
 	public var stunned(get, never):Bool;
 
 	/** Események (a PlayState köti be). */
@@ -105,6 +107,7 @@ class Player extends FlxSprite
 		animation.add("wall", [7], 1);
 		animation.add("dash", [8], 1);
 		animation.add("hurt", [9], 1);
+		animation.add("off", [10], 1);
 	}
 
 	/** Futósebesség: csupaszon lassú. */
@@ -122,6 +125,9 @@ class Player extends FlxSprite
 			super.update(elapsed);
 			return;
 		}
+		var on = powerDown <= 0;
+		if (!on)
+			powerDown -= elapsed;
 		// az előző képkocka ütközései (a super.update nullázza a `touching`-ot)
 		var t = touching;
 		onFloor = t.has(FlxDirectionFlags.FLOOR);
@@ -157,15 +163,15 @@ class Player extends FlxSprite
 			coyote -= elapsed;
 		wasOnFloor = onFloor;
 
-		var dir = (Input.right() ? 1 : 0) - (Input.left() ? 1 : 0);
+		var dir = on ? ((Input.right() ? 1 : 0) - (Input.left() ? 1 : 0)) : 0;
 		if (stun > 0)
 			dir = 0;
 		if (dir != 0 && !clinging)
 			face = dir;
-		var jumpHeld = Input.jumpHeld();
+		var jumpHeld = on && Input.jumpHeld();
 		// processzor nélkül a vezérlés késve reagál (az ugrás gomb ~90 ms-mal később hat), és a mozgás-bemenet lomhán követi a kart
 		var chip = Parts.tier(Parts.CHIP);
-		if (Input.jumpPressed())
+		if (on && Input.jumpPressed())
 		{
 			if (chip == 0)
 				jumpDelay = 0.09;
@@ -287,7 +293,7 @@ class Player extends FlxSprite
 				}
 			}
 			// lefelé ejtés az egyirányú platformról
-			if (onFloor && Input.down() && Input.jumpPressed())
+			if (on && onFloor && Input.down() && Input.jumpPressed())
 			{
 				dropT = 0.22;
 				buffer = 0;
@@ -295,7 +301,7 @@ class Player extends FlxSprite
 				y += 2;
 			}
 			// dash (THRUSTER)
-			if (Parts.has(Parts.THRUSTER) && Input.dashPressed() && dashesLeft > 0 && dashCd <= 0 && stun <= 0)
+			if (on && Parts.has(Parts.THRUSTER) && Input.dashPressed() && dashesLeft > 0 && dashCd <= 0 && stun <= 0)
 			{
 				dashing = true;
 				dashT = DASH_TIME;
@@ -307,7 +313,7 @@ class Player extends FlxSprite
 					onDash();
 			}
 			// lövés (BLASTER)
-			if (Parts.has(Parts.BLASTER) && Input.shootPressed() && shootCd <= 0 && stun <= 0)
+			if (on && Parts.has(Parts.BLASTER) && Input.shootPressed() && shootCd <= 0 && stun <= 0)
 			{
 				shootCd = Parts.tier(Parts.BLASTER) >= 2 ? 0.13 : 0.26;
 				if (onShoot != null)
@@ -320,7 +326,9 @@ class Player extends FlxSprite
 
 		// megjelenítés
 		flipX = face < 0;
-		if (stun > 0)
+		if (!on)
+			animation.play("off");
+		else if (stun > 0)
 			animation.play("hurt");
 		else if (dashing)
 			animation.play("dash");

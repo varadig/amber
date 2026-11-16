@@ -7,7 +7,7 @@ try {
     foreach ($l in 0..4) {
         Send-Cdp "Page.navigate" @{ url = ($Base + "?level=" + $l + "&r=" + (Get-Random)) } | Out-Null
         Start-Sleep -Seconds 4
-        "level ${l}: " + (Js "(function(){var p=window.__ps; if(!p) return 'no ps'; var d=p.data; return JSON.stringify({name:d.name,w:d.w,gems:d.gems.length,enemies:d.enemies.length,spikes:d.spikes.length,cps:d.checkpoints.length,hearts:d.hearts.length,parts:d.parts.length,cells:d.cells.length,cracked:d.crackeds.length,gates:d.gates.length,crumbles:d.crumbles.length,movers:d.movers.length})})()")
+        "level ${l}: " + (Js "(function(){var p=window.__ps; if(!p) return 'no ps'; var d=p.data; return JSON.stringify({name:d.name,w:d.w,gems:d.gems.length,enemies:d.enemies.length,spikes:d.spikes.length,cps:d.checkpoints.length,hearts:d.hearts.length,parts:d.parts.length,cells:d.cells.length,cracked:d.crackeds.length,gates:d.gates.length,crumbles:d.crumbles.length,movers:d.movers.length,buildings:d.buildings.length,H:d.top.reduce(function(a,b){return b<99?Math.max(a,b):a},0)})})()")
     }
     Shot "level5.png"
     "errors: " + ((Js "window.__errors") -join '; ')

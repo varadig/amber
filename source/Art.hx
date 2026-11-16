@@ -58,16 +58,17 @@ class Art
 	}
 
 	// --- Hős: 12x14, képkockák: 0 állás, 1-4 futás, 5 ugrás, 6 esés, 7 fal, 8 szökellés (dash), 9 sérülés ---
+	/** A robot törzse: antenna, szögletes fej (keret + látómező), nyak, vállak, szegecselt törzs mellkas-ablakkal (a CORE fénye), öv. */
 	static final BODY = [
-		"...333333...",
+		".....44.....",
 		"..33333333..",
-		"..30000003..",
+		"..32222223..",
 		"..30400403..",
-		"..30000003..",
+		"..32222223..",
 		"..33333333..",
-		"...222222...",
-		"..22344322..",
-		".2223333222.",
+		".2233333322.",
+		".2232442322.",
+		".2232332322.",
 		"..22222222.."
 	];
 
@@ -82,14 +83,14 @@ class Art
 		{
 			function has(id:Int):Bool
 				return (mask & (1 << id)) != 0;
-			var stand = ["...22..22...", "...22..22...", "...22..22...", "..222..222.."];
-			var runA = ["..22....22..", "..22....22..", "...22..22...", "..222..222.."];
-			var runB = ["...22..22...", "...22..22...", "...22..22...", "...22..22..."];
-			var runC = ["...22..22...", "..22....22..", "..22....22..", ".222....222."];
-			var jump = ["..22....22..", "...22..22...", "............", "............"];
-			var fall = ["..22....22..", "..22....22..", "..22....22..", "..22....22.."];
+			var stand = ["...22..22...", "...32..23...", "...22..22...", "..333..333.."];
+			var runA = ["..22....22..", "..32....23..", "...22..22...", "..333..333.."];
+			var runB = ["...22..22...", "...32..23...", "...22..22...", "...33..33..."];
+			var runC = ["...22..22...", "..32....23..", "..22....22..", ".333....333."];
+			var jump = ["..32....23..", "...33..33...", "............", "............"];
+			var fall = ["..32....23..", "..22....22..", "..22....22..", "..33....33.."];
 			var stub = ["............", "............", "...22..22...", "...22..22..."];
-			var legs = [stand, runA, runB, runC, runB, jump, fall, stand, runA, fall];
+			var legs = [stand, runA, runB, runC, runB, jump, fall, stand, runA, fall, stand];
 			if (!has(Parts.LEGS))
 				legs = [for (_ in legs) stub];
 			var frames:Array<Array<String>> = [];
@@ -102,11 +103,17 @@ class Art
 					body[3] = "..34044043..";
 				if (!has(Parts.CORE))
 				{
-					body[7] = "..22222222..";
-					body[8] = ".2222222222.";
+					body[7] = ".2232222322.";
+					body[8] = ".2232222322.";
 				}
-				if (i == 8)
-					body[7] = has(Parts.CORE) ? "222344322222" : "222222222222";
+				if (i == 10)
+				{
+					// kikapcsolt (lemerült akku): sötét szem, lekonyuló antenna, kialudt mag
+					body[0] = "............";
+					body[3] = "..30000003..";
+					body[7] = ".2232222322.";
+					body[8] = ".2232222322.";
+				}
 				var rows = body.concat(legs[i]);
 				function setc(r:Int, c:Int, ch:String):Void
 				{
@@ -149,6 +156,17 @@ class Art
 				frames.push(rows);
 			}
 			return strip(frames);
+		});
+	}
+
+	/** Akkupakk 8x10, 2 kép (töltés-villanás). */
+	public static function battery():BitmapData
+	{
+		return cached("battery", () ->
+		{
+			var a = ["..4444..", ".433334.", ".432234.", ".432234.", ".433334.", ".432234.", ".432234.", ".433334.", ".444444.", "........"];
+			var b = ["..4444..", ".433334.", ".434434.", ".434434.", ".433334.", ".434434.", ".434434.", ".433334.", ".444444.", "........"];
+			return strip([a, b]);
 		});
 	}
 
@@ -527,6 +545,86 @@ class Art
 						px(4, x, y, y == 0 ? "4" : (y == 1 ? "3" : (y == 2 ? "2" : "1")));
 				}
 			return bd;
+		});
+	}
+
+	/** Épület-homlokzat (px): sötétszürke fal, tető-perem, világító ablakok. */
+	public static function facade(w:Int, h:Int):BitmapData
+	{
+		var bd = new BitmapData(w, h, true, 0x00000000);
+		bd.fillRect(new openfl.geom.Rectangle(0, 0, w, h), 0xFF2A2A2A);
+		bd.fillRect(new openfl.geom.Rectangle(0, 0, w, 4), 0xFF555555);
+		bd.fillRect(new openfl.geom.Rectangle(0, 4, w, 2), 0xFF3A3A3A);
+		bd.fillRect(new openfl.geom.Rectangle(0, 0, 2, h), 0xFF444444);
+		bd.fillRect(new openfl.geom.Rectangle(w - 2, 0, 2, h), 0xFF1A1A1A);
+		var seed = w * 31 + h;
+		var x = 10;
+		while (x + 10 < w - 6)
+		{
+			var y = 14;
+			while (y + 12 < h - 6)
+			{
+				seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF;
+				var lit = ((seed >> 8) % 3) != 0;
+				bd.fillRect(new openfl.geom.Rectangle(x, y, 10, 12), lit ? 0xFF777777 : 0xFF111111);
+				bd.fillRect(new openfl.geom.Rectangle(x, y, 10, 2), 0xFF444444);
+				y += 24;
+			}
+			x += 20;
+		}
+		return bd;
+	}
+
+	/** A belső terem falpapírja (px): sötét, finom rácsos. */
+	public static function wallpaper(w:Int, h:Int):BitmapData
+	{
+		var bd = new BitmapData(w, h, true, 0xFF161616);
+		var x = 0;
+		while (x < w)
+		{
+			bd.fillRect(new openfl.geom.Rectangle(x, 0, 1, h), 0xFF222222);
+			x += 16;
+		}
+		var y = 0;
+		while (y < h)
+		{
+			bd.fillRect(new openfl.geom.Rectangle(0, y, w, 1), 0xFF222222);
+			y += 16;
+		}
+		var lx = 40;
+		while (lx < w - 20)
+		{
+			// mennyezeti lámpák
+			bd.fillRect(new openfl.geom.Rectangle(lx, 0, 2, 8), 0xFF444444);
+			bd.fillRect(new openfl.geom.Rectangle(lx - 4, 8, 10, 4), 0xFF999999);
+			lx += 90;
+		}
+		return bd;
+	}
+
+	/** Épület-ajtó 16x24 (barna-szürke, kilincs). */
+	public static function bdoor():BitmapData
+	{
+		return cached("bdoor", () ->
+		{
+			var rows:Array<String> = [];
+			for (y in 0...24)
+			{
+				var r = "";
+				for (x in 0...16)
+				{
+					var ch = "2";
+					if (x < 2 || x > 13 || y < 2)
+						ch = "3";
+					else if (x == 11 && y > 11 && y < 15)
+						ch = "4";
+					else if ((x == 4 || x == 5 || x == 9 || x == 10) && y > 4 && y < 20)
+						ch = "1";
+					r += ch;
+				}
+				rows.push(r);
+			}
+			return strip([rows]);
 		});
 	}
 

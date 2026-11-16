@@ -50,6 +50,13 @@ class Input
 		return FlxG.keys.anyJustPressed([V, J, CONTROL]) || (p != null && p.justPressed.Y);
 	}
 
+	/** Ajtón belépés / kilépés: Fel, W, E, Enter (kontroller: D-pad fel). */
+	public static function interactPressed():Bool
+	{
+		var p = pad();
+		return FlxG.keys.anyJustPressed([UP, W, E, ENTER]) || (p != null && p.justPressed.DPAD_UP);
+	}
+
 	public static function pausePressed():Bool
 	{
 		var p = pad();

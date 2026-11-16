@@ -32,6 +32,19 @@ typedef MoverDef =
 	speed:Float
 }
 
+/** Épület: a felszíni ajtó, a belső tér (a talajba vájt terem) és a belső kijárat (px / csempe). */
+typedef BuildingDef =
+{
+	sx:Float,
+	sy:Float,
+	ix:Float,
+	iy:Float,
+	x0:Int,
+	y0:Int,
+	w:Int,
+	h:Int
+}
+
 /** Egy küldetés-szoba: típus (start / open / tower / well / vault / sky / gated), az alkatrész ikonja és neve, őrzött-e. */
 typedef RoomDef =
 {
@@ -50,12 +63,14 @@ typedef RoomDef =
  *  - vault: téglafalú kamra repedezett fallal (a blaszterrel kell kilőni)
  *  - sky: magasan lebegő platform, a szobában repülő-cella (korlátozott ideig repülni lehet)
  *  - gated: kapu zárja az utat, a kaput egy nyomólap nyitja egy magasabb platformon
+ *  - building: épület: az ajtón (fel / E) belépve a talajba vájt belső terem, benne polcokkal, őrökkel; a kijárat a belső ajtó
+ * A talajszint változik (dombok, völgyek), így a pálya felfelé és lefelé is halad.
  * Szegmensek: sík, lépcső, szakadék, szigetek, tüskék, aréna, kút, leszakadó híd (1. pálya után), mozgó platform (2. pálya után).
  */
 class LevelData
 {
 	public static inline var T = 16;
-	public static inline var H = 30;
+	public static inline var H = 56;
 	public static inline var COUNT = 5;
 	public static inline var WALKER = 0;
 	public static inline var FLYER = 1;
@@ -67,7 +82,7 @@ class LevelData
 	public static final RECIPES:Array<Array<RoomDef>> = [
 		[
 			{room: "start", icon: Parts.LEGS, label: "LEGS"},
-			{room: "open", icon: Parts.CORE, label: "CORE", guard: true},
+			{room: "building", icon: Parts.CORE, label: "CORE", guard: true},
 			{room: "tower", icon: Parts.VISOR, label: "VISOR"}
 		],
 		[
@@ -77,20 +92,20 @@ class LevelData
 		],
 		[
 			{room: "open", icon: Parts.BLASTER, label: "BLASTER"},
-			{room: "vault", icon: Parts.GEAR, label: "SERVO"},
+			{room: "building", icon: Parts.GEAR, label: "SERVOS", guard: true},
 			{room: "sky", icon: Parts.ANTENNA, label: "ANTENNA"}
 		],
 		[
 			{room: "open", icon: Parts.LEGS, label: "SPRINGS", guard: true},
 			{room: "gated", icon: Parts.CORE, label: "REACTOR"},
-			{room: "vault", icon: Parts.CHIP, label: "CIRCUIT"},
+			{room: "building", icon: Parts.CHIP, label: "CIRCUIT", guard: true},
 			{room: "sky", icon: Parts.BLASTER, label: "CANNON"}
 		],
 		[
 			{room: "tower", icon: Parts.ANTENNA, label: "RADIO"},
 			{room: "well", icon: Parts.GEAR, label: "ACTUATOR"},
 			{room: "gated", icon: Parts.THRUSTER, label: "BOOSTER"},
-			{room: "vault", icon: Parts.VISOR, label: "LENS"},
+			{room: "building", icon: Parts.VISOR, label: "LENS", guard: true},
 			{room: "sky", icon: Parts.CORE, label: "FINAL CORE"}
 		]
 	];
@@ -117,6 +132,13 @@ class LevelData
 	/** Leszakadó platform-darabok (px; 3 csempe szélesek). */
 	public var crumbles:Array<Pt> = [];
 	public var movers:Array<MoverDef> = [];
+	/** Rejtett akkupakkok (az út mellett, fülkékben, szakadékok párkányain, épületekben). */
+	public var batteries:Array<Pt> = [];
+	public var buildings:Array<BuildingDef> = [];
+	/** Épület-homlokzatok (csempe-koordináták x, y, szélesség, magasság), csak díszlet. */
+	public var decor:Array<{x:Int, y:Int, w:Int, h:Int}> = [];
+	/** Ennél a sornál mélyebbre esve a hős meghal (a felszíni szakadékokhoz; a belső termek ez alatt vannak). */
+	public var killRow:Int = 0;
 	public var door:Pt;
 	public var spawn:Pt;
 
@@ -176,6 +198,16 @@ class LevelData
 	}
 
 	/** Ellenőrzőpont: csak ha az előzőtől legalább 26 csempényire van (ne legyen kettő közvetlenül egymás után). */
+	/** A talajszint lépcsőzetes (2 soronként) módosítása a célsorra, 3 oszlopnyi lépcsőfokokkal. */
+	function moveTo(target:Int):Void
+	{
+		while (cur != target)
+		{
+			cur += Std.int(Math.max(-2, Math.min(2, target - cur)));
+			flat(3, cur);
+		}
+	}
+
 	function checkpointAt(c0:Int):Void
 	{
 		if (c0 - lastCp < 26)
@@ -212,6 +244,11 @@ class LevelData
 		flat(12, cur);
 		door = {x: (c0 + 8) * T, y: cur * T - 24};
 		w = top.length;
+		var maxTop = 0;
+		for (t in top)
+			if (t < 99 && t > maxTop)
+				maxTop = t;
+		killRow = maxTop + 12;
 		fill();
 	}
 
@@ -229,6 +266,8 @@ class LevelData
 				roomSky(r);
 			case "gated":
 				roomGated(r);
+			case "building":
+				roomBuilding(r);
 			default:
 				roomOpen(r);
 		}
@@ -260,6 +299,16 @@ class LevelData
 			segMover();
 			return;
 		}
+		if (rnd() < 0.2)
+		{
+			segHill();
+			return;
+		}
+		if (rnd() < 0.22)
+		{
+			segNiche();
+			return;
+		}
 		var wells = L >= 2 ? 1 : 0;
 		var pick = rnd() * (3 + 3 + 3 + (L >= 1 ? 2 : 0) + 2 + 2 + wells);
 		if (pick < 3)
@@ -280,6 +329,33 @@ class LevelData
 
 	// --- Szegmensek ---
 
+	/** Fülke: két kis egymás fölötti platform az út mellett, a tetején rejtett akkupakk. */
+	function segNiche():Void
+	{
+		var c0 = top.length;
+		flat(9, cur);
+		platList.push({x: c0 + 2, y: cur - 2, w: 2});
+		platList.push({x: c0 + 5, y: cur - 4, w: 2});
+		batteries.push({x: (c0 + 5) * T + 4 + 8, y: (cur - 4) * T - 14});
+		gem(c0 + 3, cur - 4);
+	}
+
+	/** Domb / völgy: a talajszint több lépcsőben jelentősen változik (felfelé vagy lefelé), a lépcsőkön ékszerekkel. */
+	function segHill():Void
+	{
+		var target = ri(14, 26);
+		if (Math.abs(target - cur) < 4)
+			target = cur + (cur > 20 ? -6 : 6);
+		var from = cur;
+		moveTo(target);
+		var c0 = top.length;
+		flat(4, cur);
+		gem(c0 + 1, cur - 2);
+		gem(c0 + 2, cur - 2);
+		if (rnd() < 0.5)
+			enemies.push({kind: WALKER, x: (c0 + 2) * T, y: cur * T - 10});
+	}
+
 	function segFlat(chance:Float, force:Bool):Void
 	{
 		var c0 = top.length;
@@ -296,7 +372,7 @@ class LevelData
 	{
 		var opts:Array<Int> = [];
 		for (dy in [-2, -1, 1, 2])
-			if (cur + dy >= 15 && cur + dy <= 20)
+			if (cur + dy >= 13 && cur + dy <= 27)
 				opts.push(dy);
 		cur += opts[ri(0, opts.length - 1)];
 		var c0 = top.length;
@@ -315,6 +391,12 @@ class LevelData
 			gem(c0 + i, cur - 3 - ((i == Std.int(len / 2)) ? 1 : 0));
 		if (len >= 4)
 			platList.push({x: c0 + 1, y: cur + 1, w: 2});
+		else if (len >= 3 && rnd() < 0.5)
+		{
+			// párkány a szakadékban: rejtett akkupakk (ugorj le érte, onnan ki lehet ugrani)
+			platList.push({x: c0 + Std.int(len / 2) - 1, y: cur + 3, w: 2});
+			batteries.push({x: (c0 + Std.int(len / 2)) * T + 4, y: (cur + 3) * T - 14});
+		}
 		flat(3, cur);
 	}
 
@@ -411,6 +493,46 @@ class LevelData
 
 	// --- Küldetés-szobák ---
 
+	/**
+	 * Épület: a felszínen homlokzat és ajtó; a belső terem a talajba van vájtal, az alsó sávban (nem látszik a felszínről). A teremben két polc (egymásra
+	 * épülő lépcső), az alkatrész a felső polcon, őrök a padlón; a bal oldali ajtó a kijárat.
+	 */
+	function roomBuilding(r:RoomDef):Void
+	{
+		moveTo(Std.int(Math.max(14, Math.min(24, cur))));
+		var c0 = top.length;
+		flat(24, cur);
+		checkpointAt(c0);
+		var wI = 22;
+		var x0 = c0 + 1;
+		var yBot = H - 4;
+		var y0 = yBot - 10;
+		decor.push({x: c0 + 8, y: cur - 7, w: 9, h: 7});
+		buildings.push({sx: (c0 + 12) * T, sy: cur * T - 24, ix: (x0 + 1) * T, iy: yBot * T - 24, x0: x0, y0: y0, w: wI, h: 10});
+		platList.push({x: x0 + 5, y: yBot - 3, w: 4});
+		platList.push({x: x0 + 11, y: yBot - 6, w: 4});
+		parts.push({icon: r.icon, label: r.label, x: (x0 + 12) * T + 3, y: (yBot - 6) * T - 14});
+		gem(x0 + 6, yBot - 5);
+		gem(x0 + 7, yBot - 5);
+		gem(x0 + 12, yBot - 8);
+		gem(x0 + 18, yBot - 2);
+		if (r.guard == true)
+		{
+			enemies.push({kind: WALKER, x: (x0 + 9) * T, y: yBot * T - 10});
+			enemies.push({kind: WALKER, x: (x0 + 16) * T, y: yBot * T - 10});
+			if (level >= 2)
+				enemies.push({kind: FLYER, x: (x0 + 8) * T, y: (yBot - 5) * T});
+			if (level >= 3)
+				enemies.push({kind: CRAWLER, x: (x0 + 14) * T, y: yBot * T - 10});
+		}
+		if (level >= 1)
+			for (i in 0...2)
+				spikes.push({x: (x0 + 15 + i) * T, y: yBot * T - 8});
+		hearts.push({x: (x0 + 19) * T + 4, y: yBot * T - 12});
+		batteries.push({x: (x0 + 3) * T + 4, y: yBot * T - 14});
+		batteries.push({x: (x0 + 13) * T + 4, y: (yBot - 6) * T - 14});
+	}
+
 	function roomOpen(r:RoomDef):Void
 	{
 		var c0 = top.length;
@@ -430,8 +552,7 @@ class LevelData
 
 	function roomTower(r:RoomDef):Void
 	{
-		if (cur < 15)
-			cur = 15;
+		moveTo(Std.int(Math.max(15, Math.min(22, cur))));
 		var c0 = top.length;
 		flat(14, cur);
 		checkpointAt(c0);
@@ -483,8 +604,7 @@ class LevelData
 
 	function roomSky(r:RoomDef):Void
 	{
-		if (cur < 15)
-			cur = 15;
+		moveTo(Std.int(Math.max(15, Math.min(22, cur))));
 		var c0 = top.length;
 		flat(14, cur);
 		checkpointAt(c0);
@@ -523,6 +643,16 @@ class LevelData
 				continue;
 			for (y in t...H)
 				solid[y * w + x] = (y == t) ? 1 : 2;
+		}
+		// épületek: a belső terem kivájása téglafallal körülvéve
+		for (bd in buildings)
+		{
+			for (y in bd.y0 - 1...bd.y0 + bd.h + 1)
+				for (x in bd.x0 - 1...bd.x0 + bd.w + 1)
+				{
+					var edge = y == bd.y0 - 1 || y == bd.y0 + bd.h || x == bd.x0 - 1 || x == bd.x0 + bd.w;
+					solid[y * w + x] = edge ? 3 : 0;
+				}
 		}
 		for (b in bricks)
 			if (b.x >= 0 && b.x < w && b.y >= 0 && b.y < H)

@@ -32,6 +32,9 @@ C64-hangulatú, borostyán-fekete monitoros platformer (HaxeFlixel 6.2.1, HTML5)
 | JET CELL | 5 mp repülés (ugrás nyomva tartva) | - |
 
 - **Küldetés-szobák** (pályánként receptek, `LevelData.RECIPES`): nyitott (őrökkel), torony (teljes ugrás), kút (fal-ugrás kell a kijutáshoz), kamra (repedezett falat ki kell lőni), égi platform (a szobában JET CELL: korlátozott ideig repülhetsz), kapu + nyomólap (a lap egy magasabb platformon van).
+- **Akku:** a kijelző a bal felső sarokban (ikon + 10 blokk) az idővel és a műveletekkel fogy (repülés, dash, lövés többet visz); 20% alatt villog és sípol. Lemerülve a robot ~4 mp-re leáll (nem irányítható, sötét kép), majd 18%-kal újraindul. **Rejtett akkupakkok** (+35%) vannak fülkékben (két egymás fölötti kis platform), szakadékok párkányain és az épületekben; az ANTENNA II. szintje a radaron mutatja őket.
+- **Épületek:** a felszíni ajtónál Fel / E (kontroller: D-pad fel) gombbal be lehet lépni: a belső terem a talajba van vájva (téglafal, polcok, őrök, benne az alkatrész, akkupakkok); a bal oldali belső ajtó a kijárat. A talajszint is változik (dombok, völgyek, lépcsők), így a pálya felfelé és lefelé is halad.
+- **Látványos felvétel:** alkatrésznél lassítás, táguló gyűrűk, a nagy ikon középre pattan, majd a HUD foglalatába repül.
 - Ellenségre ugrás, dash és lövés is kiüti őket; a tüskés csúszómászóra nem lehet ráugrani. Gyémántok: opcionális pontok (mind: +500).
 - Különleges platformok: **leszakadó híd** (2. pályától: a ráállás után lehullik, később visszatér) és **mozgó platform** (3. pályától).
 

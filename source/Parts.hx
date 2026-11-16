@@ -40,6 +40,9 @@ class Parts
 		"SNAPPIER STILL", "EVEN BETTER AIR CONTROL", "RADAR SHOWS ENEMIES TOO", ""
 	];
 
+	/** Az akku töltöttsége (0..100): az idővel és a műveletekkel fogy, az akkupakkok töltik; a pálya elején mentett érték köztes szintje marad. */
+	public static var battery:Float = 100;
+	static var savedBattery:Float = 100;
 	public static var owned:Array<Bool> = [for (_ in 0...COUNT) false];
 	public static var tiers:Array<Int> = [for (_ in 0...COUNT) 0];
 	public static var saved:Array<Bool> = [for (_ in 0...COUNT) false];
@@ -64,6 +67,7 @@ class Parts
 	{
 		owned = [for (_ in 0...COUNT) false];
 		tiers = [for (_ in 0...COUNT) 0];
+		battery = 100;
 		commit();
 	}
 
@@ -72,12 +76,14 @@ class Parts
 	{
 		owned = saved.copy();
 		tiers = savedTiers.copy();
+		battery = Math.max(savedBattery, 60);
 	}
 
 	public static function commit():Void
 	{
 		saved = owned.copy();
 		savedTiers = tiers.copy();
+		savedBattery = battery;
 	}
 
 	/** A látszathoz: a birtokolt alkatrészek bitmaszkja. */

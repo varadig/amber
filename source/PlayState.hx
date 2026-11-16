@@ -8,7 +8,9 @@ import flixel.math.FlxPoint;
 import flixel.text.FlxText;
 import flixel.tile.FlxBaseTilemap.FlxTilemapAutoTiling;
 import flixel.tile.FlxTilemap;
+import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
+import flixel.util.FlxTimer;
 import flixel.util.FlxDirectionFlags;
 
 /** Egy felvehető / dekorációs tárgy (gyémánt, szív, alkatrész, repülő-cella, ellenőrzőpont). */
@@ -226,6 +228,10 @@ class PlayState extends FlxState
 	var movers:FlxTypedGroup<Mover>;
 	var bullets:FlxTypedGroup<Bullet>;
 	var door:FlxSprite;
+	/** Épület-ajtók: a felszíni (be) és a belső (ki) ajtók; mindegyik a célpontját tudja. */
+	var bDoors:Array<{spr:FlxSprite, tx:Float, ty:Float, toInside:Bool}> = [];
+	var inside:Bool = false;
+	var teleporting:Bool = false;
 	var particles:FlxTypedGroup<Particle>;
 	var ghosts:FlxTypedGroup<FlxSprite>;
 
@@ -239,6 +245,11 @@ class PlayState extends FlxState
 	var radarSpr:FlxSprite;
 	var radarT:Float = 0;
 	var glowT:Int = -1;
+	var batts:FlxTypedGroup<Pickup>;
+	var hudBatt:Array<FlxSprite> = [];
+	var battIcon:FlxSprite;
+	var wasDown:Bool = false;
+	var lowT:Float = 0;
 	var banner:FlxText;
 	var hint:FlxText;
 	var overlay:FlxText;
@@ -279,6 +290,19 @@ class PlayState extends FlxState
 		addBackdrop(Art.backdrop(480 + Std.int(worldW * 0.18), 11 + level, "5", 30), 0.18, 0.12, -70);
 		addBackdrop(Art.backdrop(480 + Std.int(worldW * 0.34), 29 + level, "6", 60), 0.34, 0.2, -60);
 
+		// épületek: homlokzat a felszínen, falpapír a belső termekben (a csempék mögé)
+		for (d in data.decor)
+		{
+			var f = new FlxSprite(d.x * 16, d.y * 16);
+			f.loadGraphic(Art.facade(d.w * 16, d.h * 16), false, 0, 0, false, "facade" + d.x + "_" + d.y);
+			add(f);
+		}
+		for (b in data.buildings)
+		{
+			var wp = new FlxSprite(b.x0 * 16, b.y0 * 16);
+			wp.loadGraphic(Art.wallpaper(b.w * 16, b.h * 16), false, 0, 0, false, "wp" + b.x0);
+			add(wp);
+		}
 		solidMap = new FlxTilemap();
 		solidMap.loadMapFromArray(data.solid, data.w, LevelData.H, Art.tiles(), 16, 16, FlxTilemapAutoTiling.OFF, 0, 1, 1);
 		add(solidMap);
@@ -365,6 +389,17 @@ class PlayState extends FlxState
 		door.animation.add("open", [1, 2], 6);
 		door.animation.play("closed");
 		add(door);
+		for (b in data.buildings)
+		{
+			var outer = new FlxSprite(b.sx, b.sy);
+			outer.loadGraphic(Art.bdoor(), false, 16, 24, false, "bdoor");
+			add(outer);
+			var inner = new FlxSprite(b.ix, b.iy);
+			inner.loadGraphic(Art.bdoor(), false, 16, 24, false, "bdoor");
+			add(inner);
+			bDoors.push({spr: outer, tx: b.ix + 4, ty: b.iy + 24 - 30, toInside: true});
+			bDoors.push({spr: inner, tx: b.sx + 4, ty: b.sy + 24 - 30, toInside: false});
+		}
 
 		gems = new FlxTypedGroup();
 		for (g in data.gems)
@@ -405,6 +440,16 @@ class PlayState extends FlxState
 		}
 		add(cells);
 
+		batts = new FlxTypedGroup();
+		for (b in data.batteries)
+		{
+			var it = makePickup(b.x, b.y, Art.battery(), 8, 10, "battery");
+			it.animation.add("glow", [0, 1], 3);
+			it.animation.play("glow");
+			batts.add(it);
+		}
+		add(batts);
+
 		enemies = new FlxTypedGroup();
 		grounded = new FlxGroup();
 		for (e in data.enemies)
@@ -443,6 +488,7 @@ class PlayState extends FlxState
 		player.onDash = () ->
 		{
 			Audio.play("dash", 0.9);
+			Parts.battery -= 4;
 			FlxG.camera.shake(0.004, 0.08);
 		};
 		player.onTrail = spawnGhost;
@@ -467,6 +513,7 @@ class PlayState extends FlxState
 			var b = bullets.recycle(Bullet);
 			b.fire(x, y, dir, data);
 			Audio.play("shoot", 0.7);
+			Parts.battery -= 1.2;
 			FlxG.camera.shake(0.002, 0.05);
 		};
 		add(player);
@@ -495,10 +542,10 @@ class PlayState extends FlxState
 		if (!Parts.has(Parts.GEAR))
 			off.push("AIR CONTROL");
 		var offLine = off.length > 0 ? "\nSYSTEMS OFFLINE: " + off.join(", ") : "";
-		banner = label(data.name + "\nMISSION: FIND THE " + data.parts.length + " MISSING PARTS\n" + names + offLine, 84, 8, 0xFFFFFFFF);
+		banner = label(data.name + (data.buildings.length > 0 ? "\n(UP / E ENTERS DOORS)" : "") + "\nMISSION: FIND THE " + data.parts.length + " MISSING PARTS\n" + names + offLine, 84, 8, 0xFFFFFFFF);
 		FlxTween.tween(banner, {alpha: 0}, 0.8, {startDelay: 3.4});
 		#if test
-		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}", this, FlxG.camera, Parts.owned);
+		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery);
 		#end
 	}
 
@@ -558,12 +605,25 @@ class PlayState extends FlxState
 			hudParts.push(s);
 		}
 		hudParts2 = label("", 16, 8, 0xFFBBBBBB);
-		hudScan = new FlxText(6, 28, 200, "", 8);
+		hudScan = new FlxText(6, 39, 200, "", 8);
 		hudScan.scrollFactor.set(0, 0);
 		add(hudScan);
-		hudFuel = new FlxText(6, 39, 200, "", 8);
+		hudFuel = new FlxText(6, 50, 200, "", 8);
 		hudFuel.scrollFactor.set(0, 0);
 		add(hudFuel);
+		// akku-kijelző: ikon + 10 blokk (az idővel és a műveletekkel fogy; lemerülve a robot egy időre leáll)
+		battIcon = new FlxSprite(6, 27);
+		battIcon.loadGraphic(Art.battery(), true, 8, 10, false, "battery");
+		battIcon.scrollFactor.set(0, 0);
+		add(battIcon);
+		for (i in 0...10)
+		{
+			var s = new FlxSprite(17 + i * 5, 29);
+			s.makeGraphic(4, 6, 0xFFFFFFFF);
+			s.scrollFactor.set(0, 0);
+			add(s);
+			hudBatt.push(s);
+		}
 		// radar-sáv (ANTENNA): a pálya hossza, az alkatrészek, az ajtó és a hős
 		radarSpr = new FlxSprite(160, 259);
 		radarSpr.makeGraphic(160, 7, 0xFF000000, true);
@@ -614,6 +674,7 @@ class PlayState extends FlxState
 			}
 		}
 		updateRadar();
+		updateBatteryHud();
 		hudFuel.text = player.flightT > 0 ? "JET " + StringTools.rpad("", "#", Std.int(Math.ceil(player.flightT * 2))) : "";
 	}
 
@@ -633,6 +694,10 @@ class PlayState extends FlxState
 			for (e in enemies)
 				if (e.alive && e.dying < 0)
 					bd.fillRect(new openfl.geom.Rectangle(mx(e.x), 3, 1, 2), 0xFF777777);
+		if (Parts.tier(Parts.ANTENNA) >= 2)
+			for (b in batts)
+				if (b.alive)
+					bd.fillRect(new openfl.geom.Rectangle(mx(b.x), 1, 1, 2), 0xFFBBBBBB);
 		bd.fillRect(new openfl.geom.Rectangle(mx(door.x), 1, 2, 5), 0xFFBBBBBB);
 		if (Std.int(time * 4) % 2 == 0)
 			for (it in partItems)
@@ -697,6 +762,8 @@ class PlayState extends FlxState
 	{
 		// látás: VISOR nélkül homályos kép (a shader uSight értéke); a LENS (II. szint) kicsit fényesít
 		Main.sightTarget = Parts.has(Parts.VISOR) ? (Parts.tier(Parts.VISOR) >= 2 ? 1.2 : 1.0) : 0.4;
+		if (player != null && player.powerDown > 0)
+			Main.sightTarget = 0.12;
 		if (Input.pausePressed() && mode == 0)
 		{
 			paused = !paused;
@@ -755,6 +822,7 @@ class PlayState extends FlxState
 			}
 		}
 
+		updateBattery(elapsed);
 		FlxG.collide(player, solidMap);
 		if (player.dropT <= 0)
 		{
@@ -776,6 +844,7 @@ class PlayState extends FlxState
 		FlxG.overlap(player, hearts, onHeart);
 		FlxG.overlap(player, partItems, onPart);
 		FlxG.overlap(player, cells, onCell);
+		FlxG.overlap(player, batts, onBatt);
 		FlxG.overlap(player, spikes, onSpike);
 		FlxG.overlap(player, checkpoints, onCheckpoint);
 		FlxG.overlap(player, plates, onPlate);
@@ -790,11 +859,152 @@ class PlayState extends FlxState
 		if (nearDoor && allFound)
 			enterDoor();
 
-		if (player.y > worldH + 40)
+		// épület-ajtók: a hős az ajtó előtt Fel / E gombbal lép be / ki
+		var nearB:Int = -1;
+		for (i in 0...bDoors.length)
+		{
+			var d = bDoors[i].spr;
+			if (Math.abs((player.x + 4) - (d.x + 8)) < 12 && Math.abs((player.y + 6) - (d.y + 12)) < 18)
+			{
+				nearB = i;
+				break;
+			}
+		}
+		if (nearB >= 0 && !hint.visible)
+		{
+			hint.visible = true;
+			hint.text = bDoors[nearB].toInside ? "UP / E: ENTER BUILDING" : "UP / E: LEAVE BUILDING";
+		}
+		if (nearB >= 0 && Input.interactPressed() && !teleporting)
+			useDoor(bDoors[nearB]);
+
+		if (!inside && player.y > data.killRow * 16)
+			fall();
+		else if (inside && player.y > worldH + 40)
 			fall();
 		if (Input.restartPressed())
 			toCheckpoint(false);
 		refreshHud();
+	}
+
+	/** Átmenet az épület ajtaján: rövid elsötétülés, a hős a célajtó elé kerül (a felvétel-pont is ott lesz). */
+	function useDoor(d:{spr:FlxSprite, tx:Float, ty:Float, toInside:Bool}):Void
+	{
+		teleporting = true;
+		player.frozen = true;
+		player.velocity.set(0, 0);
+		Audio.play("door", 0.5);
+		FlxG.camera.fade(0xFF000000, 0.18, false, () ->
+		{
+			player.frozen = false;
+			player.reset(d.tx - 4, d.ty);
+			player.velocity.set(0, 0);
+			player.invuln = 0.4;
+			inside = d.toInside;
+			respawn.set(d.tx - 4, d.ty);
+			FlxG.camera.focusOn(player.getMidpoint());
+			FlxG.camera.fade(0xFF000000, 0.18, true);
+			new FlxTimer().start(0.25, _ -> teleporting = false);
+		});
+	}
+
+	/** Az akku fogyása: idővel és a műveletekkel; kimerülve a robot ~4 mp-re leáll (sötét kép), majd kevés töltéssel újraindul. */
+	function updateBattery(dt:Float):Void
+	{
+		// az újraindulás: a leállás lejárt (a hős powerDown értéke negatívba fordult), kevés töltéssel indul újra
+		if (player.powerDown < 0 && Parts.battery <= 0.001)
+		{
+			Parts.battery = 18;
+			player.powerDown = 0;
+			wasDown = false;
+			Audio.play("checkpoint", 1);
+			showToast("REBOOT COMPLETE", 2.2);
+			burst(player.x + 4, player.y + 6, 12, 0xFFFFFFFF, 80);
+			return;
+		}
+		if (player.powerDown > 0)
+			return;
+		var drain = 0.7;
+		if (player.flightT > 0 && Input.jumpHeld())
+			drain += 2.5;
+		Parts.battery -= drain * dt;
+		if (Parts.battery <= 0)
+		{
+			Parts.battery = 0;
+			player.powerDown = 4.2;
+			wasDown = true;
+			Audio.play("fall", 0.9);
+			showToast("BATTERY EMPTY: REBOOTING...", 4.0);
+			FlxG.camera.shake(0.01, 0.25);
+		}
+		else if (Parts.battery < 20)
+		{
+			lowT -= dt;
+			if (lowT <= 0)
+			{
+				lowT = 1.6;
+				Audio.play("blip", 0.9);
+			}
+		}
+	}
+
+	function updateBatteryHud():Void
+	{
+		var n = Std.int(Math.ceil(Parts.battery / 10));
+		var low = Parts.battery < 20;
+		var blink = !low || Std.int(time * 5) % 2 == 0;
+		for (i in 0...hudBatt.length)
+			hudBatt[i].alpha = i < n ? (blink ? 1 : 0.4) : 0.15;
+		battIcon.animation.frameIndex = low && !blink ? 1 : 0;
+	}
+
+	function onBatt(p:Player, b:Pickup):Void
+	{
+		if (p.powerDown > 0)
+			return;
+		b.kill();
+		Parts.battery = Math.min(100, Parts.battery + 35);
+		Audio.play("heal", 0.9);
+		ring(b.x + 4, b.y + 5, 16, 70);
+		burst(b.x + 4, b.y + 5, 10, 0xFFFFFFFF, 70);
+		showToast("BATTERY PACK +35%", 2.0);
+		score += 30;
+	}
+
+	/** Látványos alkatrész-felvétel: lassítás, táguló gyűrűk, a nagy ikon középre pattan, majd a HUD foglalatába repül. */
+	function partFx(it:Pickup):Void
+	{
+		hitstop = 0.2;
+		ring(it.x + 5, it.y + 5, 28, 55);
+		ring(it.x + 5, it.y + 5, 24, 100);
+		ring(it.x + 5, it.y + 5, 18, 150);
+		burst(it.x + 5, it.y + 5, 30, 0xFFFFFFFF, 170);
+		var big = new FlxSprite(235, 92);
+		big.loadGraphic(Art.partIcons(), true, 10, 10, false, "parts");
+		big.animation.frameIndex = it.icon;
+		big.scrollFactor.set(0, 0);
+		big.scale.set(0.2, 0.2);
+		add(big);
+		var n = data.parts.length;
+		var sx = 240 - n * 7 + it.idx * 14;
+		FlxTween.tween(big.scale, {x: 7, y: 7}, 0.4, {ease: FlxEase.backOut});
+		FlxTween.tween(big, {x: sx, y: 4.0}, 0.6, {startDelay: 1.4, ease: FlxEase.cubeIn});
+		FlxTween.tween(big.scale, {x: 1, y: 1}, 0.6, {startDelay: 1.4, ease: FlxEase.cubeIn, onComplete: _ ->
+		{
+			big.kill();
+			FlxG.camera.flash(0xFFFFFFFF, 0.12);
+		}});
+	}
+
+	/** Táguló részecske-gyűrű. */
+	function ring(x:Float, y:Float, n:Int, speed:Float):Void
+	{
+		for (k in 0...n)
+		{
+			var a = k * Math.PI * 2 / n;
+			var p = particles.recycle(Particle);
+			p.fire(x, y, Math.cos(a) * speed, Math.sin(a) * speed, 0, 0.55, 0xFFFFFFFF);
+		}
 	}
 
 	function onCrumble(p:Player, c:Crumble):Void
@@ -904,7 +1114,8 @@ class PlayState extends FlxState
 		score += 250;
 		Audio.play("key", 1);
 		burst(it.x + 5, it.y + 5, 16, 0xFFFFFFFF, 100);
-		FlxG.camera.flash(0xFFFFFFFF, 0.2);
+		FlxG.camera.flash(0xFFFFFFFF, 0.35);
+		partFx(it);
 		var info = tier <= 1 ? Parts.INFO[it.icon] : (Parts.INFO2[it.icon] != "" ? Parts.INFO2[it.icon] : "INSTALLED");
 		var msg = "FOUND: " + it.label + "\n" + info;
 		if (partsFound >= data.parts.length)
@@ -976,6 +1187,7 @@ class PlayState extends FlxState
 	function toCheckpoint(penalty:Bool):Void
 	{
 		player.respawnAt(respawn.x, respawn.y);
+		inside = respawn.y > data.killRow * 16 - 40;
 		FlxG.camera.focusOn(player.getMidpoint());
 		combo = 0;
 		refreshHud();

@@ -64,7 +64,7 @@ class TitleState extends FlxState
 		prompt = new FlxText(0, 168, 480, "PRESS JUMP TO START", 8);
 		prompt.setFormat(null, 8, 0xFFFFFFFF, CENTER);
 		add(prompt);
-		var help = new FlxText(0, 254, 480, "ARROWS/WASD MOVE   Z/SPACE JUMP   X/SHIFT DASH   V/J FIRE   P PAUSE   F FULLSCREEN", 8);
+		var help = new FlxText(0, 254, 480, "ARROWS/WASD MOVE   Z/SPACE JUMP   X/SHIFT DASH   V/J FIRE   UP/E DOORS   P PAUSE   F FULLSCREEN", 8);
 		help.setFormat(null, 8, 0xFF777777, CENTER);
 		add(help);
 	}
