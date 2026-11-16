@@ -1,8 +1,18 @@
 package;
 
 /**
- * A robot alkatrészei. A hős csupaszon indul; az alkatrészek visszaadják a képességeit (és látszanak is rajta).
- * A birtokolt alkatrészek pályák között megmaradnak (`saved`: a pálya elejének állapota, halál után ide áll vissza).
+ * A robot alkatrészei. A hős csupaszon indul; minden alkatrésznek hatása van a játékra, hiányuk pedig hátrány:
+ *  - LEGS: teljes ugrás és gyors futás (nélküle csak szökdécsel, lassú)
+ *  - CORE: szívek (nélküle csak 2, alkatrészenként +1, legfeljebb 5)
+ *  - VISOR: látás (nélküle homályos, sötét, zajos a kép; a LENS = II. szint: a rejtett dolgok is kivehetők)
+ *  - THRUSTER: szökellés (dash); II. szint: két szökellés leszállás előtt
+ *  - CLAWS: fal-kapaszkodás és fal-ugrás
+ *  - BLASTER: lövés; II. szint: gyorstűz
+ *  - CHIP (processzor): a vezérlés fürgesége (nélküle nehézkes, késve reagál)
+ *  - GEAR (szervók): légi irányítás és erősebb pattanás (nélküle a levegőben alig irányítható)
+ *  - ANTENNA: radar (a térkép-sáv és az alkatrész-iránytű); II. szint: az ellenségeket is mutatja
+ * Ugyanazt az alkatrész-típust újra megtalálva a hatás erősödik (szint). A birtokolt alkatrészek pályák között megmaradnak
+ * (\`saved\`: a pálya elejének állapota, halál után ide áll vissza).
  */
 class Parts
 {
@@ -18,32 +28,57 @@ class Parts
 	public static inline var JET = 9;
 	public static inline var COUNT = 10;
 
-	public static final NAMES = ["LEGS", "CORE", "VISOR", "THRUSTER", "CLAWS", "BLASTER", "CHIP", "GEAR", "ANTENNA", "JET CELL"];
+	public static final NAMES = ["LEGS", "CORE", "VISOR", "THRUSTER", "CLAWS", "BLASTER", "PROCESSOR", "SERVOS", "ANTENNA", "JET CELL"];
 
-	/** Az első felvételkor kiírt képesség-leírás (angolul, a játék szövege). */
+	/** Az első felvételkor kiírt hatás-leírás (a játék szövege angolul), és a magasabb szintekre. */
 	public static final INFO = [
-		"JUMP AND RUN RESTORED", "POWER ONLINE", "PART COMPASS ONLINE", "DASH: X / SHIFT", "WALL CLAWS: PUSH TOWARD A WALL + JUMP",
-		"BLASTER: V / J TO FIRE", "MEMORY INSTALLED", "SERVO INSTALLED", "SIGNAL RESTORED", "FLIGHT: HOLD JUMP"
+		"FULL JUMP + FAST RUN", "POWER ONLINE: +1 HEART", "VISION CLEARS UP", "DASH: X / SHIFT", "CLING TO WALLS + WALL JUMP",
+		"FIRE WITH V / J", "CONTROLS RESPOND FASTER", "AIR CONTROL + STRONGER BOUNCE", "RADAR ONLINE", "FLIGHT: HOLD JUMP"
+	];
+	public static final INFO2 = [
+		"HIGHER JUMP, FASTER RUN", "+1 HEART", "LENS: HIDDEN THINGS GLOW", "BOOSTER: TWO DASHES PER JUMP", "", "RAPID FIRE",
+		"SNAPPIER STILL", "EVEN BETTER AIR CONTROL", "RADAR SHOWS ENEMIES TOO", ""
 	];
 
 	public static var owned:Array<Bool> = [for (_ in 0...COUNT) false];
+	public static var tiers:Array<Int> = [for (_ in 0...COUNT) 0];
 	public static var saved:Array<Bool> = [for (_ in 0...COUNT) false];
+	public static var savedTiers:Array<Int> = [for (_ in 0...COUNT) 0];
 
 	public static inline function has(id:Int):Bool
 		return owned[id];
 
+	/** Szint: 0 = nincs, 1 = megvan, 2+ = továbbfejlesztett. */
+	public static inline function tier(id:Int):Int
+		return owned[id] ? (tiers[id] > 0 ? tiers[id] : 1) : 0;
+
+	public static function add(id:Int):Int
+	{
+		var t = tier(id) + 1;
+		owned[id] = true;
+		tiers[id] = t;
+		return t;
+	}
+
 	public static function reset():Void
 	{
 		owned = [for (_ in 0...COUNT) false];
-		saved = owned.copy();
+		tiers = [for (_ in 0...COUNT) 0];
+		commit();
 	}
 
 	/** A pálya elején a mentett állapotra áll vissza (halál után nem maradnak meg a pályán szerzett alkatrészek). */
 	public static function restore():Void
+	{
 		owned = saved.copy();
+		tiers = savedTiers.copy();
+	}
 
 	public static function commit():Void
+	{
 		saved = owned.copy();
+		savedTiers = tiers.copy();
+	}
 
 	/** A látszathoz: a birtokolt alkatrészek bitmaszkja. */
 	public static function mask():Int

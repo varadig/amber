@@ -39,7 +39,7 @@ try {
     Start-Sleep -Milliseconds 350
     Key "keyUp" "ArrowRight" "ArrowRight" 39
     "door t2: " + (Js "JSON.stringify({x:window.__ps.player.x,y:window.__ps.player.y,a:window.__ps.player.alpha,mode:window.__ps.mode})")
-    Start-Sleep -Milliseconds 900
+    Start-Sleep -Milliseconds 2200
     "door t3: " + (Js "JSON.stringify({a:window.__ps.player.alpha,mode:window.__ps.mode})")
     Shot "f_door2.png"
     "errors: " + ((Js "window.__errors") -join '; ')

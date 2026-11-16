@@ -13,6 +13,7 @@ class AmberShader extends FlxShader
 		#pragma header
 
 		uniform float uTime;
+		uniform float uSight;
 
 		void main()
 		{
@@ -27,14 +28,31 @@ class AmberShader extends FlxShader
 				return;
 			}
 			vec2 px = vec2(1.0 / 480.0, 1.0 / 270.0);
-			vec3 s = flixel_texture2D(bitmap, q).rgb;
+			// látás: VISOR nélkül a kép homályos (elmosott), sötétebb és zajos; a LENS (uSight > 1) kicsit fényesít
+			float sight = clamp(uSight, 0.0, 1.0);
+			float rad = (1.0 - sight) * 3.2;
+			vec3 s = flixel_texture2D(bitmap, q).rgb * (rad > 0.01 ? 0.34 : 1.0);
+			if (rad > 0.01)
+			{
+				s += flixel_texture2D(bitmap, q + vec2(px.x * rad, 0.0)).rgb * 0.12;
+				s += flixel_texture2D(bitmap, q - vec2(px.x * rad, 0.0)).rgb * 0.12;
+				s += flixel_texture2D(bitmap, q + vec2(0.0, px.y * rad)).rgb * 0.12;
+				s += flixel_texture2D(bitmap, q - vec2(0.0, px.y * rad)).rgb * 0.12;
+				s += flixel_texture2D(bitmap, q + vec2(px.x, px.y) * rad * 0.7).rgb * 0.045;
+				s += flixel_texture2D(bitmap, q - vec2(px.x, px.y) * rad * 0.7).rgb * 0.045;
+				s += flixel_texture2D(bitmap, q + vec2(px.x, -px.y) * rad * 0.7).rgb * 0.045;
+				s += flixel_texture2D(bitmap, q - vec2(px.x, -px.y) * rad * 0.7).rgb * 0.045;
+			}
 			vec3 g = flixel_texture2D(bitmap, q + vec2(px.x, 0.0)).rgb
 				+ flixel_texture2D(bitmap, q - vec2(px.x, 0.0)).rgb
 				+ flixel_texture2D(bitmap, q + vec2(0.0, px.y)).rgb
 				+ flixel_texture2D(bitmap, q - vec2(0.0, px.y)).rgb;
 			float l = dot(s, vec3(0.299, 0.587, 0.114));
 			float lg = dot(g * 0.25, vec3(0.299, 0.587, 0.114));
-			float v = clamp(l + lg * 0.30, 0.0, 1.0);
+			float v = clamp(l + lg * 0.30, 0.0, 1.0) * (uSight > 1.0 ? 1.12 : 1.0);
+			float nz = fract(sin(dot(floor(q * vec2(480.0, 270.0)) + vec2(uTime * 37.0, uTime * 11.0), vec2(12.9898, 78.233))) * 43758.5453);
+			v += (nz - 0.5) * 0.10 * (1.0 - sight);
+			v *= 0.62 + 0.38 * sight;
 
 			// pásztázó-vonalak (belső pixelsoronként)
 			float sl = 0.86 + 0.14 * sin(q.y * 270.0 * 6.2831853);
@@ -56,5 +74,6 @@ class AmberShader extends FlxShader
 	{
 		super();
 		uTime.value = [0.0];
+		uSight.value = [1.0];
 	}
 }

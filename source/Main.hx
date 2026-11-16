@@ -9,6 +9,9 @@ class Main extends Sprite
 {
 	static var amber:AmberShader;
 	static var clock:Float = 0;
+	/** A látás célértéke (0 homályos .. 1 éles): a PlayState állítja a VISOR szerint; a megjelenített érték simán követi. */
+	public static var sightTarget:Float = 1;
+	static var sightNow:Float = 1;
 
 	public function new()
 	{
@@ -17,7 +20,11 @@ class Main extends Sprite
 		amber = new AmberShader();
 		var filter = new ShaderFilter(amber);
 		// a kamera szűrője állapotváltáskor elvész (új kamera), ezért minden váltás után újra beállítjuk
-		FlxG.signals.postStateSwitch.add(() -> FlxG.camera.filters = [filter]);
+		FlxG.signals.postStateSwitch.add(() ->
+		{
+			sightTarget = 1;
+			FlxG.camera.filters = [filter];
+		});
 		FlxG.signals.postGameStart.addOnce(() ->
 		{
 			FlxG.mouse.visible = false;
@@ -29,6 +36,8 @@ class Main extends Sprite
 		{
 			clock += FlxG.elapsed;
 			amber.uTime.value = [clock];
+			sightNow += (sightTarget - sightNow) * Math.min(1, FlxG.elapsed * 2.5);
+			amber.uSight.value = [sightNow];
 		});
 
 		// Belső felbontás 480x270 (C64-szerű pixelek), arányos nagyítással

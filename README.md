@@ -16,7 +16,21 @@ C64-hangulatú, borostyán-fekete monitoros platformer (HaxeFlixel 6.2.1, HTML5)
 
 ## Játékmenet: alkatrész-küldetések
 - A robot **csupaszon** indul: lassú, csak picit ugrik, vak (nincs szem-fény), nincs mag-fény. Minden pályán **alkatrészeket** kell megtalálni (a HUD tetején a foglalatok, a pálya elején a küldetés listája); az ajtó csak akkor nyílik, ha mind megvan.
-- Az alkatrészek **képességeket** adnak és látszanak a roboton: LEGS (ugrás, futás), VISOR (alkatrész-iránytű), THRUSTER (dash), CLAWS (fal-kapaszkodás és fal-ugrás), BLASTER (lövés); a CORE / CHIP / GEAR / ANTENNA csak küldetés-alkatrész. A birtokolt alkatrészek pályák között megmaradnak, halál után a pálya elejének állapotára állnak vissza.
+- Minden alkatrésznek **hatása van a játékra**, a hiánya pedig hátrány; ugyanazt a típust újra megtalálva (II. szint) erősödik:
+
+| Alkatrész | Hatás | Nélküle |
+|---|---|---|
+| LEGS | teljes ugrás, gyors futás (II.: magasabb, gyorsabb) | csak szökdécsel, lassú |
+| CORE | szívek: +1 alkatrészenként (max 5) | csak 2 szív |
+| VISOR | éles látás (LENS, II.: a rejtett falak villognak, az alkatrészekről szikrák szállnak) | homályos, sötét, zajos kép |
+| THRUSTER | dash (BOOSTER, II.: két dash egy ugrásra) | nincs dash |
+| CLAWS | fal-kapaszkodás és fal-ugrás | nincs |
+| BLASTER | lövés, repedezett falak kilövése (CANNON, II.: gyorstűz) | nincs |
+| PROCESSOR (CHIP) | gyors, pontos vezérlés (CIRCUIT, II.: még fürgébb) | nehézkes mozgás és késve reagáló ugrás |
+| SERVOS (GEAR) | légi irányítás, erősebb pattanás a stomp után | a levegőben alig irányítható |
+| ANTENNA | radar-sáv (alul), alkatrész-iránytű; II.: az ellenségeket is mutatja | nincs térkép |
+| JET CELL | 5 mp repülés (ugrás nyomva tartva) | - |
+
 - **Küldetés-szobák** (pályánként receptek, `LevelData.RECIPES`): nyitott (őrökkel), torony (teljes ugrás), kút (fal-ugrás kell a kijutáshoz), kamra (repedezett falat ki kell lőni), égi platform (a szobában JET CELL: korlátozott ideig repülhetsz), kapu + nyomólap (a lap egy magasabb platformon van).
 - Ellenségre ugrás, dash és lövés is kiüti őket; a tüskés csúszómászóra nem lehet ráugrani. Gyémántok: opcionális pontok (mind: +500).
 - Különleges platformok: **leszakadó híd** (2. pályától: a ráállás után lehullik, később visszatér) és **mozgó platform** (3. pályától).

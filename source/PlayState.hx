@@ -236,6 +236,9 @@ class PlayState extends FlxState
 	var hudParts2:FlxText;
 	var hudScan:FlxText;
 	var hudFuel:FlxText;
+	var radarSpr:FlxSprite;
+	var radarT:Float = 0;
+	var glowT:Int = -1;
 	var banner:FlxText;
 	var hint:FlxText;
 	var overlay:FlxText;
@@ -482,7 +485,17 @@ class PlayState extends FlxState
 
 		buildHud();
 		var names = [for (p in data.parts) p.label].join("  ");
-		banner = label(data.name + "\nMISSION: FIND THE " + data.parts.length + " MISSING PARTS\n" + names, 90, 8, 0xFFFFFFFF);
+		var off:Array<String> = [];
+		if (!Parts.has(Parts.LEGS))
+			off.push("JUMP");
+		if (!Parts.has(Parts.VISOR))
+			off.push("VISION");
+		if (!Parts.has(Parts.CHIP))
+			off.push("CONTROLS");
+		if (!Parts.has(Parts.GEAR))
+			off.push("AIR CONTROL");
+		var offLine = off.length > 0 ? "\nSYSTEMS OFFLINE: " + off.join(", ") : "";
+		banner = label(data.name + "\nMISSION: FIND THE " + data.parts.length + " MISSING PARTS\n" + names + offLine, 84, 8, 0xFFFFFFFF);
 		FlxTween.tween(banner, {alpha: 0}, 0.8, {startDelay: 3.4});
 		#if test
 		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}", this, FlxG.camera, Parts.owned);
@@ -517,7 +530,7 @@ class PlayState extends FlxState
 
 	function buildHud():Void
 	{
-		for (i in 0...player.maxHearts)
+		for (i in 0...5)
 		{
 			var h = new FlxSprite(6 + i * 10, 6);
 			h.loadGraphic(Art.heart(), false, 8, 8, false, "heart");
@@ -551,6 +564,12 @@ class PlayState extends FlxState
 		hudFuel = new FlxText(6, 39, 200, "", 8);
 		hudFuel.scrollFactor.set(0, 0);
 		add(hudFuel);
+		// radar-sáv (ANTENNA): a pálya hossza, az alkatrészek, az ajtó és a hős
+		radarSpr = new FlxSprite(160, 259);
+		radarSpr.makeGraphic(160, 7, 0xFF000000, true);
+		radarSpr.scrollFactor.set(0, 0);
+		radarSpr.visible = false;
+		add(radarSpr);
 		toast = label("", 46, 8, 0xFFFFFFFF);
 		toast.visible = false;
 		hint = label("", 100, 8, 0xFFFFFFFF);
@@ -563,6 +582,8 @@ class PlayState extends FlxState
 	function refreshHud():Void
 	{
 		for (i in 0...hudHearts.length)
+			hudHearts[i].visible = i < player.maxHearts;
+		for (i in 0...hudHearts.length)
 			hudHearts[i].loadGraphic(i < player.hearts ? Art.heart() : Art.heartEmpty(), false, 8, 8, false, i < player.hearts ? "heart" : "heartEmpty");
 		for (i in 0...hudParts.length)
 			hudParts[i].alpha = found[i] ? 1 : 0.25;
@@ -571,7 +592,7 @@ class PlayState extends FlxState
 		hudParts2.text = "PARTS " + partsFound + "/" + data.parts.length;
 		// a VISOR iránytűje a legközelebbi hiányzó alkatrész felé
 		hudScan.text = "";
-		if (Parts.has(Parts.VISOR) && partsFound < data.parts.length)
+		if (Parts.has(Parts.ANTENNA) && partsFound < data.parts.length)
 		{
 			var best:Pickup = null;
 			var bd = 1e9;
@@ -592,7 +613,33 @@ class PlayState extends FlxState
 				hudScan.text = "SCAN " + best.label + " " + arrow + " " + Std.int(Math.sqrt(dx * dx + dy * dy) / 16) + "M";
 			}
 		}
+		updateRadar();
 		hudFuel.text = player.flightT > 0 ? "JET " + StringTools.rpad("", "#", Std.int(Math.ceil(player.flightT * 2))) : "";
+	}
+
+	/** A radar (ANTENNA): térkép-sáv a pálya egészéről; a II. szinten az ellenségek is látszanak. */
+	function updateRadar():Void
+	{
+		radarSpr.visible = Parts.has(Parts.ANTENNA);
+		if (!radarSpr.visible || time - radarT < 0.1)
+			return;
+		radarT = time;
+		var bd = radarSpr.pixels;
+		bd.fillRect(new openfl.geom.Rectangle(0, 0, 160, 7), 0xFF444444);
+		bd.fillRect(new openfl.geom.Rectangle(1, 1, 158, 5), 0xFF000000);
+		function mx(px:Float):Int
+			return 1 + Std.int(Math.max(0, Math.min(157, px / worldW * 158)));
+		if (Parts.tier(Parts.ANTENNA) >= 2)
+			for (e in enemies)
+				if (e.alive && e.dying < 0)
+					bd.fillRect(new openfl.geom.Rectangle(mx(e.x), 3, 1, 2), 0xFF777777);
+		bd.fillRect(new openfl.geom.Rectangle(mx(door.x), 1, 2, 5), 0xFFBBBBBB);
+		if (Std.int(time * 4) % 2 == 0)
+			for (it in partItems)
+				if (it.alive)
+					bd.fillRect(new openfl.geom.Rectangle(mx(it.x), 2, 2, 3), 0xFFFFFFFF);
+		bd.fillRect(new openfl.geom.Rectangle(mx(player.x) - 1, 0, 3, 7), 0xFFFFFFFF);
+		radarSpr.dirty = true;
 	}
 
 	// --- Effektek ---
@@ -648,6 +695,8 @@ class PlayState extends FlxState
 
 	override public function update(elapsed:Float):Void
 	{
+		// látás: VISOR nélkül homályos kép (a shader uSight értéke); a LENS (II. szint) kicsit fényesít
+		Main.sightTarget = Parts.has(Parts.VISOR) ? (Parts.tier(Parts.VISOR) >= 2 ? 1.2 : 1.0) : 0.4;
 		if (Input.pausePressed() && mode == 0)
 		{
 			paused = !paused;
@@ -695,6 +744,16 @@ class PlayState extends FlxState
 
 		time += elapsed;
 		super.update(elapsed);
+		if (Parts.tier(Parts.VISOR) >= 2)
+		{
+			// LENS: a rejtett repedezett falak villognak, az alkatrészekről szikrák szállnak
+			cracked.forEachAlive(c -> c.alpha = 0.55 + 0.45 * Math.abs(Math.sin(time * 5)));
+			if (Std.int(time * 4) != glowT)
+			{
+				glowT = Std.int(time * 4);
+				partItems.forEachAlive(p -> burst(p.x + 5, p.y + 5, 1, 0xFFFFFFFF, 18));
+			}
+		}
 
 		FlxG.collide(player, solidMap);
 		if (player.dropT <= 0)
@@ -837,14 +896,17 @@ class PlayState extends FlxState
 		it.kill();
 		found[it.idx] = true;
 		partsFound++;
-		var isNew = !Parts.has(it.icon);
-		Parts.owned[it.icon] = true;
+		var tier = Parts.add(it.icon);
 		player.refreshLook();
+		player.applyParts();
+		if (it.icon == Parts.CORE && player.hearts < player.maxHearts)
+			player.hearts++;
 		score += 250;
 		Audio.play("key", 1);
 		burst(it.x + 5, it.y + 5, 16, 0xFFFFFFFF, 100);
 		FlxG.camera.flash(0xFFFFFFFF, 0.2);
-		var msg = "FOUND: " + it.label + "\n" + (isNew ? Parts.INFO[it.icon] : "INSTALLED");
+		var info = tier <= 1 ? Parts.INFO[it.icon] : (Parts.INFO2[it.icon] != "" ? Parts.INFO2[it.icon] : "INSTALLED");
+		var msg = "FOUND: " + it.label + "\n" + info;
 		if (partsFound >= data.parts.length)
 		{
 			msg += "\nALL PARTS FOUND: GO TO THE DOOR";

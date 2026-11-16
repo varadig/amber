@@ -73,7 +73,7 @@ class LevelData
 		[
 			{room: "open", icon: Parts.THRUSTER, label: "THRUSTER", guard: true},
 			{room: "tower", icon: Parts.CLAWS, label: "CLAWS"},
-			{room: "well", icon: Parts.CHIP, label: "MEMORY"}
+			{room: "well", icon: Parts.CHIP, label: "PROCESSOR"}
 		],
 		[
 			{room: "open", icon: Parts.BLASTER, label: "BLASTER"},
@@ -81,17 +81,17 @@ class LevelData
 			{room: "sky", icon: Parts.ANTENNA, label: "ANTENNA"}
 		],
 		[
-			{room: "open", icon: Parts.VISOR, label: "SENSOR", guard: true},
+			{room: "open", icon: Parts.LEGS, label: "SPRINGS", guard: true},
 			{room: "gated", icon: Parts.CORE, label: "REACTOR"},
 			{room: "vault", icon: Parts.CHIP, label: "CIRCUIT"},
-			{room: "sky", icon: Parts.GEAR, label: "ACTUATOR"}
+			{room: "sky", icon: Parts.BLASTER, label: "CANNON"}
 		],
 		[
 			{room: "tower", icon: Parts.ANTENNA, label: "RADIO"},
-			{room: "well", icon: Parts.CORE, label: "FUEL CELL"},
-			{room: "gated", icon: Parts.CHIP, label: "BRAIN"},
-			{room: "vault", icon: Parts.VISOR, label: "EYE"},
-			{room: "sky", icon: Parts.GEAR, label: "MOTOR"}
+			{room: "well", icon: Parts.GEAR, label: "ACTUATOR"},
+			{room: "gated", icon: Parts.THRUSTER, label: "BOOSTER"},
+			{room: "vault", icon: Parts.VISOR, label: "LENS"},
+			{room: "sky", icon: Parts.CORE, label: "FINAL CORE"}
 		]
 	];
 
@@ -124,6 +124,7 @@ class LevelData
 	var cur:Int = 18;
 	var platList:Array<{x:Int, y:Int, w:Int}> = [];
 	var bricks:Array<{x:Int, y:Int}> = [];
+	var lastCp:Int = -100;
 
 	function new(level:Int)
 	{
@@ -174,8 +175,14 @@ class LevelData
 		return d;
 	}
 
+	/** Ellenőrzőpont: csak ha az előzőtől legalább 26 csempényire van (ne legyen kettő közvetlenül egymás után). */
 	function checkpointAt(c0:Int):Void
+	{
+		if (c0 - lastCp < 26)
+			return;
+		lastCp = c0;
 		checkpoints.push({x: (c0 + 1) * T + 4, y: cur * T - 16});
+	}
 
 	function build():Void
 	{
