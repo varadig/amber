@@ -38,6 +38,8 @@ try {
     "door t1: " + (Js "JSON.stringify({x:window.__ps.player.x,y:window.__ps.player.y,a:window.__ps.player.alpha,mode:window.__ps.mode})")
     Start-Sleep -Milliseconds 350
     Key "keyUp" "ArrowRight" "ArrowRight" 39
+    Key "keyDown" "e" "KeyE" 69; Start-Sleep -Milliseconds 700; Key "keyUp" "e" "KeyE" 69
+    Start-Sleep -Milliseconds 300
     "door t2: " + (Js "JSON.stringify({x:window.__ps.player.x,y:window.__ps.player.y,a:window.__ps.player.alpha,mode:window.__ps.mode})")
     Start-Sleep -Milliseconds 2200
     "door t3: " + (Js "JSON.stringify({a:window.__ps.player.alpha,mode:window.__ps.mode})")

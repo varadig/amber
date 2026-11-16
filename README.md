@@ -47,7 +47,13 @@ A robot egy elhagyott gépváros roncstelepén ébred, csupaszon. **Először sa
 | **TALL** (4. pálya) | magas, hosszú lábú | ha a helyén vár, a feje platform: a magas párkányok elérhetők (rá kell ugrani) |
 | **ORB** (5. pálya) | lebegő drón | felrepül, és átbillenti a magasan lévő karokat |
 
-Társ-parancsok: **Q** (kontroller: L1): a követő társ irány nélkül megáll (vár), irányt (bal / jobb) tartva abba az irányba megy (az ORB alapból felfelé); vár / úton lévő társnál visszahív. **Tab** (R1): másik társ kiválasztása.
+**Lost Vikings-szerű irányítás:** a robotok között váltani lehet (**Tab** / kontroller R1 körbe, **1-4** közvetlenül); csak az éppen irányított robot reagál a gombokra, a többi vár (a kamera és egy kis nyíl mutatja, melyiket irányítod). **Q** (L1): a várakozó társak követnek / várnak. Mindegyik robot mást tud:
+- a hős: teljes képességkészlet (ugrás, dash, fal-kapaszkodás, lövés, repülő-cella), egyedül ő veszi fel az alkatrészeket, gyémántokat, akkut;
+- **WHEELIE**: gyors és fürge, átfér a rácson, a nyomólapra áll;
+- **TALL**: lassabb, de nagyot lép; ha vár, a feje platform (a hős és a többi robot rá tud állni);
+- **ORB**: négy irányba lebeg (nyilak), a magas karokat átbillenti.
+
+**A pálya végén mindenkinek be kell érnie az ajtóhoz:** az irányított robot a Fel / E gombbal lép be (a hős csak akkor, ha minden alkatrész megvan és a társ megépült); belépés után a vezérlés a következő robotra ugrik, és a pálya akkor ér véget, ha mind bent van. R: az irányított robot a mentési pontra kerül vissza.
 
 ## Rejtvények
 - **Láda + nyomólap:** a tolható ládát a nyomólapos résbe kell tolni, így a lap lenyomva marad és a kapu nyitva. (Ládák checkpointnál visszaállnak.)

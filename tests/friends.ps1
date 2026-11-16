@@ -29,8 +29,8 @@ try {
     $setup = @"
 (function(){
   var p = window.__ps; var a = $($p.a), b = $($p.b), ya = $($p.ya);
-  window.__w = p.spawnCompanion(0, (a - 3) * 16, (ya - 1) * 16);
-  window.__t = p.spawnCompanion(1, (a - 5) * 16, (ya - 2) * 16);
+  window.__w = p.spawnCompanion(0, (a - 3) * 16, (ya - 1) * 16); window.__w.mode = 0;
+  window.__t = p.spawnCompanion(1, (a - 5) * 16, (ya - 2) * 16); window.__t.mode = 0;
   p.player.reset((b + 4) * 16, (ya - 2) * 16); p.player.invuln = 99;
 })()
 "@
@@ -39,12 +39,17 @@ try {
     "wheelie: x=" + [math]::Round([double](Js "window.__w.x")) + " y=" + [math]::Round([double](Js "window.__w.y")) + " alive=" + (Js "window.__w.alive") + " (gap ends at px " + ($p.b * 16) + ", ground y " + ($p.ya * 16) + ")"
     "tall:    x=" + [math]::Round([double](Js "window.__t.x")) + " y=" + [math]::Round([double](Js "window.__t.y")) + " alive=" + (Js "window.__t.alive")
     Shot "friends_pit.png"
-    # a pálya vége: bemennek az ajtón
-    Js "(function(){var p=window.__ps; for(var i=0;i<p.found.length;i++){p.found[i]=true;} p.partsFound=p.found.length; p.benchBuilt=true; var d=p.door; p.player.reset(d.x-30,d.y); window.__cam.focusOn(p.player.getMidpoint()); window.__w.reset(d.x-60,d.y); window.__t.reset(d.x-80,d.y-10);})()" | Out-Null
-    Key "keyDown" "ArrowRight" "ArrowRight" 39
-    Start-Sleep -Seconds 3
-    Key "keyUp" "ArrowRight" "ArrowRight" 39
-    Start-Sleep -Seconds 14
+    # a pálya vége: minden robotnak be kell lépnie az ajtón (Lost Vikings)
+    Js "(function(){var p=window.__ps; for(var i=0;i<p.found.length;i++){p.found[i]=true;} p.partsFound=p.found.length; p.benchBuilt=true; var d=p.door; p.player.reset(d.x-12,d.y); window.__cam.focusOn(p.player.getMidpoint()); window.__w.reset(d.x-30,d.y); window.__t.reset(d.x-50,d.y-10); window.__w.mode=1; window.__t.mode=1;})()" | Out-Null
+    Start-Sleep -Seconds 1
+    "mode before enter: " + (Js "window.__ps.mode")
+    Js "window.__ps.robotEnters(window.__ps.player)" | Out-Null
+    Start-Sleep -Seconds 1
+    "control after hero entered: " + (Js "window.__ps.nameOf(window.__ps.ctrl)") + " mode=" + (Js "window.__ps.mode")
+    Js "window.__ps.robotEnters(window.__ps.ctrl)" | Out-Null
+    Start-Sleep -Seconds 4
+    Js "window.__ps.robotEnters(window.__ps.ctrl)" | Out-Null
+    Start-Sleep -Seconds 12
     "door: mode=" + (Js "window.__ps.mode") + " wheelieAlive=" + (Js "window.__w.alive") + " tallAlive=" + (Js "window.__t.alive") + " wheelieY=" + [math]::Round([double](Js "window.__w.y"))
     "errors: " + ((Js "window.__errors") -join '; ')
 } finally { Stop-Cdp }

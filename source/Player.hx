@@ -28,6 +28,8 @@ class Player extends FlxSprite
 	public var flightT:Float = 0;
 	public var clinging:Bool = false;
 	public var frozen:Bool = false;
+	/** Lost Vikings-szerű váltás: csak az irányított robot reagál a bemenetre (a többi vár). */
+	public var controlled:Bool = true;
 	/** Lemerült akku: ennyi másodpercig nem irányítható a robot (újraindulás). */
 	public var powerDown:Float = 0;
 	public var stunned(get, never):Bool;
@@ -132,6 +134,7 @@ class Player extends FlxSprite
 		var on = powerDown <= 0;
 		if (!on)
 			powerDown -= elapsed;
+		var ctl = on && controlled;
 		// az előző képkocka ütközései (a super.update nullázza a `touching`-ot)
 		var t = touching;
 		onFloor = t.has(FlxDirectionFlags.FLOOR);
@@ -167,15 +170,15 @@ class Player extends FlxSprite
 			coyote -= elapsed;
 		wasOnFloor = onFloor;
 
-		var dir = on ? ((Input.right() ? 1 : 0) - (Input.left() ? 1 : 0)) : 0;
+		var dir = ctl ? ((Input.right() ? 1 : 0) - (Input.left() ? 1 : 0)) : 0;
 		if (stun > 0)
 			dir = 0;
 		if (dir != 0 && !clinging)
 			face = dir;
-		var jumpHeld = on && Input.jumpHeld();
+		var jumpHeld = ctl && Input.jumpHeld();
 		// processzor nélkül a vezérlés késve reagál (az ugrás gomb ~90 ms-mal később hat), és a mozgás-bemenet lomhán követi a kart
 		var chip = Parts.tier(Parts.CHIP);
-		if (on && Input.jumpPressed())
+		if (ctl && Input.jumpPressed())
 		{
 			if (chip == 0)
 				jumpDelay = 0.09;
@@ -297,7 +300,7 @@ class Player extends FlxSprite
 				}
 			}
 			// lefelé ejtés az egyirányú platformról
-			if (on && onFloor && Input.down() && Input.jumpPressed())
+			if (ctl && onFloor && Input.down() && Input.jumpPressed())
 			{
 				dropT = 0.22;
 				buffer = 0;
@@ -305,7 +308,7 @@ class Player extends FlxSprite
 				y += 2;
 			}
 			// dash (THRUSTER)
-			if (on && Parts.has(Parts.THRUSTER) && Input.dashPressed() && dashesLeft > 0 && dashCd <= 0 && stun <= 0)
+			if (ctl && Parts.has(Parts.THRUSTER) && Input.dashPressed() && dashesLeft > 0 && dashCd <= 0 && stun <= 0)
 			{
 				dashing = true;
 				dashT = DASH_TIME;
@@ -317,7 +320,7 @@ class Player extends FlxSprite
 					onDash();
 			}
 			// lövés (BLASTER)
-			if (on && Parts.has(Parts.BLASTER) && Input.shootPressed() && shootCd <= 0 && stun <= 0)
+			if (ctl && Parts.has(Parts.BLASTER) && Input.shootPressed() && shootCd <= 0 && stun <= 0)
 			{
 				shootCd = Parts.tier(Parts.BLASTER) >= 2 ? 0.13 : 0.26;
 				if (onShoot != null)

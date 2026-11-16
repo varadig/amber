@@ -20,6 +20,12 @@ class Input
 		return FlxG.keys.anyPressed([RIGHT, D]) || (p != null && (p.pressed.DPAD_RIGHT || p.analog.value.LEFT_STICK_X > 0.35));
 	}
 
+	public static function up():Bool
+	{
+		var p = pad();
+		return FlxG.keys.anyPressed([UP, W]) || (p != null && (p.pressed.DPAD_UP || p.analog.value.LEFT_STICK_Y < -0.5));
+	}
+
 	public static function down():Bool
 	{
 		var p = pad();
@@ -69,6 +75,21 @@ class Input
 	{
 		var p = pad();
 		return FlxG.keys.anyJustPressed([TAB]) || (p != null && p.justPressed.RIGHT_SHOULDER);
+	}
+
+	/** 1-4: közvetlen robotválasztás (0 = nincs). */
+	public static function digitPressed():Int
+	{
+		var k = FlxG.keys.justPressed;
+		if (k.ONE)
+			return 1;
+		if (k.TWO)
+			return 2;
+		if (k.THREE)
+			return 3;
+		if (k.FOUR)
+			return 4;
+		return 0;
 	}
 
 	public static function pausePressed():Bool

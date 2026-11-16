@@ -261,6 +261,11 @@ class PlayState extends FlxState
 	var selComp:Int = 0;
 	var hudComp:FlxText;
 	var playerGone:Bool = false;
+	/** Az éppen irányított robot (a hős vagy egy társ). */
+	var ctrl:FlxSprite;
+	var followAll:Bool = false;
+	var heroExited:Bool = false;
+	var marker:FlxText;
 	var crumbles:FlxTypedGroup<Crumble>;
 	var movers:FlxTypedGroup<Mover>;
 	var bullets:FlxTypedGroup<Bullet>;
@@ -604,6 +609,7 @@ class PlayState extends FlxState
 			FlxG.camera.shake(0.002, 0.05);
 		};
 		add(player);
+		ctrl = player;
 		companions = new FlxTypedGroup();
 		add(companions);
 		for (k in 0...Companions.COUNT)
@@ -724,9 +730,12 @@ class PlayState extends FlxState
 		radarSpr.scrollFactor.set(0, 0);
 		radarSpr.visible = false;
 		add(radarSpr);
-		hudComp = new FlxText(6, 258, 300, "", 8);
+		hudComp = new FlxText(6, 258, 400, "", 8);
 		hudComp.scrollFactor.set(0, 0);
 		add(hudComp);
+		marker = new FlxText(0, 0, 12, "v", 8);
+		marker.setFormat(null, 8, 0xFFFFFFFF, CENTER);
+		add(marker);
 		toast = label("", 46, 8, 0xFFFFFFFF);
 		toast.visible = false;
 		hint = label("", 100, 8, 0xFFFFFFFF);
@@ -951,20 +960,7 @@ class PlayState extends FlxState
 		FlxG.collide(crates, gates);
 		FlxG.collide(crates, grates);
 		FlxG.collide(crates, cracked);
-		FlxG.collide(companions, solidMap);
-		FlxG.collide(companions, platMap);
-		FlxG.collide(companions, gates);
-		FlxG.collide(companions, crumbles);
-		FlxG.collide(companions, movers);
-		companions.forEachAlive(c ->
-		{
-			if (c.kind == Companions.TALL)
-			{
-				FlxG.collide(c, grates);
-				if (c.mode == 1)
-					FlxG.collide(player, c);
-			}
-		});
+		collideFriends();
 		FlxG.collide(grounded, solidMap);
 		FlxG.collide(grounded, platMap);
 		FlxG.collide(grounded, cracked);
@@ -992,18 +988,32 @@ class PlayState extends FlxState
 
 		var partsDone = partsFound >= data.parts.length;
 		var allFound = partsDone && (data.benches.length == 0 || benchBuilt);
-		var nearDoor = Math.abs((player.x + 4) - (door.x + 8)) < 12 && Math.abs((player.y + 6) - (door.y + 12)) < 18;
-		hint.visible = nearDoor && !allFound;
-		hint.text = partsDone ? "BUILD YOUR FRIEND AT THE WORKBENCH FIRST" : "NEED " + (data.parts.length - partsFound) + " MORE PART" + (data.parts.length - partsFound == 1 ? "" : "S");
-		if (nearDoor && allFound)
-			enterDoor();
+		var nearDoor = nearTo(ctrl, door, 14, 20);
+		hint.visible = nearDoor;
+		hint.text = allFound ? "UP / E: ENTER THE EXIT" : (partsDone ? "BUILD YOUR FRIEND AT THE WORKBENCH FIRST" : "NEED " + (data.parts.length - partsFound) + " MORE PART" + (data.parts.length - partsFound == 1 ? "" : "S"));
+		if (nearDoor && allFound && Input.interactPressed())
+			robotEnters(ctrl);
+		if (allRobotsExited())
+			levelClear();
+		// a társak leesése: a mentési pontra kerülnek vissza
+		companions.forEachAlive(c ->
+		{
+			if (c.mode != 3 && ((c.y > data.killRow * 16 && (data.buildings.length == 0 || c.y < data.buildings[0].y0 * 16 - 32)) || c.y > worldH + 40))
+			{
+				c.reset(respawn.x - 4, respawn.y);
+				c.velocity.set(0, 0);
+			}
+		});
+		marker.visible = companions.countLiving() > 0 && !heroExitedAll();
+		marker.x = ctrl.x + ctrl.width / 2 - 6;
+		marker.y = ctrl.y - 12 + Math.sin(time * 6) * 2;
 
 		// épület-ajtók: a hős az ajtó előtt Fel / E gombbal lép be / ki
 		var nearB:Int = -1;
 		for (i in 0...bDoors.length)
 		{
 			var d = bDoors[i].spr;
-			if (Math.abs((player.x + 4) - (d.x + 8)) < 12 && Math.abs((player.y + 6) - (d.y + 12)) < 18)
+			if (nearTo(ctrl, d, 12, 18))
 			{
 				nearB = i;
 				break;
@@ -1030,22 +1040,31 @@ class PlayState extends FlxState
 	function useDoor(d:{spr:FlxSprite, tx:Float, ty:Float, toInside:Bool}):Void
 	{
 		teleporting = true;
-		player.frozen = true;
-		player.velocity.set(0, 0);
+		var r = ctrl;
+		var isHero = r == player;
+		if (isHero)
+			player.frozen = true;
+		r.velocity.set(0, 0);
 		Audio.play("door", 0.5);
 		FlxG.camera.fade(0xFF000000, 0.18, false, () ->
 		{
-			player.frozen = false;
-			player.reset(d.tx - 4, d.ty);
-			player.velocity.set(0, 0);
-			player.invuln = 0.4;
-			inside = d.toInside;
-			respawn.set(d.tx - 4, d.ty);
-			FlxG.camera.focusOn(player.getMidpoint());
+			if (isHero)
+			{
+				player.frozen = false;
+				player.reset(d.tx - 4, d.ty);
+				player.invuln = 0.4;
+				inside = d.toInside;
+				respawn.set(d.tx - 4, d.ty);
+			}
+			else
+				r.reset(d.tx - 4, d.ty);
+			r.velocity.set(0, 0);
+			FlxG.camera.focusOn(r.getMidpoint());
 			FlxG.camera.fade(0xFF000000, 0.18, true);
 			new FlxTimer().start(0.25, _ -> teleporting = false);
 		});
 	}
+
 
 	/** Az akku fogyása: idővel és a műveletekkel; kimerülve a robot ~4 mp-re leáll (sötét kép), majd kevés töltéssel újraindul. */
 	function updateBattery(dt:Float):Void
@@ -1153,13 +1172,36 @@ class PlayState extends FlxState
 		FlxG.collide(companions, platMap);
 		FlxG.collide(companions, gates);
 		FlxG.collide(companions, crumbles);
-		FlxG.collide(companions, movers);
+		FlxG.collide(companions, crates);
+		FlxG.collide(companions, movers, (c:Companion, m:Mover) ->
+		{
+			if (c.isTouching(FlxDirectionFlags.FLOOR))
+				c.x += m.dx;
+		});
+		companions.forEachAlive(c ->
+		{
+			if (c.kind == Companions.TALL)
+			{
+				FlxG.collide(c, grates);
+				if (c.mode == 1)
+				{
+					// a várakozó TALL feje platform: a hős és a többi társ rá tud állni
+					FlxG.collide(player, c);
+					companions.forEachAlive(o ->
+					{
+						if (o != c)
+							FlxG.collide(o, c);
+					});
+				}
+			}
+		});
 	}
 
 	/** Egy társ létrehozása a megadott helyen. */
 	function spawnCompanion(kind:Int, x:Float, y:Float):Companion
 	{
-		var c = new Companion(kind, x, y, data, player);
+		var c = new Companion(kind, x, y, data, ctrl != null ? ctrl : player);
+		c.mode = followAll ? 0 : 1;
 		companions.add(c);
 		return c;
 	}
@@ -1227,10 +1269,9 @@ class PlayState extends FlxState
 					if (c.kind == Companions.ORB && l.overlaps(c))
 					{
 						byOrb = true;
-						c.setStay();
 					}
 				});
-				if (byOrb || (act && nearTo(player, l, 14, 18)))
+				if (byOrb || (act && nearTo(ctrl, l, 14, 18)))
 				{
 					l.flip();
 					setGate(l.gid, true);
@@ -1241,7 +1282,7 @@ class PlayState extends FlxState
 		// sorrend-kapcsolók
 		if (act)
 			for (s in switches)
-				if (nearTo(player, s, 14, 20))
+				if (nearTo(ctrl, s, 14, 20))
 				{
 					var order = data.seqs.get(s.gid);
 					var st = seqState.exists(s.gid) ? seqState.get(s.gid) : 0;
@@ -1283,7 +1324,7 @@ class PlayState extends FlxState
 				showToast("KEY FOUND", 2.0);
 			}
 		for (g in gates)
-			if (g.locked && !g.isOpen && keysHeld.exists(g.gid) && nearTo(player, g, 20, 60))
+			if (g.locked && !g.isOpen && keysHeld.exists(g.gid) && nearTo(ctrl, g, 20, 60))
 			{
 				keysHeld.remove(g.gid);
 				setGate(g.gid, true);
@@ -1301,7 +1342,7 @@ class PlayState extends FlxState
 			}
 		if (act && carryCell >= 0)
 			for (s in sockets)
-				if (!s.filled && s.gid == carryCell && nearTo(player, s, 16, 20))
+				if (!s.filled && s.gid == carryCell && nearTo(ctrl, s, 16, 20))
 				{
 					s.fill();
 					carryCell = -1;
@@ -1316,34 +1357,71 @@ class PlayState extends FlxState
 		// szerelőasztal: a társ megépítése
 		if (act)
 			for (b in benches)
-				if (nearTo(player, b, 20, 24) && !Companions.owned[b.ID])
+				if (nearTo(ctrl, b, 20, 24) && !Companions.owned[b.ID])
 				{
 					if (friendFound[b.ID] >= 3)
 						buildFriend(b.ID, b);
 					else
 						showToast("NEED " + (3 - friendFound[b.ID]) + " MORE PART" + (3 - friendFound[b.ID] == 1 ? "" : "S") + " FOR " + Companions.NAMES[b.ID], 2.4);
 				}
-		// társ-parancsok
-		var list:Array<Companion> = [for (c in companions) if (c.alive) c];
-		if (list.length > 0)
+		// robotváltás (Lost Vikings): Tab / R1 körbe, 1-4 közvetlenül; Q: a várakozó társak követnek / várnak
+		var bots = robots();
+		if (bots.indexOf(ctrl) < 0 && bots.length > 0)
+			setControl(bots[0]);
+		if (Input.cyclePressed() && bots.length > 1)
+			setControl(bots[(bots.indexOf(ctrl) + 1) % bots.length]);
+		var dg = Input.digitPressed();
+		if (dg > 0 && dg <= bots.length && bots[dg - 1] != ctrl)
+			setControl(bots[dg - 1]);
+		if (Input.commandPressed() && companions.countLiving() > 0)
 		{
-			if (selComp >= list.length)
-				selComp = 0;
-			if (Input.cyclePressed())
-				selComp = (selComp + 1) % list.length;
-			if (Input.commandPressed())
-			{
-				var c = list[selComp];
-				var dx = (Input.right() ? 1 : 0) - (Input.left() ? 1 : 0);
-				c.command(dx, 0);
-				Audio.play("blip", 0.8);
-			}
-			var c = list[selComp];
-			hudComp.text = Companions.NAMES[c.kind] + ": " + (c.mode == 0 ? "FOLLOWING" : (c.mode == 1 ? "WAITING" : "SENT")) + "  (Q: SEND/WAIT" + (list.length > 1 ? "  TAB: SWITCH" : "") + ")";
+			followAll = !followAll;
+			applyModes();
+			showToast(followAll ? "FRIENDS FOLLOW YOU" : "FRIENDS WAIT", 1.6);
 		}
-		else
-			hudComp.text = carryCell >= 0 ? "CARRYING: POWER CELL" : "";
+		hudComp.text = companions.countLiving() > 0 ? "CONTROL: " + nameOf(ctrl) + "   TAB / 1-4: SWITCH ROBOT   Q: FRIENDS " + (followAll ? "FOLLOW" : "WAIT") : (carryCell >= 0 ? "CARRYING: POWER CELL" : "");
 	}
+
+	/** A (még a pályán lévő) robotok: a hős és a társak. */
+	function robots():Array<FlxSprite>
+	{
+		var r:Array<FlxSprite> = [];
+		if (!heroExited)
+			r.push(player);
+		for (c in companions)
+			if (c.alive && c.mode != 3)
+				r.push(c);
+		return r;
+	}
+
+	function nameOf(s:FlxSprite):String
+		return s == player ? "ROBOT" : Companions.NAMES[cast(s, Companion).kind];
+
+	/** Az irányított robot kiválasztása: a többi vár (vagy követ); a kamera az irányított robotot követi. */
+	function setControl(s:FlxSprite):Void
+	{
+		ctrl = s;
+		player.controlled = s == player;
+		applyModes();
+		FlxG.camera.follow(s, PLATFORMER, 0.16);
+		Audio.play("select", 0.6);
+	}
+
+	function applyModes():Void
+	{
+		companions.forEachAlive(c ->
+		{
+			c.target = ctrl;
+			if (c.mode != 3)
+				c.mode = c == ctrl ? 4 : (followAll ? 0 : 1);
+		});
+	}
+
+	function heroExitedAll():Bool
+		return heroExited && companions.countLiving() <= 0;
+
+	function allRobotsExited():Bool
+		return heroExited && !player.visible && companions.countLiving() <= 0;
 
 	/** A társ összeépítése a szerelőasztalnál: látványos felvillanás, a társ megjelenik és csatlakozik. */
 	function buildFriend(kind:Int, bench:FlxSprite):Void
@@ -1351,7 +1429,6 @@ class PlayState extends FlxState
 		Companions.owned[kind] = true;
 		benchBuilt = true;
 		var c = spawnCompanion(kind, bench.x + 8, bench.y - 20);
-		c.mode = 0;
 		hitstop = 0.25;
 		ring(bench.x + 12, bench.y + 4, 30, 60);
 		ring(bench.x + 12, bench.y + 4, 24, 110);
@@ -1553,6 +1630,13 @@ class PlayState extends FlxState
 
 	function toCheckpoint(penalty:Bool):Void
 	{
+		if (ctrl != player)
+		{
+			// az irányított társ a mentési pontra kerül (R)
+			ctrl.reset(respawn.x - 4, respawn.y);
+			ctrl.velocity.set(0, 0);
+			return;
+		}
 		crates.forEach(c -> c.resetPos());
 		player.respawnAt(respawn.x, respawn.y);
 		inside = respawn.y > data.killRow * 16 - 40;
@@ -1573,31 +1657,34 @@ class PlayState extends FlxState
 		FlxG.camera.shake(0.015, 0.3);
 	}
 
-	/** Belépés az ajtón: a hős az ajtó közepére sétál, és beleolvad (nem esik le, nem tűnik el hirtelen). */
-	function enterDoor():Void
+	/** Belépés az ajtón: a robot az ajtó közepére megy és beleolvad; a vezérlés a következő robotra ugrik. A pálya akkor ér véget, ha mind bent van. */
+	function robotEnters(r:FlxSprite):Void
 	{
-		mode = 3;
-		player.frozen = true;
-		player.moves = false;
-		player.velocity.set(0, 0);
-		player.acceleration.set(0, 0);
-		player.invuln = 0;
-		player.visible = true;
 		hint.visible = false;
 		door.animation.play("open");
 		Audio.play("door", 1);
-		companions.forEachAlive(c -> c.enterDoor(door.x + 8, door.y + door.height));
-		var tx = door.x + 8 - player.width / 2;
-		var ty = door.y + door.height - player.height;
-		FlxTween.tween(player, {x: tx, y: ty}, 0.3, {onComplete: _ ->
+		if (r == player)
 		{
-			FlxTween.tween(player.scale, {x: 0.1, y: 0.1}, 0.35);
-			FlxTween.tween(player, {alpha: 0}, 0.35, {onComplete: _ ->
+			heroExited = true;
+			player.frozen = true;
+			player.moves = false;
+			player.velocity.set(0, 0);
+			player.acceleration.set(0, 0);
+			player.invuln = 0;
+			player.visible = true;
+			var tx = door.x + 8 - player.width / 2;
+			var ty = door.y + door.height - player.height;
+			FlxTween.tween(player, {x: tx, y: ty}, 0.3, {onComplete: _ ->
 			{
-				playerGone = true;
-				modeT = 0;
+				FlxTween.tween(player.scale, {x: 0.1, y: 0.1}, 0.35);
+				FlxTween.tween(player, {alpha: 0}, 0.35, {onComplete: _ -> player.visible = false});
 			}});
-		}});
+		}
+		else
+			cast(r, Companion).enterDoor(door.x + 8, door.y + door.height);
+		var bots = robots();
+		if (bots.length > 0)
+			setControl(bots[0]);
 	}
 
 	function levelClear():Void

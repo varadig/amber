@@ -757,10 +757,8 @@ class LevelData
 		checkpointAt(c0);
 		var id = nextId++;
 		for (x in c0 + 5...c0 + 12)
-			bricks.push({x: x, y: cur - 3});
-		bricks.push({x: c0 + 11, y: cur - 2});
+			bricks.push({x: x, y: cur - 2});
 		bricks.push({x: c0 + 11, y: cur - 1});
-		grates.push({x: (c0 + 5) * T, y: (cur - 2) * T});
 		grates.push({x: (c0 + 5) * T, y: (cur - 1) * T});
 		plates.push({x: (c0 + 10) * T, y: cur * T - 6, id: id, hold: false});
 		gateColumn(c0 + 14, id, false);
@@ -864,10 +862,8 @@ class LevelData
 		checkpointAt(c0);
 		// kamra: tető és jobb fal tégla, a bal fal két repedezett blokk (blaszterrel kilőhető); a kamra 3 csempe magas, átugorható
 		for (x in c0 + 5...c0 + 12)
-			bricks.push({x: x, y: cur - 3});
-		bricks.push({x: c0 + 11, y: cur - 2});
+			bricks.push({x: x, y: cur - 2});
 		bricks.push({x: c0 + 11, y: cur - 1});
-		crackeds.push({x: (c0 + 5) * T, y: (cur - 2) * T});
 		crackeds.push({x: (c0 + 5) * T, y: (cur - 1) * T});
 		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 8) * T + 3, y: cur * T - 14});
 		gem(c0 + 7, cur - 5);

@@ -5,31 +5,32 @@ import flixel.tweens.FlxTween;
 import flixel.util.FlxDirectionFlags;
 
 /**
- * Egy társ-robot. Módok: 0 követ, 1 vár (a helyén marad), 2 elküldve (egy irányba halad, amíg el nem akad, vagy el nem éri a távolságot),
- * 3 az ajtóhoz megy és belép. A `command` vált: követő társnál irányt tartva elküldi, irány nélkül megállítja; álló / elküldött társat visszahív.
+ * Egy társ-robot (a Lost Vikings mintájára: a három robot között váltani lehet, mindegyiket el kell juttatni az ajtóhoz).
+ * Módok: 0 követ (a kiválasztott robotot követi), 1 vár (a helyén marad; a TALL ilyenkor platform), 3 az ajtóhoz megy és belép,
+ * 4 irányított (a játékos vezérli: bal / jobb, ugrás; az ORB négy irányba lebeg).
  *
- * Ügyes követés (a földön járóknál): előre néz a pályán: a falra / lépcsőre rááll vagy ráugrik (legfeljebb 3 csempe), a szakadékot átugorja
- * (ha átugorható), különben a peremen vár; lefelé csak akkor lép le, ha a hős lent van és lent talaj is van. Ha elakad, vagy leesett,
- * a hős mellé kerül ("beszáll" a hős mögé).
+ * Ügyes követés (a földön járóknál): előre néz a pályán: a falra / lépcsőre (legfeljebb 3 csempe) rááll, a szakadékot átugorja
+ * (ha átugorható), különben a peremen vár; lefelé csak akkor lép le, ha a cél lent van és lent talaj is van. Ha elakad, vagy leesett,
+ * a célhoz kerül.
  */
 class Companion extends FlxSprite
 {
 	public var kind:Int;
-	public var mode:Int = 0;
-	public var target:Player;
+	public var mode:Int = 1;
+	public var target:FlxSprite;
+	public var face:Int = 1;
+	public var exited:Bool = false;
 	var level:LevelData;
-	var sendX:Int = 0;
-	var sendY:Int = 0;
-	var sendFrom:Float = 0;
 	var bobT:Float = Math.random() * 6;
-	var face:Int = 1;
 	var stuckT:Float = 0;
 	var doorX:Float = 0;
 	var doorY:Float = 0;
 	var enterT:Float = 0;
 	var fading:Bool = false;
+	var coyote:Float = 0;
+	var jumpBuf:Float = 0;
 
-	public function new(kind:Int, x:Float, y:Float, level:LevelData, target:Player)
+	public function new(kind:Int, x:Float, y:Float, level:LevelData, target:FlxSprite)
 	{
 		super(x, y);
 		this.kind = kind;
@@ -55,41 +56,12 @@ class Companion extends FlxSprite
 		}
 		animation.add("a", [0, 1], kind == Companions.ORB ? 14 : 6);
 		animation.play("a");
-		allowCollisions = kind == Companions.ORB ? FlxDirectionFlags.NONE : FlxDirectionFlags.ANY;
+		allowCollisions = FlxDirectionFlags.ANY;
 		if (kind != Companions.ORB)
 			acceleration.y = 900;
 		maxVelocity.set(190, 360);
 	}
 
-	/** Parancs: irány nélkül áll / követ (váltás); iránnyal elküldi. */
-	public function command(dx:Int, dy:Int):Void
-	{
-		if (mode == 3)
-			return;
-		if (mode == 0)
-		{
-			if (kind == Companions.ORB && dx == 0 && dy == 0)
-				dy = -1;
-			if (dx != 0 || dy != 0)
-			{
-				mode = 2;
-				sendX = dx;
-				sendY = kind == Companions.ORB ? dy : 0;
-				sendFrom = sendY != 0 ? y : x;
-			}
-			else
-				mode = 1;
-		}
-		else
-			mode = 0;
-	}
-
-	public function setStay():Void
-	{
-		mode = 1;
-	}
-
-	/** Az ajtóhoz megy és belép (a pálya végén); `dx` az ajtó közepe, `dy` az ajtó alja. */
 	public function enterDoor(dx:Float, dy:Float):Void
 	{
 		mode = 3;
@@ -97,6 +69,15 @@ class Companion extends FlxSprite
 		doorY = dy;
 		enterT = 0;
 		setSolidRole(false);
+	}
+
+	function targetFace():Int
+	{
+		if (Std.isOfType(target, Player))
+			return cast(target, Player).faceDir;
+		if (Std.isOfType(target, Companion))
+			return cast(target, Companion).face;
+		return 1;
 	}
 
 	override public function update(elapsed:Float):Void
@@ -118,17 +99,22 @@ class Companion extends FlxSprite
 		{
 			switch (mode)
 			{
+				case 4:
+					// irányított: négy irányba lebeg
+					var dx = (Input.right() ? 1 : 0) - (Input.left() ? 1 : 0);
+					var dy = (Input.down() ? 1 : 0) - (Input.up() ? 1 : 0);
+					velocity.x += (dx * 105 - velocity.x) * Math.min(1, 9 * elapsed);
+					velocity.y += (dy * 105 - velocity.y) * Math.min(1, 9 * elapsed);
+					if (dx != 0)
+						face = dx;
 				case 0:
-					var gx = tx - target.faceDir * 16 - 4;
+					var gx = tx - targetFace() * 16 - 4;
 					var gy = ty - 22 + Math.sin(bobT * 3) * 3;
 					velocity.x = clamp((gx - x) * 4, 150);
 					velocity.y = clamp((gy - y) * 4, 150);
 					face = velocity.x >= 0 ? 1 : -1;
 					if (Math.abs(tx - x) > 300 || Math.abs(ty - y) > 220)
 						reset(tx - 16, ty - 24);
-				case 1:
-					velocity.x = 0;
-					velocity.y = Math.cos(bobT * 3) * 4;
 				case 3:
 					enterT += elapsed;
 					velocity.x = clamp((doorX - cx) * 4, 160);
@@ -137,21 +123,21 @@ class Companion extends FlxSprite
 					if ((Math.abs(doorX - cx) < 5 && Math.abs(doorY - 12 - (y + 4)) < 6) || enterT > 3.5)
 						beginFade();
 				default:
-					velocity.set(sendX * 130, sendY * 130);
-					var ahead = level.isSolid(Std.int((x + 4 + sendX * 9) / LevelData.T), Std.int((y + 4 + sendY * 9) / LevelData.T));
-					var dist = sendY != 0 ? Math.abs(y - sendFrom) : Math.abs(x - sendFrom);
-					if (ahead || dist > 300)
-						mode = 1;
+					velocity.x *= Math.max(0, 1 - 6 * elapsed);
+					velocity.y = Math.cos(bobT * 3) * 4;
 			}
 		}
 		else
 		{
 			switch (mode)
 			{
+				case 4:
+					control(elapsed, onFloor);
+					setSolidRole(false);
 				case 0:
 					walkToward(tx, kind == Companions.TALL ? 30 : 22, onFloor, hitWall, ty > y + height + 20);
 					setSolidRole(false);
-					// elakadás / lemaradás / leesés: a hős mellé kerül
+					// elakadás / lemaradás / leesés: a célhoz kerül
 					var dx = tx - cx;
 					if (onFloor && Math.abs(dx) > 100 && Math.abs(velocity.x) < 4)
 						stuckT += elapsed;
@@ -163,26 +149,45 @@ class Companion extends FlxSprite
 						reset(tx - face * 18 - 4, ty - (kind == Companions.TALL ? 24 : 10));
 						velocity.set(0, 0);
 					}
-				case 1:
-					velocity.x = 0;
-					setSolidRole(true);
 				case 3:
 					enterT += elapsed;
 					walkToward(doorX, 3, onFloor, hitWall, true);
 					if ((Math.abs(doorX - cx) < 6 && Math.abs(doorY - (y + height)) < 26) || enterT > 3.5)
 						beginFade();
 				default:
-					velocity.x = sendX * 110;
-					face = sendX;
-					var ahead = Std.int((cx + sendX * (width / 2 + 3)) / LevelData.T);
-					var foot = Std.int((y + height + 2) / LevelData.T);
-					if (hitWall || (onFloor && !level.isStandable(ahead, foot)) || Math.abs(x - sendFrom) > 380)
-						mode = 1;
-					setSolidRole(false);
+					// vár: a földön megáll; a magas társ ilyenkor platform
+					if (onFloor)
+						velocity.x = 0;
+					setSolidRole(onFloor);
 			}
 		}
 		flipX = face < 0;
 		super.update(elapsed);
+	}
+
+	/** Irányított mozgás (a földön járó társak): gyorsulás, ugrás (coyote idő, bufferelt gomb, változó magasság). */
+	function control(elapsed:Float, onFloor:Bool):Void
+	{
+		var dir = (Input.right() ? 1 : 0) - (Input.left() ? 1 : 0);
+		var spd = kind == Companions.TALL ? 88.0 : 112.0;
+		var jumpV = kind == Companions.TALL ? 290.0 : 275.0;
+		var target = dir * spd;
+		var acc = (onFloor ? 1500.0 : 900.0) * elapsed;
+		if (velocity.x < target)
+			velocity.x = Math.min(target, velocity.x + acc);
+		else
+			velocity.x = Math.max(target, velocity.x - acc);
+		if (dir != 0)
+			face = dir;
+		coyote = onFloor ? 0.08 : coyote - elapsed;
+		jumpBuf = Input.jumpPressed() ? 0.12 : jumpBuf - elapsed;
+		if (jumpBuf > 0 && coyote > 0)
+		{
+			velocity.y = -jumpV;
+			coyote = 0;
+			jumpBuf = 0;
+		}
+		acceleration.y = (velocity.y < 0 && !Input.jumpHeld()) ? 900 * 2.4 : 900;
 	}
 
 	/** Belépés az ajtón: a társ beleolvad (elhalványul és összement). */
@@ -195,7 +200,11 @@ class Companion extends FlxSprite
 		if (kind != Companions.ORB)
 			reset(doorX - width / 2, doorY - height);
 		FlxTween.tween(this, {alpha: 0}, 0.4);
-		FlxTween.tween(scale, {x: 0.2, y: 0.2}, 0.4, {onComplete: _ -> kill()});
+		FlxTween.tween(scale, {x: 0.2, y: 0.2}, 0.4, {onComplete: _ ->
+		{
+			exited = true;
+			kill();
+		}});
 	}
 
 	/**
@@ -206,8 +215,8 @@ class Companion extends FlxSprite
 	{
 		var cx = x + width / 2;
 		var dx = gx - cx;
-		var spd = kind == Companions.TALL ? 74.0 : 96.0;
-		var jumpV = kind == Companions.TALL ? 250.0 : 300.0;
+		var spd = kind == Companions.TALL ? 84.0 : 100.0;
+		var jumpV = kind == Companions.TALL ? 285.0 : 275.0;
 		var maxGap = kind == Companions.TALL ? 3 : 4;
 		if (Math.abs(dx) <= near)
 		{
@@ -241,7 +250,6 @@ class Companion extends FlxSprite
 		}
 		if (!level.isStandable(colAhead, footRow))
 		{
-			// van-e talaj a közelben lent? (lelépés)
 			var below = false;
 			for (k in 1...7)
 				if (level.isStandable(colAhead, footRow + k))
@@ -251,7 +259,6 @@ class Companion extends FlxSprite
 				}
 			if (below && wantDown)
 				return; // lelép
-			// átugorható-e a rés: talaj 1..maxGap+1 oszloppal odébb, hasonló magasságban
 			var ok = false;
 			for (k in 1...maxGap + 2)
 			{
@@ -286,7 +293,7 @@ class Companion extends FlxSprite
 		}
 		else
 		{
-			acceleration.y = 900;
+			acceleration.y = mode == 4 ? acceleration.y : 900;
 			immovable = false;
 			allowCollisions = FlxDirectionFlags.ANY;
 		}
