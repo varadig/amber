@@ -15,17 +15,17 @@ class MiniGames
 	public static inline var TANK = 3;
 	public static inline var COUNT = 4;
 
-	public static final TITLES = ["CIRCUIT REPAIR", "DOOR LOCK", "POWER GRID", "DEFENSE SIMULATION"];
+	public static final TITLES = ["CIRCUIT REPAIR", "DOOR LOCK", "MEMORY BANK", "DEFENSE SIMULATION"];
 	public static final STORY = [
 		"A BROKEN CIRCUIT BOARD. SLIDE THE TILES BACK INTO ORDER.",
 		"THE LOCK ASKS FOR ITS OLD SEQUENCE. WATCH, THEN REPEAT IT.",
-		"EVERY LIGHT IN THE BUILDING IS STUCK ON. SWITCH THEM ALL OFF.",
+		"THE ARCHIVE'S MEMORY CARDS ARE SCRAMBLED. FIND ALL THE MATCHING PAIRS.",
 		"AN OLD TRAINING PROGRAM STILL RUNS. DESTROY ALL THE ENEMY TANKS."
 	];
 	public static final HINTS = [
 		"ARROWS / D-PAD: SLIDE A TILE    ESC / B: LEAVE",
 		"ARROWS / D-PAD: REPEAT THE SEQUENCE    ESC / B: LEAVE",
-		"ARROWS / D-PAD: MOVE    SPACE / A: TOGGLE    ESC / B: LEAVE",
+		"ARROWS / D-PAD: MOVE    SPACE / A: FLIP A CARD    ESC / B: LEAVE",
 		"ARROWS / D-PAD: DRIVE    SPACE / A: FIRE    ESC / B: LEAVE"
 	];
 
@@ -35,7 +35,7 @@ class MiniGames
 		{
 			case SLIDE: new SlideGame();
 			case SIMON: new SimonGame();
-			case LIGHTS: new LightsGame();
+			case LIGHTS: new PairsGame();
 			default: new TankGame();
 		}
 		g.setup(TITLES[game % COUNT], STORY[game % COUNT], HINTS[game % COUNT], diff, onDone);
@@ -251,11 +251,13 @@ class SlideGame extends MiniGame
 	}
 }
 
-/** Sorrend-ismétlő: a négy mező felvillan, a nyilakkal kell megismételni. */
+/** Sorrend-ismétlő (Simon): a négy mező felvillan, a nyilakkal kell megismételni; körönként egy elemmel hosszabb, a minta minden alkalommal más. */
 class SimonGame extends MiniGame
 {
 	var seq:Array<Int> = [];
 	var pads:Array<FlxSprite> = [];
+	/** Az aktuális kör hossza (ennyi elemet mutat és kér). */
+	var round:Int = 2;
 	var state:Int = 0;
 	var idx:Int = 0;
 	var t:Float = 0;
@@ -265,14 +267,18 @@ class SimonGame extends MiniGame
 
 	override function build():Void
 	{
-		var len = 4 + Std.int(Math.min(3, diff / 2));
-		seq = [for (i in 0...len) Std.random(4)];
+		var len = 5 + Std.int(Math.min(2, diff / 2));
+		for (i in 0...len)
+		{
+			var p = Std.random(4);
+			// ne legyen három egyforma egymás után, és ne a legutóbbi két mező ismétlődjön mindig
+			while (i >= 2 && seq[i - 1] == p && seq[i - 2] == p)
+				p = Std.random(4);
+			seq.push(p);
+		}
 		var pos = [[210, 56], [290, 108], [210, 160], [130, 108]];
 		for (p in pos)
-		{
-			var s = box(p[0], p[1], 60, 44, 0xFFFFFFFF);
-			pads.push(s);
-		}
+			pads.push(box(p[0], p[1], 60, 44, 0xFFFFFFFF));
 		msg.text = "WATCH...";
 	}
 
@@ -290,18 +296,18 @@ class SimonGame extends MiniGame
 				t += dt;
 				if (t < 0.45)
 					lit = seq[idx];
-				else if (lit == seq[idx] && t < 0.7)
+				else if (t < 0.7)
 					lit = -1;
 				if (t >= 0.7)
 				{
 					t = 0;
 					lit = -1;
 					idx++;
-					if (idx >= seq.length)
+					if (idx >= round)
 					{
 						state = 1;
 						inPos = 0;
-						msg.text = "YOUR TURN";
+						msg.text = "YOUR TURN  " + round + "/" + seq.length;
 					}
 				}
 			case 1:
@@ -314,14 +320,33 @@ class SimonGame extends MiniGame
 				if (seq[inPos] == p)
 				{
 					inPos++;
-					if (inPos >= seq.length)
-						win();
+					if (inPos >= round)
+					{
+						if (round >= seq.length)
+							win();
+						else
+						{
+							round++;
+							state = 3;
+							t = 0;
+							msg.text = "GOOD";
+						}
+					}
 				}
 				else
 				{
 					msg.text = "WRONG: WATCH AGAIN";
 					Audio.play("hurt", 0.5);
 					state = 2;
+					t = 0;
+				}
+			case 3:
+				t += dt;
+				if (t > 0.9)
+				{
+					msg.text = "WATCH...";
+					state = 0;
+					idx = 0;
 					t = 0;
 				}
 			default:
@@ -339,59 +364,117 @@ class SimonGame extends MiniGame
 	}
 }
 
-/** Lámpa-kapcsolgató (Lights Out): egy kapcsolás a szomszédokat is átbillenti; mindet ki kell kapcsolni. */
-class LightsGame extends MiniGame
+/** Párkereső (memória-kártyák): 12 lap, 6 pár; a nyilakkal kijelölt lapot a művelet-gombbal fordítod fel; az egyező párok felfordítva maradnak. Egyszerű, nincs büntetés. */
+class PairsGame extends MiniGame
 {
-	var g:Array<Bool> = [for (i in 0...16) false];
-	var cells:Array<FlxSprite> = [];
+	static inline var COLS = 4;
+	static inline var ROWS = 3;
+	var faces:Array<Int> = [];
+	var shown:Array<Bool> = [];
+	var matched:Array<Bool> = [];
+	var cards:Array<FlxSprite> = [];
+	var marks:Array<FlxText> = [];
 	var cursor:FlxSprite;
 	var cx:Int = 0;
 	var cy:Int = 0;
+	var first:Int = -1;
+	var second:Int = -1;
+	var hideT:Float = 0;
 
 	override function build():Void
 	{
-		for (i in 0...(5 + diff))
-			toggle(Std.random(4), Std.random(4));
-		if (!g.contains(true))
-			toggle(1, 1);
-		for (i in 0...16)
-			cells.push(box(152 + (i % 4) * 46, 62 + Std.int(i / 4) * 40, 42, 36, 0xFFFFFFFF));
+		for (i in 0...(COLS * ROWS))
+		{
+			faces.push(Std.int(i / 2));
+			shown.push(false);
+			matched.push(false);
+		}
+		var i = faces.length;
+		while (i > 1)
+		{
+			i--;
+			var j = Std.random(i + 1);
+			var tmp = faces[i];
+			faces[i] = faces[j];
+			faces[j] = tmp;
+		}
+		for (i in 0...faces.length)
+		{
+			var x = 150 + (i % COLS) * 46;
+			var y = 62 + Std.int(i / COLS) * 46;
+			cards.push(box(x, y, 42, 40, 0xFF4A4A4A));
+			marks.push(txt("", x, y + 10, 42, 16, 0xFF000000, "center"));
+		}
 		cursor = new FlxSprite(0, 0);
-		cursor.makeGraphic(46, 40, 0xFFFFFFFF, true);
-		cursor.pixels.fillRect(new Rectangle(3, 3, 40, 34), 0x00000000);
+		cursor.makeGraphic(46, 44, 0xFFFFFFFF, true);
+		cursor.pixels.fillRect(new Rectangle(3, 3, 40, 38), 0x00000000);
 		cursor.dirty = true;
 		cursor.scrollFactor.set(0, 0);
 		add(cursor);
+		msg.text = "FIND THE PAIRS";
 		refresh();
 	}
 
-	function toggle(x:Int, y:Int):Void
-	{
-		for (d in [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]])
-		{
-			var nx = x + d[0], ny = y + d[1];
-			if (nx >= 0 && nx < 4 && ny >= 0 && ny < 4)
-				g[ny * 4 + nx] = !g[ny * 4 + nx];
-		}
-	}
+	static function glyph(i:Int):String
+		return ["#", "@", "%", "&", "*", "+"][i];
 
 	function refresh():Void
 	{
-		for (i in 0...16)
-			cells[i].color = g[i] ? 0xFFFFFFFF : 0xFF262626;
-		cursor.x = 150 + cx * 46;
-		cursor.y = 60 + cy * 40;
+		for (i in 0...faces.length)
+		{
+			var up = shown[i] || matched[i];
+			cards[i].color = matched[i] ? 0xFF8A8A8A : (up ? 0xFFFFFFFF : 0xFF4A4A4A);
+			marks[i].text = up ? glyph(faces[i]) : "";
+		}
+		cursor.x = 148 + cx * 46;
+		cursor.y = 60 + cy * 46;
+	}
+
+	/** Egy lap felfordítása (a teszt is ezt hívja). */
+	public function pick(i:Int):Void
+	{
+		if (hideT > 0 || matched[i] || shown[i])
+			return;
+		shown[i] = true;
+		Audio.play("blip", 0.9);
+		if (first < 0)
+			first = i;
+		else
+		{
+			second = i;
+			if (faces[first] == faces[second])
+			{
+				matched[first] = matched[second] = true;
+				first = second = -1;
+				if (matched.indexOf(false) < 0)
+					win();
+			}
+			else
+				hideT = 0.8;
+		}
+		refresh();
 	}
 
 	override function tick(dt:Float):Void
 	{
+		if (hideT > 0)
+		{
+			hideT -= dt;
+			if (hideT <= 0)
+			{
+				shown[first] = shown[second] = false;
+				first = second = -1;
+				refresh();
+			}
+			return;
+		}
 		var moved = false;
 		if (jl && cx > 0)
 		{
 			cx--;
 			moved = true;
 		}
-		else if (jr && cx < 3)
+		else if (jr && cx < COLS - 1)
 		{
 			cx++;
 			moved = true;
@@ -401,20 +484,14 @@ class LightsGame extends MiniGame
 			cy--;
 			moved = true;
 		}
-		else if (jd && cy < 3)
+		else if (jd && cy < ROWS - 1)
 		{
 			cy++;
 			moved = true;
 		}
 		if (jact)
-		{
-			toggle(cx, cy);
-			Audio.play("blip", 0.9);
-			moved = true;
-			if (!g.contains(true))
-				win();
-		}
-		if (moved)
+			pick(cy * COLS + cx);
+		else if (moved)
 			refresh();
 	}
 }
@@ -457,7 +534,7 @@ class TankGame extends MiniGame
 		px = 7;
 		py = HH - 1;
 		pd = 0;
-		lives = 3;
+		lives = 1;
 		bullets = [];
 		enemies = [];
 		var n = 3 + (diff >= 3 ? 1 : 0);
@@ -530,7 +607,7 @@ class TankGame extends MiniGame
 		}
 		if (enemies.length == 0)
 			win();
-		livesT.text = "LIVES " + lives + "  ENEMIES " + enemies.length;
+		livesT.text = "ENEMIES " + enemies.length + "   ONE HIT AND YOU RESTART";
 		render();
 	}
 
@@ -574,7 +651,8 @@ class TankGame extends MiniGame
 				Audio.play("hurt", 0.6);
 				if (lives <= 0)
 				{
-					msg.text = "TANK DESTROYED: RESTARTING";
+					msg.text = "YOU WERE HIT: RESTARTING";
+					bullets = [];
 					retryT = 1.2;
 				}
 			}

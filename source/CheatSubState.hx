@@ -31,6 +31,8 @@ class CheatSubState extends FlxSubState
 	var sel:Int = 0;
 	var top:Int = 0;
 	var stickPrev:Int = 0;
+	/** Az R2 előző állapota (nyitáskor lenyomott: a megnyitó gombnyomás ne zárja be rögtön). */
+	var r2Prev:Bool = true;
 	var pendingPage:Null<String> = null;
 	var backStack:Array<String> = [];
 
@@ -60,7 +62,7 @@ class CheatSubState extends FlxSubState
 		more.alignment = CENTER;
 		more.scrollFactor.set(0, 0);
 		add(more);
-		var hint = new FlxText(0, 248, FlxG.width, "UP / DOWN SELECT    SPACE / A USE    ESC / B BACK", 8);
+		var hint = new FlxText(0, 248, FlxG.width, "UP / DOWN SELECT    SPACE / A USE    ESC / B / R2 BACK", 8);
 		hint.alignment = CENTER;
 		hint.color = 0xFF888888;
 		hint.scrollFactor.set(0, 0);
@@ -286,7 +288,10 @@ class CheatSubState extends FlxSubState
 		var up = k.UP || k.W || (pad != null && pad.justPressed.DPAD_UP) || (fresh && s == 1);
 		var down = k.DOWN || k.S || (pad != null && pad.justPressed.DPAD_DOWN) || (fresh && s == 2);
 		var use = k.ENTER || k.SPACE || k.Z || (pad != null && pad.justPressed.A);
-		var back = k.ESCAPE || k.F9 || (pad != null && (pad.justPressed.B || pad.justPressed.BACK));
+		var r2 = Input.r2Held();
+		var r2New = r2 && !r2Prev;
+		r2Prev = r2;
+		var back = k.ESCAPE || k.F9 || r2New || (pad != null && (pad.justPressed.B || pad.justPressed.BACK));
 		if (back)
 		{
 			goBack();

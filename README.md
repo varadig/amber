@@ -56,7 +56,7 @@ A robot egy elhagyott gépváros roncstelepén ébred, csupaszon. **Először sa
 **A pálya végén mindenkinek be kell érnie az ajtóhoz:** az irányított robot a Fel / E gombbal lép be (a hős csak akkor, ha minden alkatrész megvan és a társ megépült); belépés után a vezérlés a következő robotra ugrik, és a pálya akkor ér véget, ha mind bent van. R: az irányított robot a mentési pontra kerül vissza.
 
 ## Házak és számítógépek
-Minden házban van egy **számítógép** a bejáratnál; a belső terem kaput csak a rajta futó **mini-játék** megoldása nyitja ki (Fel / E a gépnél, Esc: kilépés). A játék házanként más: **csúsztatós kirakó** (CIRCUIT REPAIR), **sorrend-ismétlő** (DOOR LOCK), **lámpa-kapcsolgató** (POWER GRID), **tank-játék** (DEFENSE SIMULATION: ellenséges tankokat lelőni, 3 élet). A kapu mögött vannak a polcok, az alkatrész, az őrök és a jutalom (akku, szív, gyémántok). Az 1., 2. és 4. pályán bónusz-ház (ARCHIVE) is van, alkatrész nélkül. A feliratok (a gép története) később bővülnek.
+Minden házban van egy **számítógép** a bejáratnál; a belső terem kaput csak a rajta futó **mini-játék** megoldása nyitja ki (Fel / E a gépnél, Esc: kilépés). A játék házanként más: **csúsztatós kirakó** (CIRCUIT REPAIR), **sorrend-ismétlő** (DOOR LOCK, körönként hosszabb), **párkereső memória-kártyák** (MEMORY BANK), **tank-játék** (DEFENSE SIMULATION: ellenséges tankokat lelőni; egy találat és újraindul). A kapu mögött vannak a polcok, az alkatrész, az őrök és a jutalom (akku, szív, gyémántok). Az 1., 2. és 4. pályán bónusz-ház (ARCHIVE) is van, alkatrész nélkül. A feliratok (a gép története) később bővülnek.
 
 ## Rejtvények
 - **Láda + nyomólap:** a tolható ládát a nyomólapos résbe kell tolni, így a lap lenyomva marad és a kapu nyitva. (Ládák checkpointnál visszaállnak.)

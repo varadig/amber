@@ -92,6 +92,15 @@ class Input
 		return 0;
 	}
 
+	/** R2 (PS4): a cheat-menü gombja; digitális gomb vagy analóg trigger is lehet (a böngésző-leképezéstől függően). */
+	public static function r2Held():Bool
+	{
+		var p = pad();
+		if (p == null)
+			return false;
+		return p.pressed.RIGHT_TRIGGER || p.pressed.RIGHT_TRIGGER_BUTTON || p.analog.value.RIGHT_TRIGGER > 0.5;
+	}
+
 	public static function pausePressed():Bool
 	{
 		var p = pad();

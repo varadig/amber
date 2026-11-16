@@ -13,8 +13,8 @@ try {
         Shot "mini_$g.png"
         switch ($g) {
             0 { Js "(function(){var s=window.__ps.subState; s.tiles=[1,2,3,4,5,6,7,0,8]; s.refresh();})()" | Out-Null; Tap "ArrowLeft" "ArrowLeft" 37 }
-            1 { Js "(function(){var s=window.__ps.subState; s.seq=[0]; s.state=1; s.inPos=0;})()" | Out-Null; Tap "ArrowUp" "ArrowUp" 38 }
-            2 { Js "(function(){var s=window.__ps.subState; for(var i=0;i<16;i++) s.g[i]=false; s.g[0]=true; s.g[1]=true; s.g[4]=true; s.cx=0; s.cy=0; s.refresh();})()" | Out-Null; Tap " " "Space" 32 }
+            1 { Js "(function(){var s=window.__ps.subState; s.seq=[0]; s.round=1; s.state=1; s.inPos=0;})()" | Out-Null; Tap "ArrowUp" "ArrowUp" 38 }
+            2 { Js "(function(){var s=window.__ps.subState; for(var i=0;i<12;i++) s.matched[i]=true; var a=0,b=0; for(var i=1;i<12;i++){ if(s.faces[i]==s.faces[0]){b=i;} } s.matched[0]=false; s.matched[b]=false; s.refresh(); s.pick(0); s.pick(b);})()" | Out-Null }
             3 { Js "(function(){var s=window.__ps.subState; s.enemies=[];})()" | Out-Null }
         }
         Start-Sleep -Seconds 5

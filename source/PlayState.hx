@@ -296,7 +296,13 @@ class PlayState extends FlxState
 	var battIcon:FlxSprite;
 	var wasDown:Bool = false;
 	var lowT:Float = 0;
-	var banner:FlxText;
+	/** Az információs panel (alul, doboz): a pálya-bemutató, a felugró üzenetek (toast), a helyzet-súgó (hint) és a közeli táblák szövege. */
+	var bannerStr:String = "";
+	var bannerT:Float = 0;
+	var infoBorder:FlxSprite;
+	var infoFill:FlxSprite;
+	var infoText:FlxText;
+	var worldTexts:Array<{x:Float, y:Float, s:String}> = [];
 	var hint:FlxText;
 	var overlay:FlxText;
 	var toast:FlxText;
@@ -486,9 +492,7 @@ class PlayState extends FlxState
 		add(terminals);
 		for (tx in data.texts)
 		{
-			var lb = new FlxText(tx.x, tx.y, 220, tx.text, 8);
-			lb.setFormat(null, 8, 0xFF999999, LEFT);
-			add(lb);
+			worldTexts.push({x: tx.x, y: tx.y, s: tx.text});
 		}
 		crumbles = new FlxTypedGroup();
 		for (c in data.crumbles)
@@ -694,8 +698,8 @@ class PlayState extends FlxState
 		if (!Parts.has(Parts.GEAR))
 			off.push("AIR CONTROL");
 		var offLine = off.length > 0 ? "\nSYSTEMS OFFLINE: " + off.join(", ") : "";
-		banner = label(data.name + (data.buildings.length > 0 ? "\n(UP / E ENTERS DOORS)" : "") + "\nMISSION: FIND THE " + data.parts.length + " MISSING PARTS\n" + names + offLine, 84, 8, 0xFFFFFFFF);
-		FlxTween.tween(banner, {alpha: 0}, 0.8, {startDelay: 3.4});
+		bannerStr = (data.name + (data.buildings.length > 0 ? "\n(UP / E ENTERS DOORS)" : "") + "\nMISSION: FIND THE " + data.parts.length + " MISSING PARTS\n" + names + offLine);
+		bannerT = 4.2;
 		#if test
 		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery);
 		#end
@@ -793,10 +797,32 @@ class PlayState extends FlxState
 		hudAdding = true;
 		toast = label("", 46, 8, 0xFFFFFFFF);
 		toast.visible = false;
+		toast.alpha = 0;
 		hint = label("", 100, 8, 0xFFFFFFFF);
 		hint.visible = false;
+		hint.alpha = 0;
+		infoBorder = new FlxSprite(0, 0);
+		infoBorder.makeGraphic(1, 1, 0xFF777777);
+		infoBorder.visible = false;
+		add(infoBorder);
+		infoFill = new FlxSprite(0, 0);
+		infoFill.makeGraphic(1, 1, 0xF0080808);
+		infoFill.visible = false;
+		add(infoFill);
+		infoText = new FlxText(46, 0, 388, "", 8);
+		infoText.setFormat(null, 8, 0xFFFFFFFF, CENTER);
+		infoText.visible = false;
+		add(infoText);
+		for (s in [infoBorder, infoFill, infoText])
+			s.scrollFactor.set(0, 0);
 		overlay = label("", 96, 8, 0xFFFFFFFF);
 		overlay.visible = false;
+		#if cheats
+		var devTag = new FlxText(480 - 130, 260, 126, "DEV BUILD  F9: CHEATS", 8);
+		devTag.setFormat(null, 8, 0xFF777777, RIGHT);
+		devTag.scrollFactor.set(0, 0);
+		add(devTag);
+		#end
 		hudAdding = false;
 		refreshHud();
 	}
@@ -871,6 +897,42 @@ class PlayState extends FlxState
 
 	// --- Effektek ---
 
+	/** Összeállítja az alsó információs panelt: bemutató, üzenet, súgó, közeli tábla (ebben a sorrendben); üres szöveg esetén elrejti. */
+	function composeInfo(elapsed:Float):Void
+	{
+		if (bannerT > 0)
+			bannerT -= elapsed;
+		var lines:Array<String> = [];
+		if (bannerT > 0)
+			lines.push(bannerStr);
+		if (toast.visible && toast.text != "")
+			lines.push(toast.text);
+		if (hint.visible && hint.text != "")
+			lines.push(hint.text);
+		else if (ctrl != null && bannerT <= 0)
+			for (w in worldTexts)
+				if (Math.abs(ctrl.x - (w.x + 100)) < 150 && Math.abs(ctrl.y - w.y) < 90)
+				{
+					lines.push(w.s);
+					break;
+				}
+		var on = lines.length > 0 && !(mode == 1 || mode == 2) && !paused;
+		infoBorder.visible = infoFill.visible = infoText.visible = on;
+		if (!on)
+			return;
+		infoText.text = lines.join("\n");
+		var h = Math.max(14, infoText.height) + 8;
+		var w = 400;
+		var py = 250 - h;
+		infoBorder.setGraphicSize(w, Std.int(h));
+		infoBorder.updateHitbox();
+		infoBorder.setPosition(40, py);
+		infoFill.setGraphicSize(w - 2, Std.int(h) - 2);
+		infoFill.updateHitbox();
+		infoFill.setPosition(41, py + 1);
+		infoText.setPosition(46, py + 4);
+	}
+
 	function showToast(txt:String, secs:Float = 2.8):Void
 	{
 		toast.text = txt;
@@ -922,6 +984,7 @@ class PlayState extends FlxState
 
 	override public function update(elapsed:Float):Void
 	{
+		composeInfo(elapsed);
 		// látás: VISOR nélkül homályos kép (a shader uSight értéke); a LENS (II. szint) kicsit fényesít
 		Main.sightTarget = Parts.has(Parts.VISOR) ? (Parts.tier(Parts.VISOR) >= 2 ? 1.2 : 1.0) : 0.4;
 		// fáradtság: a lemerülő akku fokozatosan elsötétíti és elmossa a képet; leálláskor erősen
@@ -1022,6 +1085,7 @@ class PlayState extends FlxState
 		FlxG.collide(crates, grates);
 		FlxG.collide(crates, cracked);
 		collideFriends();
+		clampRobots();
 		FlxG.collide(grounded, solidMap);
 		FlxG.collide(grounded, platMap);
 		FlxG.collide(grounded, cracked);
@@ -1056,8 +1120,9 @@ class PlayState extends FlxState
 		var allFound = partsDone && (data.benches.length == 0 || benchBuilt);
 		var nearDoor = nearTo(ctrl, door, 14, 20);
 		hint.visible = nearDoor;
-		hint.text = allFound ? "UP / E: ENTER THE EXIT" : (partsDone ? "BUILD YOUR FRIEND AT THE WORKBENCH FIRST" : "NEED " + (data.parts.length - partsFound) + " MORE PART" + (data.parts.length - partsFound == 1 ? "" : "S"));
-		if (nearDoor && allFound && Input.interactPressed())
+		hint.text = allFound ? "WALK INTO THE EXIT" : (partsDone ? "BUILD YOUR FRIEND AT THE WORKBENCH FIRST" : "NEED " + (data.parts.length - partsFound) + " MORE PART" + (data.parts.length - partsFound == 1 ? "" : "S"));
+		// a kijáratnál nem kell felfelé nyomni: elég nekimenni (az irányított robot belép, ha minden megvan)
+		if (nearDoor && allFound && !(ctrl == player && heroExited))
 			robotEnters(ctrl);
 		if (allRobotsExited())
 			levelClear();
@@ -1310,6 +1375,38 @@ class PlayState extends FlxState
 		return c;
 	}
 
+	/** Bármelyik (életben lévő, kilépetlen) robot hozzáér-e a tárgyhoz: a kulcsot, az áramcellát és a többi küldetés-tárgyat a társak is felveszik. */
+	function anyRobotOverlaps(s:FlxSprite):Bool
+	{
+		for (r in robots())
+			if (r.overlaps(s))
+				return true;
+		return false;
+	}
+
+	/** A pálya szélein láthatatlan fal: a robotok nem eshetnek le a világ széléről. */
+	function clampRobots():Void
+	{
+		for (r in robots())
+		{
+			if (r.x < 0)
+			{
+				r.x = 0;
+				r.velocity.x = Math.max(0, r.velocity.x);
+			}
+			else if (r.x + r.width > worldW)
+			{
+				r.x = worldW - r.width;
+				r.velocity.x = Math.min(0, r.velocity.x);
+			}
+			if (r.y < -64)
+			{
+				r.y = -64;
+				r.velocity.y = Math.max(0, r.velocity.y);
+			}
+		}
+	}
+
 	function nearTo(a:FlxSprite, b:FlxSprite, dx:Float, dy:Float):Bool
 		return Math.abs((a.x + a.width / 2) - (b.x + b.width / 2)) < dx && Math.abs((a.y + a.height / 2) - (b.y + b.height / 2)) < dy;
 
@@ -1434,7 +1531,7 @@ class PlayState extends FlxState
 				}
 		// kulcsok és zárt kapuk
 		for (k in keysG)
-			if (k.alive && k.overlaps(player))
+			if (k.alive && anyRobotOverlaps(k))
 			{
 				k.kill();
 				keysHeld.set(k.idx, true);
@@ -1451,7 +1548,7 @@ class PlayState extends FlxState
 			}
 		// áramcella + aljzat + emelő
 		for (c in powerCells)
-			if (c.alive && c.overlaps(player))
+			if (c.alive && anyRobotOverlaps(c))
 			{
 				c.kill();
 				carryCell = c.idx;
@@ -2002,6 +2099,7 @@ class PlayState extends FlxState
 	/** A fáradtság-effekt kézi értéke (-1 = az akkuból számolt). */
 	var cheatTired:Float = -1;
 	var pendingMini:Int = -1;
+	var r2Prev:Bool = false;
 
 	function cheatUpdate():Void
 	{
@@ -2025,7 +2123,10 @@ class PlayState extends FlxState
 			openSubState(MiniGames.make(g, level + 1, (won:Bool) -> {}));
 		}
 		var pad = FlxG.gamepads.lastActive;
-		if (subState == null && mode == 0 && (FlxG.keys.justPressed.F9 || (pad != null && pad.justPressed.BACK)))
+		var r2 = pad != null && Input.r2Held();
+		var r2New = r2 && !r2Prev;
+		r2Prev = r2;
+		if (subState == null && mode == 0 && (FlxG.keys.justPressed.F9 || r2New))
 			openSubState(new CheatSubState(this));
 	}
 

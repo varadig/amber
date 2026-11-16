@@ -33,7 +33,7 @@ try {
     "god hearts full: " + (Js "window.__ps.player.hearts == window.__ps.player.maxHearts")
     Js "window.__ps.cheatMini(2)" | Out-Null
     Start-Sleep -Seconds 2
-    "mini open: " + (Js "window.__ps.subState != null && window.__ps.subState.titleS === 'POWER GRID'")
+    "mini open: " + (Js "window.__ps.subState != null && window.__ps.subState.titleS === 'MEMORY BANK'")
     Tap "Escape" "Escape" 27
     Start-Sleep -Seconds 1
     Js "window.__old=window.__ps; window.__ps.cheatGoto(2)" | Out-Null

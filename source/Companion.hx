@@ -284,6 +284,11 @@ class Companion extends FlxSprite
 			case 3:
 				face = idleDir;
 				velocity.x = idleDir * 28;
+				if (!level.isStandable(Std.int((x + width / 2 + idleDir * 10) / LevelData.T), Std.int((y + height + 2) / LevelData.T)))
+				{
+					velocity.x = 0;
+					idleLeft = 0;
+				}
 				if (hitWall)
 					idleLeft = 0;
 				return true;
@@ -373,19 +378,25 @@ class Companion extends FlxSprite
 		var footRow = Std.int((y + height + 2) / T);
 		var bodyRow = Std.int((y + height - 5) / T);
 		velocity.x = dir * spd;
+		var g = 900.0;
 		if (level.isSolid(colAhead, bodyRow))
 		{
-			// fal / lépcső: a tetejére ugrik, ha legfeljebb 3 csempe magas és fölötte szabad
+			// fal / lépcső: a tetejére ugrik, ha legfeljebb 3 csempe magas és fölötte szabad; csak akkorát, amekkora kell
 			var h = 1;
 			while (h <= 3 && level.isSolid(colAhead, bodyRow - h))
 				h++;
 			if (h <= 3 && !level.isSolid(colAhead, bodyRow - h - 1))
 			{
-				velocity.y = -jumpV;
-				velocity.x = dir * spd * 1.2;
+				var rise = (y + height) - (bodyRow - h + 1) * T + 5;
+				var v = Math.sqrt(2 * g * rise);
+				if (v <= jumpV)
+				{
+					velocity.y = -v;
+					velocity.x = dir * spd * 0.75;
+					return;
+				}
 			}
-			else
-				velocity.x = 0;
+			velocity.x = 0;
 			return;
 		}
 		if (!level.isStandable(colAhead, footRow))
@@ -399,23 +410,46 @@ class Companion extends FlxSprite
 				}
 			if (below && wantDown)
 				return; // lelép
-			var ok = false;
+			// a legközelebbi túlsó talaj: a szakadék szélessége és a magasságkülönbség szerint számolt ugrás (nem ugrik túl)
+			var landCol = -999;
+			var landRow = 0;
 			for (k in 1...maxGap + 2)
 			{
-				var c = colAhead + dir * k;
+				var cc = colAhead + dir * k;
 				for (r in -2...3)
-					if (level.isStandable(c, footRow + r) && !level.isSolid(c, footRow + r - 1) && !level.isSolid(c, footRow + r - 2))
-						ok = true;
-				if (ok)
+					if (level.isStandable(cc, footRow + r) && !level.isSolid(cc, footRow + r - 1) && !level.isSolid(cc, footRow + r - 2))
+					{
+						landCol = cc;
+						landRow = footRow + r;
+						break;
+					}
+				if (landCol != -999)
 					break;
 			}
-			if (ok)
+			if (landCol == -999)
 			{
-				velocity.y = -jumpV;
-				velocity.x = dir * spd * 1.5;
-			}
-			else
 				velocity.x = 0; // a peremen vár
+				return;
+			}
+			var dist = Math.abs(landCol * T + T / 2 - cx);
+			var dyl = landRow * T - (y + height);
+			var vmin = Math.max(150.0, Math.sqrt(2 * g * Math.max(0.0, -dyl + 6)));
+			var v = vmin;
+			var jumpOk = false;
+			while (v <= jumpV)
+			{
+				var tt = (v + Math.sqrt(v * v + 2 * g * dyl)) / g;
+				if (dist / tt <= spd * 1.35)
+				{
+					jumpOk = true;
+					velocity.y = -v;
+					velocity.x = dir * Math.max(40.0, dist / tt);
+					break;
+				}
+				v += 8;
+			}
+			if (!jumpOk)
+				velocity.x = 0;
 		}
 	}
 
