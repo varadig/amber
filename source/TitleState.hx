@@ -57,14 +57,14 @@ class TitleState extends FlxState
 		var title2 = new FlxText(0, 92, 480, "ASCENT", 32);
 		title2.setFormat(null, 32, 0xFFBBBBBB, CENTER);
 		add(title2);
-		var sub = new FlxText(0, 136, 480, "FIND YOUR PARTS. REBUILD THE ROBOT.", 8);
+		var sub = new FlxText(0, 136, 480, "REBUILD YOURSELF. THEN BUILD YOUR FRIENDS.", 8);
 		sub.setFormat(null, 8, 0xFF777777, CENTER);
 		add(sub);
 
 		prompt = new FlxText(0, 168, 480, "PRESS JUMP TO START", 8);
 		prompt.setFormat(null, 8, 0xFFFFFFFF, CENTER);
 		add(prompt);
-		var help = new FlxText(0, 254, 480, "ARROWS/WASD MOVE   Z/SPACE JUMP   X/SHIFT DASH   V/J FIRE   UP/E DOORS   P PAUSE   F FULLSCREEN", 8);
+		var help = new FlxText(0, 254, 480, "ARROWS/WASD MOVE   Z/SPACE JUMP   X/SHIFT DASH   V/J FIRE   UP/E USE   Q/TAB FRIENDS   P PAUSE   F FULLSCREEN", 8);
 		help.setFormat(null, 8, 0xFF777777, CENTER);
 		add(help);
 	}
@@ -86,6 +86,7 @@ class TitleState extends FlxState
 			PlayState.level = 0;
 			PlayState.totalScore = 0;
 			Parts.reset();
+			Companions.reset();
 			FlxG.camera.fade(0xFF000000, 0.3, false, () -> FlxG.switchState(() -> new PlayState()));
 		}
 	}

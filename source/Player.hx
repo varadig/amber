@@ -31,6 +31,10 @@ class Player extends FlxSprite
 	/** Lemerült akku: ennyi másodpercig nem irányítható a robot (újraindulás). */
 	public var powerDown:Float = 0;
 	public var stunned(get, never):Bool;
+	public var faceDir(get, never):Int;
+
+	function get_faceDir():Int
+		return face;
 
 	/** Események (a PlayState köti be). */
 	public var onJump:Void->Void;

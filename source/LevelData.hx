@@ -15,6 +15,8 @@ typedef EnemySpawn =
 
 typedef PartSpawn =
 {
+	/** Társ-alkatrész esetén a társ azonosítója (Companions.*), különben -1 / hiányzik. */
+	?friend:Int,
 	icon:Int,
 	label:String,
 	x:Float,
@@ -29,7 +31,56 @@ typedef MoverDef =
 	w:Int,
 	axis:String,
 	range:Float,
-	speed:Float
+	speed:Float,
+	/** Emelő: az áramcella behelyezése (azonos azonosítójú aljzat) indítja. */
+	?id:Int,
+	?active:Bool
+}
+
+typedef GateDef =
+{
+	x:Float,
+	y:Float,
+	id:Int,
+	lock:Bool
+}
+
+typedef PlateDef =
+{
+	x:Float,
+	y:Float,
+	id:Int,
+	hold:Bool
+}
+
+typedef IdPt =
+{
+	x:Float,
+	y:Float,
+	id:Int
+}
+
+typedef SwitchDef =
+{
+	x:Float,
+	y:Float,
+	id:Int,
+	idx:Int,
+	label:String
+}
+
+typedef BenchDef =
+{
+	x:Float,
+	y:Float,
+	comp:Int
+}
+
+typedef TextDef =
+{
+	x:Float,
+	y:Float,
+	text:String
 }
 
 /** Épület: a felszíni ajtó, a belső tér (a talajba vájt terem) és a belső kijárat (px / csempe). */
@@ -51,7 +102,9 @@ typedef RoomDef =
 	room:String,
 	icon:Int,
 	label:String,
-	?guard:Bool
+	?guard:Bool,
+	/** Társ-alkatrész (a társ azonosítója) / "bench": a megépített társ. */
+	?friend:Int
 }
 
 /**
@@ -63,6 +116,14 @@ typedef RoomDef =
  *  - vault: téglafalú kamra repedezett fallal (a blaszterrel kell kilőni)
  *  - sky: magasan lebegő platform, a szobában repülő-cella (korlátozott ideig repülni lehet)
  *  - gated: kapu zárja az utat, a kaput egy nyomólap nyitja egy magasabb platformon
+ *  - crate: tolható láda a nyomólap-résbe (a lap nyitja a kaput)
+ *  - lock: kulcs a fülkében, zárt kapu
+ *  - seq: három kapcsoló, a helyes sorrendet egy tábla mutatja
+ *  - cell: áramcella az aljzatba, az emelő felviszi a magas polcra
+ *  - tunnel: rács mögötti kamra (csak a WHEELIE fér be), benne a nyomólap
+ *  - ledge: magas párkány (a TALL fején át érhető el)
+ *  - orb: magas kar (az ORB billenti át)
+ *  - bench: szerelőasztal: itt építhető össze a társ a megtalált alkatrészeiből
  *  - building: épület: az ajtón (fel / E) belépve a talajba vájt belső terem, benne polcokkal, őrökkel; a kijárat a belső ajtó
  * A talajszint változik (dombok, völgyek), így a pálya felfelé és lefelé is halad.
  * Szegmensek: sík, lépcső, szakadék, szigetek, tüskék, aréna, kút, leszakadó híd (1. pálya után), mozgó platform (2. pálya után).
@@ -80,6 +141,49 @@ class LevelData
 
 	/** Pályánként a küldetés-szobák sorrendben (az ajtóhoz mindegyik alkatrész kell). */
 	public static final RECIPES:Array<Array<RoomDef>> = [
+		// 1. pálya: a saját alkatrészek (a robot csupaszon indul)
+		[
+			{room: "start", icon: Parts.LEGS, label: "LEGS"},
+			{room: "crate", icon: Parts.CORE, label: "CORE"},
+			{room: "tower", icon: Parts.VISOR, label: "VISOR"}
+		],
+		// 2. pálya: még saját alkatrészek, kulcs- és sorrend-rejtvény
+		[
+			{room: "lock", icon: Parts.THRUSTER, label: "THRUSTER"},
+			{room: "seq", icon: Parts.CLAWS, label: "CLAWS"},
+			{room: "well", icon: Parts.CHIP, label: "PROCESSOR"}
+		],
+		// 3. pálya: a maradék saját alkatrész + az első társ (WHEELIE) alkatrészei
+		[
+			{room: "open", icon: Parts.BLASTER, label: "BLASTER", guard: true},
+			{room: "vault", icon: Parts.FRAME, label: "SMALL FRAME", friend: 0},
+			{room: "gated", icon: Parts.MOTOR, label: "WHEEL MOTOR", friend: 0},
+			{room: "building", icon: Parts.HEAD, label: "TINY HEAD", guard: true, friend: 0},
+			{room: "bench", icon: Parts.HEAD, label: "WORKBENCH", friend: 0},
+			{room: "tunnel", icon: Parts.GEAR, label: "SERVOS"},
+			{room: "cell", icon: Parts.ANTENNA, label: "ANTENNA"}
+		],
+		// 4. pálya: fejlesztések + a második társ (TALL)
+		[
+			{room: "tower", icon: Parts.FRAME, label: "LONG LEGS", friend: 1},
+			{room: "sky", icon: Parts.MOTOR, label: "TALL FRAME", friend: 1},
+			{room: "crate", icon: Parts.HEAD, label: "HEAD LAMP", friend: 1},
+			{room: "bench", icon: Parts.HEAD, label: "WORKBENCH", friend: 1},
+			{room: "ledge", icon: Parts.LEGS, label: "SPRINGS"},
+			{room: "tunnel", icon: Parts.CORE, label: "REACTOR"}
+		],
+		// 5. pálya: a harmadik társ (ORB) és a végső fejlesztések
+		[
+			{room: "lock", icon: Parts.FRAME, label: "GLASS BULB", friend: 2},
+			{room: "seq", icon: Parts.MOTOR, label: "ROTOR", friend: 2},
+			{room: "building", icon: Parts.HEAD, label: "SPARK CORE", guard: true, friend: 2},
+			{room: "bench", icon: Parts.HEAD, label: "WORKBENCH", friend: 2},
+			{room: "orb", icon: Parts.ANTENNA, label: "RADIO"},
+			{room: "ledge", icon: Parts.GEAR, label: "ACTUATOR"}
+		]
+	];
+
+	public static final RECIPES_OLD:Array<Array<RoomDef>> = [
 		[
 			{room: "start", icon: Parts.LEGS, label: "LEGS"},
 			{room: "building", icon: Parts.CORE, label: "CORE", guard: true},
@@ -127,8 +231,19 @@ class LevelData
 	public var parts:Array<PartSpawn> = [];
 	public var cells:Array<Pt> = [];
 	public var crackeds:Array<Pt> = [];
-	public var gates:Array<Pt> = [];
-	public var plates:Array<Pt> = [];
+	public var gates:Array<GateDef> = [];
+	public var plates:Array<PlateDef> = [];
+	public var levers:Array<IdPt> = [];
+	public var switches:Array<SwitchDef> = [];
+	/** Sorrend-rejtvények: azonosító -> a kapcsolók helyes sorrendje (idx-ek). */
+	public var seqs:Map<Int, Array<Int>> = new Map();
+	public var keys:Array<IdPt> = [];
+	public var sockets:Array<IdPt> = [];
+	public var powerCells:Array<IdPt> = [];
+	public var crates:Array<Pt> = [];
+	public var grates:Array<Pt> = [];
+	public var benches:Array<BenchDef> = [];
+	public var texts:Array<TextDef> = [];
 	/** Leszakadó platform-darabok (px; 3 csempe szélesek). */
 	public var crumbles:Array<Pt> = [];
 	public var movers:Array<MoverDef> = [];
@@ -147,6 +262,7 @@ class LevelData
 	var platList:Array<{x:Int, y:Int, w:Int}> = [];
 	var bricks:Array<{x:Int, y:Int}> = [];
 	var lastCp:Int = -100;
+	var nextId:Int = 1;
 
 	function new(level:Int)
 	{
@@ -226,11 +342,11 @@ class LevelData
 		if (rooms[0].room == "start")
 		{
 			var r = rooms.shift();
-			parts.push({icon: r.icon, label: r.label, x: 6 * T + 3, y: cur * T - 14});
+			parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: 6 * T + 3, y: cur * T - 14});
 			gem(4, cur - 2);
 		}
 		var si = 0;
-		var fillers = 2 + (L >= 2 ? 1 : 0);
+		var fillers = rooms.length >= 6 ? 1 : 2 + (L >= 2 ? 1 : 0);
 		for (r in rooms)
 		{
 			for (k in 0...fillers)
@@ -268,6 +384,22 @@ class LevelData
 				roomGated(r);
 			case "building":
 				roomBuilding(r);
+			case "crate":
+				roomCrate(r);
+			case "lock":
+				roomLock(r);
+			case "seq":
+				roomSeq(r);
+			case "cell":
+				roomCell(r);
+			case "tunnel":
+				roomTunnel(r);
+			case "ledge":
+				roomLedge(r);
+			case "orb":
+				roomOrb(r);
+			case "bench":
+				roomBench(r);
 			default:
 				roomOpen(r);
 		}
@@ -511,7 +643,7 @@ class LevelData
 		buildings.push({sx: (c0 + 12) * T, sy: cur * T - 24, ix: (x0 + 1) * T, iy: yBot * T - 24, x0: x0, y0: y0, w: wI, h: 10});
 		platList.push({x: x0 + 5, y: yBot - 3, w: 4});
 		platList.push({x: x0 + 11, y: yBot - 6, w: 4});
-		parts.push({icon: r.icon, label: r.label, x: (x0 + 12) * T + 3, y: (yBot - 6) * T - 14});
+		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (x0 + 12) * T + 3, y: (yBot - 6) * T - 14});
 		gem(x0 + 6, yBot - 5);
 		gem(x0 + 7, yBot - 5);
 		gem(x0 + 12, yBot - 8);
@@ -533,12 +665,152 @@ class LevelData
 		batteries.push({x: (x0 + 13) * T + 4, y: (yBot - 6) * T - 14});
 	}
 
+	/** Kapu-oszlop (6 csempe magas) azonosítóval. */
+	function gateColumn(col:Int, id:Int, lock:Bool):Void
+	{
+		for (k in 1...7)
+			gates.push({x: col * T, y: (cur - k) * T, id: id, lock: lock});
+	}
+
+	/** Láda-rejtvény: a nyomólap egy 1 csempe széles, 2 mély résben van; a ládát bele kell tolni, így a lap lenyomva marad és a kapu nyitva. */
+	function roomCrate(r:RoomDef):Void
+	{
+		var c0 = top.length;
+		flat(6, cur);
+		checkpointAt(c0);
+		var id = nextId++;
+		top.push(cur + 2);
+		flat(12, cur);
+		plates.push({x: (c0 + 6) * T, y: (cur + 2) * T - 6, id: id, hold: true});
+		crates.push({x: (c0 + 2) * T, y: cur * T - 16});
+		gateColumn(c0 + 13, id, false);
+		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 16) * T + 3, y: cur * T - 14});
+		texts.push({x: (c0 + 1) * T, y: (cur - 4) * T, text: "PUSH THE CRATE INTO THE SLOT"});
+		gem(c0 + 9, cur - 2);
+	}
+
+	/** Zárt kapu: a kulcs egy fülkében (két egymás fölötti kis platform) van. */
+	function roomLock(r:RoomDef):Void
+	{
+		var c0 = top.length;
+		flat(18, cur);
+		checkpointAt(c0);
+		var id = nextId++;
+		platList.push({x: c0 + 2, y: cur - 2, w: 2});
+		platList.push({x: c0 + 5, y: cur - 4, w: 2});
+		keys.push({x: (c0 + 5) * T + 3, y: (cur - 4) * T - 12, id: id});
+		gateColumn(c0 + 11, id, true);
+		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 14) * T + 3, y: cur * T - 14});
+		gem(c0 + 3, cur - 4);
+	}
+
+	/** Sorrend-kapcsolók: három kapcsoló (A, B, C), a helyes sorrendet egy tábla mutatja; rossz sorrendnél visszaáll. */
+	function roomSeq(r:RoomDef):Void
+	{
+		var c0 = top.length;
+		flat(20, cur);
+		checkpointAt(c0);
+		var id = nextId++;
+		var order = [0, 1, 2];
+		for (i in 0...2)
+		{
+			var j = ri(i, 2);
+			var tmp = order[i];
+			order[i] = order[j];
+			order[j] = tmp;
+		}
+		if (order[0] == 0 && order[1] == 1)
+			order = [2, 0, 1];
+		var labels = ["A", "B", "C"];
+		for (i in 0...3)
+			switches.push({x: (c0 + 3 + i * 3) * T + 2, y: cur * T - 14, id: id, idx: i, label: labels[i]});
+		seqs.set(id, order);
+		texts.push({x: (c0 + 2) * T, y: (cur - 5) * T, text: "ORDER: " + [for (o in order) labels[o]].join(" > ")});
+		gateColumn(c0 + 14, id, false);
+		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 17) * T + 3, y: cur * T - 14});
+	}
+
+	/** Áramcella + emelő: a cella egy fülkében van, az aljzatba téve az emelő felviszi a hőst a magas polcra az alkatrészhez. */
+	function roomCell(r:RoomDef):Void
+	{
+		moveTo(Std.int(Math.max(15, Math.min(22, cur))));
+		var c0 = top.length;
+		flat(24, cur);
+		checkpointAt(c0);
+		var id = nextId++;
+		platList.push({x: c0 + 2, y: cur - 2, w: 2});
+		platList.push({x: c0 + 5, y: cur - 4, w: 2});
+		powerCells.push({x: (c0 + 5) * T + 4, y: (cur - 4) * T - 14, id: id});
+		sockets.push({x: (c0 + 10) * T + 2, y: cur * T - 12, id: id});
+		movers.push({x: (c0 + 13) * T, y: cur * T, w: 3, axis: "y", range: 10 * T, speed: 46, id: id, active: false});
+		platList.push({x: c0 + 17, y: cur - 10, w: 4});
+		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 18) * T + 3, y: (cur - 10) * T - 14});
+		texts.push({x: (c0 + 8) * T, y: (cur - 4) * T, text: "SOCKET NEEDS A POWER CELL"});
+		gem(c0 + 11, cur - 3);
+	}
+
+	/** Rács mögötti kamra: a hős nem fér be, az apró WHEELIE igen; a benne lévő nyomólap nyitja a kaput. */
+	function roomTunnel(r:RoomDef):Void
+	{
+		var c0 = top.length;
+		flat(19, cur);
+		checkpointAt(c0);
+		var id = nextId++;
+		for (x in c0 + 5...c0 + 12)
+			bricks.push({x: x, y: cur - 3});
+		bricks.push({x: c0 + 11, y: cur - 2});
+		bricks.push({x: c0 + 11, y: cur - 1});
+		grates.push({x: (c0 + 5) * T, y: (cur - 2) * T});
+		grates.push({x: (c0 + 5) * T, y: (cur - 1) * T});
+		plates.push({x: (c0 + 10) * T, y: cur * T - 6, id: id, hold: false});
+		gateColumn(c0 + 14, id, false);
+		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 17) * T + 3, y: cur * T - 14});
+		texts.push({x: (c0 + 4) * T, y: (cur - 5) * T, text: "TOO NARROW FOR YOU"});
+	}
+
+	/** Magas párkány (6 csempe): a TALL fejéről érhető el. */
+	function roomLedge(r:RoomDef):Void
+	{
+		moveTo(Std.int(Math.max(15, Math.min(24, cur))));
+		var c0 = top.length;
+		flat(16, cur);
+		checkpointAt(c0);
+		platList.push({x: c0 + 9, y: cur - 6, w: 4});
+		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 10) * T + 3, y: (cur - 6) * T - 14});
+		texts.push({x: (c0 + 3) * T, y: (cur - 7) * T, text: "TOO HIGH. NEED A BOOST"});
+		gem(c0 + 5, cur - 3);
+	}
+
+	/** Magas kar: az ORB felrepül és átbillenti; a kar nyitja a kaput. */
+	function roomOrb(r:RoomDef):Void
+	{
+		var c0 = top.length;
+		flat(20, cur);
+		checkpointAt(c0);
+		var id = nextId++;
+		levers.push({x: (c0 + 8) * T, y: (cur - 10) * T + 6, id: id});
+		gateColumn(c0 + 13, id, false);
+		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 16) * T + 3, y: cur * T - 14});
+		texts.push({x: (c0 + 5) * T, y: (cur - 6) * T, text: "LEVER OUT OF REACH"});
+	}
+
+	/** Szerelőasztal: itt építhető meg a társ (ha megvan mindhárom alkatrésze). */
+	function roomBench(r:RoomDef):Void
+	{
+		var c0 = top.length;
+		flat(12, cur);
+		checkpointAt(c0);
+		benches.push({x: (c0 + 5) * T, y: cur * T - 16, comp: r.friend != null ? r.friend : 0});
+		gem(c0 + 3, cur - 2);
+		gem(c0 + 9, cur - 2);
+	}
+
 	function roomOpen(r:RoomDef):Void
 	{
 		var c0 = top.length;
 		flat(10, cur);
 		checkpointAt(c0);
-		parts.push({icon: r.icon, label: r.label, x: (c0 + 6) * T + 3, y: cur * T - 14});
+		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 6) * T + 3, y: cur * T - 14});
 		if (r.guard == true)
 		{
 			enemies.push({kind: WALKER, x: (c0 + 4) * T, y: cur * T - 10});
@@ -567,7 +839,7 @@ class LevelData
 				gem(px + 2, row - 2);
 			}
 			else
-				parts.push({icon: r.icon, label: r.label, x: (px + 1) * T + 3, y: row * T - 14});
+				parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (px + 1) * T + 3, y: row * T - 14});
 		}
 		gem(c0 + 5, cur - 2);
 	}
@@ -579,7 +851,7 @@ class LevelData
 		var c0 = top.length;
 		for (i in 0...3)
 			top.push(cur + 6);
-		parts.push({icon: r.icon, label: r.label, x: (c0 + 1) * T + 3, y: (cur + 6) * T - 14});
+		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 1) * T + 3, y: (cur + 6) * T - 14});
 		gem(c0 + 1, cur + 2);
 		gem(c0 + 1, cur + 4);
 		flat(4, cur);
@@ -597,7 +869,7 @@ class LevelData
 		bricks.push({x: c0 + 11, y: cur - 1});
 		crackeds.push({x: (c0 + 5) * T, y: (cur - 2) * T});
 		crackeds.push({x: (c0 + 5) * T, y: (cur - 1) * T});
-		parts.push({icon: r.icon, label: r.label, x: (c0 + 8) * T + 3, y: cur * T - 14});
+		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 8) * T + 3, y: cur * T - 14});
 		gem(c0 + 7, cur - 5);
 		gem(c0 + 9, cur - 5);
 	}
@@ -611,7 +883,7 @@ class LevelData
 		cells.push({x: (c0 + 3) * T + 3, y: cur * T - 14});
 		var row = cur - 12;
 		platList.push({x: c0 + 9, y: row, w: 3});
-		parts.push({icon: r.icon, label: r.label, x: (c0 + 10) * T + 3, y: row * T - 14});
+		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 10) * T + 3, y: row * T - 14});
 		for (i in 0...4)
 			gem(c0 + 4 + i * 0.5, cur - 3 - i * 2.5);
 	}
@@ -624,10 +896,11 @@ class LevelData
 		// nyomólap egy magasabb platformon, a kapu az út közepén (6 csempe magas: átugorhatatlan)
 		platList.push({x: c0 + 2, y: cur - 3, w: 4});
 		platList.push({x: c0 + 1, y: cur - 1, w: 2});
-		plates.push({x: (c0 + 4) * T, y: (cur - 3) * T - 6});
+		var gid = nextId++;
+		plates.push({x: (c0 + 4) * T, y: (cur - 3) * T - 6, id: gid, hold: false});
 		for (k in 1...7)
-			gates.push({x: (c0 + 9) * T, y: (cur - k) * T});
-		parts.push({icon: r.icon, label: r.label, x: (c0 + 13) * T + 3, y: cur * T - 14});
+			gates.push({x: (c0 + 9) * T, y: (cur - k) * T, id: gid, lock: false});
+		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 13) * T + 3, y: cur * T - 14});
 		gem(c0 + 11, cur - 2);
 	}
 

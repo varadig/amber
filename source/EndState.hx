@@ -39,6 +39,7 @@ class EndState extends FlxState
 			PlayState.level = 0;
 			PlayState.totalScore = 0;
 			Parts.reset();
+			Companions.reset();
 			FlxG.switchState(() -> new TitleState());
 		}
 	}

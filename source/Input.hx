@@ -57,6 +57,20 @@ class Input
 		return FlxG.keys.anyJustPressed([UP, W, E, ENTER]) || (p != null && p.justPressed.DPAD_UP);
 	}
 
+	/** Társ-parancs: Q (kontroller: L1): küldés / megállítás / visszahívás. */
+	public static function commandPressed():Bool
+	{
+		var p = pad();
+		return FlxG.keys.anyJustPressed([Q]) || (p != null && p.justPressed.LEFT_SHOULDER);
+	}
+
+	/** Társ-váltás: Tab (kontroller: R1). */
+	public static function cyclePressed():Bool
+	{
+		var p = pad();
+		return FlxG.keys.anyJustPressed([TAB]) || (p != null && p.justPressed.RIGHT_SHOULDER);
+	}
+
 	public static function pausePressed():Bool
 	{
 		var p = pad();

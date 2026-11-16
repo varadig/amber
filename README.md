@@ -38,9 +38,27 @@ C64-hangulatú, borostyán-fekete monitoros platformer (HaxeFlixel 6.2.1, HTML5)
 - Ellenségre ugrás, dash és lövés is kiüti őket; a tüskés csúszómászóra nem lehet ráugrani. Gyémántok: opcionális pontok (mind: +500).
 - Különleges platformok: **leszakadó híd** (2. pályától: a ráállás után lehullik, később visszatér) és **mozgó platform** (3. pályától).
 
+## A történet és a küldetés
+A robot egy elhagyott gépváros roncstelepén ébred, csupaszon. **Először saját magát kell összerakni** (1–2. pálya: LEGS, CORE, VISOR, THRUSTER, CLAWS, PROCESSOR), aztán **barátokat épít** az elveszett alkatrészekből: minden társhoz 3 alkatrészt (keret, motor, fej) kell megtalálni, és a pálya közepén lévő **szerelőasztalnál** (Fel / E) összeépíteni. A társ ettől kezdve csatlakozik, és másképp segít (az ajtó csak a társ megépítése után nyílik):
+
+| Társ | Forma | Segítség |
+|---|---|---|
+| **WHEELIE** (3. pálya) | apró, egykerekű | átfér a rácson (a robot nem), és a rács mögötti nyomólapra küldhető |
+| **TALL** (4. pálya) | magas, hosszú lábú | ha a helyén vár, a feje platform: a magas párkányok elérhetők (rá kell ugrani) |
+| **ORB** (5. pálya) | lebegő drón | felrepül, és átbillenti a magasan lévő karokat |
+
+Társ-parancsok: **Q** (kontroller: L1): a követő társ irány nélkül megáll (vár), irányt (bal / jobb) tartva abba az irányba megy (az ORB alapból felfelé); vár / úton lévő társnál visszahív. **Tab** (R1): másik társ kiválasztása.
+
+## Rejtvények
+- **Láda + nyomólap:** a tolható ládát a nyomólapos résbe kell tolni, így a lap lenyomva marad és a kapu nyitva. (Ládák checkpointnál visszaállnak.)
+- **Kulcs + zárt kapu:** a kulcs egy fülkében van.
+- **Sorrend-kapcsolók:** három kapcsoló (A, B, C), a helyes sorrendet egy tábla mutatja; rossz sorrendnél visszaáll (Fel / E a kapcsolónál).
+- **Áramcella + aljzat + emelő:** a cellát az aljzatba kell vinni (Fel / E), az emelő felviszi a magas polcra.
+- **Rács mögötti kamra** (WHEELIE), **magas párkány** (TALL), **magas kar** (ORB), **repedezett fal** (blaszter), **kapu + nyomólap**, **épületek** belső termekkel, leszakadó és mozgó platformok.
+
 ## Megjelenés és hang
 - A pixel art C64 szürke-lépcsőkben készül kódból (`Art.hx`), a borostyán színt a `AmberShader.hx` adja (kamera-szűrő: fényesség → borostyán, ragyogás, pásztázó-vonalak, hordó-torzítás, vibrálás).
-- `Audio.hx` / `Music.hx`: 8 bites, 22 kHz-es, A500-szerű szűrt hullámformák; a zene 4 csatornás tracker-minta (arpeggio-akkord 50 Hz-es tickekkel, Amiga-sztereó).
+- `Audio.hx` / `Music.hx`: 8 bites, 22 kHz-es szűrt hullámformák. A háttérzene ambient, a Machinarium hangulatát idézi: lassú tempó (76 BPM), lebegő meleg pad, zenedoboz-arpeggio, pengetett basszus, klarinétszerű dallam és halk óraműszerű kattogás, enyhe visszhanggal (d-moll, F-dúr híd; ~100 mp, hurkolva).
 
 ## Fejlesztés
 - Fordítás: `powershell -ExecutionPolicy Bypass -File scripts/build.ps1` (`-Test`: egyből a játék indul, `window.__ps`; `?level=N` a pályát választja).

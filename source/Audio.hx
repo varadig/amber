@@ -74,7 +74,7 @@ class Audio
 		add("plate", [{dur: 0.25, wave: SQUARE, duty: 0.5, f0: 220, f1: 440, decay: 1, vol: 0.3, crush: 2}, {dur: 0.3, wave: NOISE, f0: 800, f1: 200, attack: 0.05, decay: 1, vol: 0.3}]);
 		add("crumble", [{dur: 0.35, wave: NOISE, f0: 1200, f1: 300, decay: 0.8, vol: 0.3, crush: 4}]);
 		add("fall", [{dur: 0.5, wave: SAW, f0: 600, f1: 60, decay: 0.8, vol: 0.4, crush: 2}]);
-		musicSound = toSound(Music.render(), 2, 0.55);
+		musicSound = toSound(Music.render(), 2, 0.8);
 	}
 
 	static function add(name:String, layers:Array<Tone>):Void

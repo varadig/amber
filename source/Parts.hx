@@ -26,6 +26,10 @@ class Parts
 	public static inline var GEAR = 7;
 	public static inline var ANTENNA = 8;
 	public static inline var JET = 9;
+	/** Társ-alkatrészek ikonjai (nem képességek): keret, motor, fej. */
+	public static inline var FRAME = 10;
+	public static inline var MOTOR = 11;
+	public static inline var HEAD = 12;
 	public static inline var COUNT = 10;
 
 	public static final NAMES = ["LEGS", "CORE", "VISOR", "THRUSTER", "CLAWS", "BLASTER", "PROCESSOR", "SERVOS", "ANTENNA", "JET CELL"];

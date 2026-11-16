@@ -18,30 +18,46 @@ Start-Sleep -Seconds 2
 $fail = 0
 try {
     $base = "http://127.0.0.1:$port/"
-    Write-Host "`n[1/4] Képernyőkép + állapot" -ForegroundColor Cyan
+    Write-Host "`n[1/6] Képernyőkép + állapot" -ForegroundColor Cyan
     $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\tests\shot.ps1" -Url ($base + "?level=0") -Out $out
     $r | ForEach-Object { Write-Host $_ }
     if (($r -join "`n") -notmatch "state: \{") { $fail++ }
     if (($r -join "`n") -notmatch "errors:\s*$") { $fail++ }
 
-    Write-Host "`n[2/4] Mind az 5 pálya" -ForegroundColor Cyan
+    Write-Host "`n[2/6] Mind az 5 pálya" -ForegroundColor Cyan
     $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\tests\levels.ps1" -Base $base -Out $out
     $r | ForEach-Object { Write-Host $_ }
     if (@($r | Where-Object { $_ -match "^level \d: \{" }).Count -ne 5) { $fail++ }
     if (($r -join "`n") -notmatch "errors:\s*$") { $fail++ }
 
-    Write-Host "`n[3/4] Ugrás-méretek (LEGS-szel)" -ForegroundColor Cyan
+    Write-Host "`n[3/6] Ugrás-méretek (LEGS-szel)" -ForegroundColor Cyan
     $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\tests\jump.ps1" -Url ($base + "?level=0") -Out $out
     $r | ForEach-Object { Write-Host $_ }
     if (($r -join "`n") -notmatch "tiles: (3\.[5-9]|4\.[0-2])") { Write-Host "Az ugrás-magasság eltér a tervezettől (3,5-4,2 csempe)." -ForegroundColor Yellow; $fail++ }
 
-    Write-Host "`n[4/4] Képességek, alkatrészek, ajtó-belépés" -ForegroundColor Cyan
+    Write-Host "`n[4/6] Képességek, alkatrészek, ajtó-belépés" -ForegroundColor Cyan
     $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\tests\features.ps1" -Base $base -Out $out
     $r | ForEach-Object { Write-Host $_ }
     $txt = ($r -join "`n")
     if ($txt -notmatch "legs owned: True") { Write-Host "A LEGS felvétele nem adta vissza a képességet." -ForegroundColor Yellow; $fail++ }
     if ($txt -notmatch "door t3: .*mode.:1") { Write-Host "Az ajtó-belépés nem ért el a pálya-vége állapotig." -ForegroundColor Yellow; $fail++ }
     if ($txt -notmatch "errors:\s*$") { $fail++ }
+
+    Write-Host "`n[5/6] Rejtvény-logika (láda, kulcs, sorrend, áramcella, szerelőasztal, WHEELIE)" -ForegroundColor Cyan
+    $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\tests\puzzles.ps1" -Base $base -Out $out
+    $r | ForEach-Object { Write-Host $_ }
+    $txt = ($r -join "`n")
+    foreach ($need in @("crate/plate: pressed=True gateOpen=True", "lock gate open: True", "seq gate open: True", "benchBuilt=True", "lift powered: True")) {
+        if ($txt -notmatch [regex]::Escape($need)) { Write-Host "Hiányzik: $need" -ForegroundColor Yellow; $fail++ }
+    }
+    if ($txt -notmatch "plate.:[1-9]") { Write-Host "A WHEELIE nem jutott a rács mögötti nyomólapra." -ForegroundColor Yellow; $fail++ }
+
+    Write-Host "`n[6/6] Társak (TALL feje platform, ORB a karnál)" -ForegroundColor Cyan
+    $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\tests\companions.ps1" -Base $base -Out $out
+    $r | ForEach-Object { Write-Host $_ }
+    $txt = ($r -join "`n")
+    if ($txt -notmatch "onFloor=True") { $fail++ }
+    if ($txt -notmatch "lever flipped: True") { Write-Host "Az ORB nem billentette át a kart." -ForegroundColor Yellow; $fail++ }
 }
 finally {
     Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue

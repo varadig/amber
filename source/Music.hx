@@ -1,94 +1,69 @@
 package;
 
-/** Egy 4 ütemes minta: ütemenkénti akkord, dallam (ütemenként 16 token; null = nincs dallam), dob-változat. */
-typedef Pattern =
+/** Egy szakasz: ütemenként akkord, dallam (ütemenként 8 nyolcad-hely; null = nincs), és a használt rétegek: p pad, b zenedoboz-arpeggio, s basszus, m dallam (klarinét), t óra-kattogás. */
+typedef Section =
 {
 	chords:Array<String>,
-	lead:Array<String>,
-	drums:String,
-	?hats16:Bool
+	melody:Array<String>,
+	layers:String
 }
 
 /**
- * Tracker-stílusú háttérzene (mint egy 4 csatornás Amiga / C64-korszakbeli MOD), kódból renderelve.
- * Csatornák az Amiga-féle sztereó elosztással: 1 dallam és 4 dob balra, 2 basszus és 3 arpeggio jobbra.
- * A dal: d-moll, 112 BPM, 16 sor / ütem, 4 ütem / minta.
+ * Ambient, "elhagyott gépváros"-hangulatú háttérzene (a Machinarium világát idézve): lassú tempó, meleg lebegő pad, zenedoboz-arpeggio,
+ * pengetett basszus, klarinétszerű dallam és halk óraműszerű kattogás. Kódból renderelve, sztereó, nincs hangfájl.
  */
 class Music
 {
-	static inline var BPM:Float = 112;
-	static inline var ROWS_PER_BAR:Int = 16;
-	/** Egy tracker-"tick" (50 Hz, PAL): az arpeggio ilyen ütemben vált hangot. */
-	static inline var TICK:Float = 1 / 50;
+	static inline var BPM:Float = 76;
+	static inline var SLOTS:Int = 8;
 
-	static final PATTERNS:Array<Pattern> = [
-		// 0: intro: nincs dallam, a dob fokozatosan indul
-		{chords: ["Dm", "Bb", "F", "C"], lead: null, drums: "intro"},
-		// 1: A téma
-		{
-			chords: ["Dm", "Bb", "F", "C"],
-			lead: [
-				"D5 . . . F5 . A5 . G5 . . . F5 . E5 .",
-				"D5 . . . F5 . Bb5 . A5 . . . F5 . D5 .",
-				"C5 . . . F5 . A5 . C6 . . . A5 . F5 .",
-				"E5 . . . G5 . E5 . C5 . D5 . E5 . G5 .",
-			],
-			drums: "main"
-		},
-		// 2: B téma: magasabban, pörgősebb hi-hat
-		{
-			chords: ["Gm", "Dm", "Bb", "A"],
-			lead: [
-				"G5 . . D5 . . G5 . Bb5 . A5 . G5 . D5 .",
-				"A5 . . F5 . . A5 . D6 . C6 . A5 . F5 .",
-				"D6 . . Bb5 . . D6 . F6 . D6 . Bb5 . F5 .",
-				"E5 . G5 . A5 . C#6 . E6 . . . C#6 . A5 .",
-			],
-			drums: "main",
-			hats16: true
-		},
-		// 3: híd: feszültség a visszatérés előtt
-		{
-			chords: ["Bb", "C", "A", "A"],
-			lead: [
-				"F5 . . . D5 . F5 . Bb5 . . . A5 . F5 .",
-				"G5 . . . E5 . G5 . C6 . . . Bb5 . G5 .",
-				"A5 . . . E5 . A5 . C#6 . . . E6 . C#6 .",
-				"A5 . G5 . F5 . E5 . D5 . E5 . F5 . A5 .",
-			],
-			drums: "main"
-		},
+	static final A_CHORDS = ["Dm", "Bb", "Gm", "A"];
+	static final B_CHORDS = ["F", "C", "Gm", "A", "F", "C", "Gm", "A"];
+	static final B_MELODY = [
+		"A4 . C5 . F5 . E5 D5",
+		"E5 . D5 C5 . G4 . .",
+		"Bb4 . D5 . G5 . F5 D5",
+		"E5 . A4 . C#5 . E5 .",
+		"A4 . C5 . F5 . G5 A5",
+		"G5 . E5 . C5 . . .",
+		"D5 . Bb4 . G4 . A4 Bb4",
+		"A4 . . . . . . ."
+	];
+	static final B_MELODY2 = [
+		"C5 . A4 . F4 . A4 C5",
+		"G4 . E4 . C5 . . .",
+		"D5 . Bb4 . D5 . G4 .",
+		"A4 . C#5 . E5 . D5 C#5",
+		"F5 . A5 . F5 . C5 .",
+		"E5 . G5 . E5 D5 C5 .",
+		"Bb4 . D5 . F5 . D5 Bb4",
+		"A4 . . . E4 . . ."
 	];
 
-	static final ORDER = [0, 1, 2, 1, 3, 2];
-
-	static final KICK = "x.......x.x.....";
-	static final SNARE = "....x.......x...";
-	static final SNARE_FILL = "....x.......x.xx";
-	static final HAT = "..x...x...x...x.";
-	static final HAT_16 = "x.x.x.x.x.x.x.x.";
+	static final SECTIONS:Array<Section> = [
+		{chords: A_CHORDS, melody: null, layers: "pb"},
+		{chords: A_CHORDS, melody: null, layers: "pbst"},
+		{chords: B_CHORDS, melody: B_MELODY, layers: "pbstm"},
+		{chords: B_CHORDS, melody: B_MELODY2, layers: "pbstm"},
+		{chords: A_CHORDS.concat(A_CHORDS), melody: null, layers: "pb"}
+	];
 
 	/** A teljes dal renderelése interleaved sztereó mintákba. */
 	public static function render():Array<Float>
 	{
 		var rate = Audio.RATE;
-		var rowLen = 60 / BPM / 4 * rate;
-		var totalRows = ORDER.length * 4 * ROWS_PER_BAR;
-		var n = Std.int(Math.ceil(totalRows * rowLen));
+		var eighth = 60 / BPM / 2 * rate;
+		var bars = 0;
+		for (s in SECTIONS)
+			bars += s.chords.length;
+		var n = Std.int(Math.ceil(bars * SLOTS * eighth)) + rate * 2;
 		var left = [for (i in 0...n) 0.0];
 		var right = [for (i in 0...n) 0.0];
 
-		// Dobminták (egyszer kiszámolva, mint a MOD sample-ök)
-		var kick = Audio.tone({dur: 0.2, wave: Audio.SINE, f0: 170, f1: 42, decay: 1.5, vol: 1});
-		Audio.mixInto(kick, Audio.tone({dur: 0.012, wave: Audio.NOISE, f0: 8000, decay: 1, vol: 0.5}), 0, 1);
-		var snare = Audio.tone({dur: 0.17, wave: Audio.NOISE, f0: 6000, f1: 1800, decay: 1.6, vol: 0.8});
-		Audio.mixInto(snare, Audio.tone({dur: 0.08, wave: Audio.TRI, f0: 230, f1: 150, decay: 1.2, vol: 0.6}), 0, 1);
-		var hat = Audio.tone({dur: 0.04, wave: Audio.NOISE, f0: 10000, decay: 2, vol: 0.6});
-
-		function put(src:Array<Float>, start:Int, gain:Float, isLeft:Bool)
+		function put(src:Array<Float>, start:Int, gain:Float, pan:Float):Void
 		{
-			var gl = gain * (isLeft ? 0.75 : 0.25);
-			var gr = gain * (isLeft ? 0.25 : 0.75);
+			var gl = gain * (1 - pan) * 0.5 + gain * 0.25;
+			var gr = gain * (1 + pan) * 0.5 + gain * 0.25;
 			for (i in 0...src.length)
 			{
 				var j = start + i;
@@ -99,86 +74,97 @@ class Music
 			}
 		}
 
-		var row = 0;
-		for (pi in ORDER)
+		var tickSnd = Audio.tone({dur: 0.025, wave: Audio.NOISE, f0: 5200, decay: 2.5, vol: 0.5});
+		var woodSnd = Audio.tone({dur: 0.07, wave: Audio.SINE, f0: 880, f1: 700, decay: 2, vol: 0.4});
+
+		var bar = 0;
+		for (si in 0...SECTIONS.length)
 		{
-			var pat = PATTERNS[pi];
-			for (bar in 0...4)
+			var sec = SECTIONS[si];
+			for (b in 0...sec.chords.length)
 			{
-				var chord = parseChord(pat.chords[bar]);
-				var barStart = row + bar * ROWS_PER_BAR;
+				var chord = parseChord(sec.chords[b]);
+				var barStart = (bar + b) * SLOTS * eighth;
+				var third = chord.minor ? 3 : 4;
+				var barLen = Std.int(SLOTS * eighth);
 
-				// 4. csatorna: dob
-				var intro = pat.drums == "intro";
-				var snareLine = (!intro && bar == 3) ? SNARE_FILL : SNARE;
-				var hatLine = pat.hats16 == true ? HAT_16 : HAT;
-				for (r in 0...ROWS_PER_BAR)
+				// lebegő pad: a hangok enyhén elhangolt, lassan felfutó fűrészek (alacsony oktáv)
+				if (sec.layers.indexOf("p") >= 0)
 				{
-					var s = Std.int((barStart + r) * rowLen);
-					if (KICK.charAt(r) == "x")
-						put(kick, s, 0.75, true);
-					if (snareLine.charAt(r) == "x" && (!intro || bar >= 2))
-						put(snare, s, 0.5, true);
-					if (hatLine.charAt(r) == "x")
-						put(hat, s, 0.22, true);
+					var root = chord.root;
+					while (root > 52)
+						root -= 12;
+					while (root < 45)
+						root += 12;
+					for (iv in [0, third, 7])
+						put(pad(freq(root + iv), barLen + Std.int(eighth)), Std.int(barStart), 0.13, 0);
 				}
-
-				// 2. csatorna: basszus, nyolcadok gyök / oktáv váltakozva
-				var bassRoot = chord.root;
-				while (bassRoot > 47)
-					bassRoot -= 12;
-				while (bassRoot < 36)
-					bassRoot += 12;
-				var r = 0;
-				while (r < ROWS_PER_BAR)
+				// zenedoboz-arpeggio: nyolcadonként egy akkordhang
+				if (sec.layers.indexOf("b") >= 0)
 				{
-					var midi = bassRoot + ((r % 4 == 2) ? 12 : 0);
-					put(bass(freq(midi), Std.int(rowLen * 2)), Std.int((barStart + r) * rowLen), 0.42, false);
-					r += 2;
+					var base = chord.root;
+					while (base < 72)
+						base += 12;
+					while (base > 80)
+						base -= 12;
+					var tones = [base, base + third, base + 7, base + 12];
+					var order = [0, 1, 2, 3, 2, 1, 2, 1];
+					for (k in 0...SLOTS)
+						put(box(freq(tones[order[k]]), Std.int(eighth * 3)), Std.int(barStart + k * eighth), 0.16, k % 2 == 0 ? -0.35 : 0.2);
 				}
-
-				// 3. csatorna: klasszikus tracker-arpeggio (akkordhangok tickenként), negyedenként újraütve
-				var arpRoot = chord.root;
-				while (arpRoot < 57)
-					arpRoot += 12;
-				while (arpRoot > 68)
-					arpRoot -= 12;
-				var offsets = [0, chord.minor ? 3 : 4, 7];
-				var beat = 0;
-				while (beat < ROWS_PER_BAR)
+				// pengetett basszus az 1. és 3. negyeden
+				if (sec.layers.indexOf("s") >= 0)
 				{
-					put(arpeggio(arpRoot, offsets, Std.int(rowLen * 4)), Std.int((barStart + beat) * rowLen), 0.16, false);
-					beat += 4;
+					var bs = chord.root;
+					while (bs > 47)
+						bs -= 12;
+					while (bs < 38)
+						bs += 12;
+					put(bassPluck(freq(bs), Std.int(eighth * 3.5)), Std.int(barStart), 0.38, 0);
+					put(bassPluck(freq(bs + 7), Std.int(eighth * 3)), Std.int(barStart + 4 * eighth), 0.3, 0);
 				}
-
-				// 1. csatorna: dallam
-				if (pat.lead != null)
+				// óraműszerű kattogás a 2. és 4. negyeden, halk fa-koppanás az 1.-en
+				if (sec.layers.indexOf("t") >= 0)
 				{
-					var tokens = pat.lead[bar].split(" ");
+					put(tickSnd, Std.int(barStart + 2 * eighth), 0.22, -0.5);
+					put(tickSnd, Std.int(barStart + 6 * eighth), 0.22, 0.5);
+					put(woodSnd, Std.int(barStart), 0.12, 0.2);
+				}
+				// dallam: klarinétszerű
+				if (sec.layers.indexOf("m") >= 0 && sec.melody != null)
+				{
+					var toks = sec.melody[b % sec.melody.length].split(" ");
 					var t = 0;
-					while (t < tokens.length)
+					while (t < toks.length)
 					{
-						var tok = tokens[t];
-						if (tok == "." || tok == "-")
+						var tok = toks[t];
+						if (tok == ".")
 						{
 							t++;
 							continue;
 						}
 						var len = 1;
-						while (t + len < tokens.length && tokens[t + len] == ".")
+						while (t + len < toks.length && toks[t + len] == ".")
 							len++;
-						put(lead(freq(noteToMidi(tok)), Std.int(rowLen * len)), Std.int((barStart + t) * rowLen), 0.32, true);
+						put(reed(freq(noteToMidi(tok)), Std.int(eighth * len * 1.05)), Std.int(barStart + t * eighth), 0.3, 0.25);
 						t += len;
 					}
 				}
 			}
-			row += 4 * ROWS_PER_BAR;
+			bar += sec.chords.length;
 		}
 
+		// normalizálás + enyhe visszhang (két késleltetett másolat)
+		var delay = Std.int(eighth * 3);
+		for (i in delay...n)
+		{
+			left[i] += right[i - delay] * 0.22;
+			right[i] += left[i - delay] * 0.22;
+		}
 		var peak = 0.0;
 		for (i in 0...n)
 			peak = Math.max(peak, Math.max(Math.abs(left[i]), Math.abs(right[i])));
-		var g = peak > 0 ? 0.92 / peak : 1;
+		var g = peak > 0 ? 0.9 / peak : 1;
 		var out:Array<Float> = [];
 		for (i in 0...n)
 		{
@@ -190,59 +176,71 @@ class Music
 
 	// --- Hangszerek ---
 
-	static function lead(f:Float, len:Int):Array<Float>
+	/** Zenedoboz: gyorsan lecsengő, kissé inharmonikus részhangok. */
+	static function box(f:Float, len:Int):Array<Float>
 	{
 		var rate = Audio.RATE;
 		var out:Array<Float> = [];
-		var phase = 0.0;
-		var release = Std.int(0.03 * rate);
 		for (i in 0...len)
 		{
 			var t = i / rate;
-			var vib = t > 0.15 ? Math.sin(t * Math.PI * 11) * 0.25 : 0;
-			phase += f * Math.pow(2, vib / 12) / rate;
-			phase -= Math.ffloor(phase);
-			var env = 0.65 + 0.35 * Math.exp(-t * 10);
-			if (i > len - release)
-				env *= (len - i) / release;
-			out.push(Audio.osc(Audio.SQUARE, phase, 0.25, 0) * env);
+			var v = Math.sin(2 * Math.PI * f * t) * Math.exp(-t * 3.2) + 0.45 * Math.sin(2 * Math.PI * f * 2.76 * t) * Math.exp(-t * 7) + 0.2 * Math.sin(2 * Math.PI * f * 5.4 * t) * Math.exp(-t * 12);
+			out.push(v * Math.min(1, t * 400));
 		}
 		return out;
 	}
 
-	static function bass(f:Float, len:Int):Array<Float>
+	/** Klarinétszerű dallam: páratlan felhangok, lassú felfutás, késleltetett vibrato. */
+	static function reed(f:Float, len:Int):Array<Float>
 	{
 		var rate = Audio.RATE;
 		var out:Array<Float> = [];
-		var phase = 0.0;
-		var release = Std.int(0.015 * rate);
+		var ph = 0.0;
+		var release = Std.int(0.08 * rate);
 		for (i in 0...len)
 		{
 			var t = i / rate;
-			phase += f / rate;
-			phase -= Math.ffloor(phase);
-			var v = Audio.osc(Audio.SAW, phase, 0.5, 0) * 0.6 + Audio.osc(Audio.SQUARE, phase, 0.5, 0) * 0.4;
-			var env = 0.35 + 0.65 * Math.exp(-t * 9);
+			var vib = t > 0.18 ? Math.sin(t * Math.PI * 9.5) * 0.18 : 0;
+			ph += f * Math.pow(2, vib / 12) / rate;
+			var v = Math.sin(2 * Math.PI * ph) + 0.33 * Math.sin(6 * Math.PI * ph) + 0.14 * Math.sin(10 * Math.PI * ph) + 0.05 * Math.sin(14 * Math.PI * ph);
+			var env = Math.min(1, t / 0.07) * (0.8 + 0.2 * Math.exp(-t * 3));
 			if (i > len - release)
 				env *= (len - i) / release;
-			out.push(v * env);
+			out.push(v * env * 0.6);
 		}
 		return out;
 	}
 
-	static function arpeggio(root:Int, offsets:Array<Int>, len:Int):Array<Float>
+	/** Meleg pad: három enyhén elhangolt fűrész, egypólusú aluláteresztővel, lassú ki- és beúszással. */
+	static function pad(f:Float, len:Int):Array<Float>
 	{
 		var rate = Audio.RATE;
 		var out:Array<Float> = [];
-		var phase = 0.0;
+		var p1 = 0.0, p2 = 0.0, p3 = 0.0, lp = 0.0;
+		var att = 0.9 * rate, rel = 0.7 * rate;
+		for (i in 0...len)
+		{
+			p1 = (p1 + f * 0.997 / rate) % 1;
+			p2 = (p2 + f / rate) % 1;
+			p3 = (p3 + f * 1.004 / rate) % 1;
+			var raw = (p1 * 2 - 1 + p2 * 2 - 1 + p3 * 2 - 1) / 3;
+			lp += (raw - lp) * 0.05;
+			var env = Math.min(1, i / att) * (i > len - rel ? Math.max(0, (len - i) / rel) : 1);
+			out.push(lp * env);
+		}
+		return out;
+	}
+
+	/** Pengetett basszus: szinusz + halk második harmonikus, puha támadás, lassú lecsengés. */
+	static function bassPluck(f:Float, len:Int):Array<Float>
+	{
+		var rate = Audio.RATE;
+		var out:Array<Float> = [];
 		for (i in 0...len)
 		{
 			var t = i / rate;
-			var f = freq(root + offsets[Std.int(t / TICK) % offsets.length]);
-			phase += f / rate;
-			phase -= Math.ffloor(phase);
-			var env = Math.exp(-t * 3.5) * Math.min(1, (len - i) / (0.01 * rate));
-			out.push(Audio.osc(Audio.SQUARE, phase, 0.5, 0) * env);
+			var v = Math.sin(2 * Math.PI * f * t) + 0.3 * Math.sin(4 * Math.PI * f * t) * Math.exp(-t * 6);
+			out.push(v * Math.exp(-t * 2.2) * Math.min(1, t * 120));
 		}
 		return out;
 	}
@@ -270,7 +268,7 @@ class Music
 		return (Std.parseInt(s.substr(i)) + 1) * 12 + n;
 	}
 
-	/** "Dm", "Bb", "F", "A" -> gyökhang (3. oktáv) és moll-e. */
+	/** "Dm", "Bb", "F", "A" -> gyökhang és moll-e. */
 	static function parseChord(s:String):{root:Int, minor:Bool}
 	{
 		var minor = s.length > 1 && s.charAt(s.length - 1) == "m";

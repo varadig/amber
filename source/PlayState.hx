@@ -12,6 +12,7 @@ import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
 import flixel.util.FlxTimer;
 import flixel.util.FlxDirectionFlags;
+import Puzzle;
 
 /** Egy felvehető / dekorációs tárgy (gyémánt, szív, alkatrész, repülő-cella, ellenőrzőpont). */
 class Pickup extends FlxSprite
@@ -22,6 +23,7 @@ class Pickup extends FlxSprite
 	public var icon:Int = -1;
 	public var label:String = "";
 	public var idx:Int = -1;
+	public var friend:Int = -1;
 
 	override public function update(elapsed:Float):Void
 	{
@@ -167,21 +169,29 @@ class Crumble extends FlxSprite
 	}
 }
 
-/** Mozgó platform (vízszintes ide-oda). A `dx` az utolsó lépés elmozdulása (a rajta álló hőst a PlayState viszi vele). */
+/** Mozgó platform: vízszintes ide-oda, vagy függőleges emelő (az áramcella behelyezése indítja). A `dx` az utolsó lépés elmozdulása (a rajta álló hőst a PlayState viszi vele). */
 class Mover extends FlxSprite
 {
 	public var dx:Float = 0;
+	public var gid:Int = -1;
+	public var powered:Bool = true;
 	var ox:Float;
+	var oy:Float;
 	var range:Float;
 	var omega:Float;
+	var vertical:Bool;
 	var t:Float = 0;
 
 	public function new(def:LevelData.MoverDef)
 	{
 		super(def.x, def.y);
 		ox = def.x;
+		oy = def.y;
 		range = def.range;
 		omega = Math.PI * def.speed / def.range;
+		vertical = def.axis == "y";
+		gid = def.id != null ? def.id : -1;
+		powered = def.active != false;
 		loadGraphic(Art.mover(), false, 48, 8, false, "mover");
 		immovable = true;
 		allowCollisions = FlxDirectionFlags.UP;
@@ -191,10 +201,20 @@ class Mover extends FlxSprite
 
 	override public function update(elapsed:Float):Void
 	{
-		t += elapsed;
-		var nx = ox + (1 - Math.cos(t * omega)) / 2 * range;
-		dx = nx - x;
-		x = nx;
+		dx = 0;
+		if (powered)
+		{
+			t += elapsed;
+			var k = (1 - Math.cos(t * omega)) / 2 * range;
+			if (vertical)
+				y = oy - k;
+			else
+			{
+				var nx = ox + k;
+				dx = nx - x;
+				x = nx;
+			}
+		}
 		super.update(elapsed);
 	}
 }
@@ -222,8 +242,24 @@ class PlayState extends FlxState
 	var checkpoints:FlxTypedGroup<Pickup>;
 	var spikes:FlxTypedGroup<FlxSprite>;
 	var cracked:FlxTypedGroup<FlxSprite>;
-	var gates:FlxTypedGroup<FlxSprite>;
-	var plates:FlxTypedGroup<FlxSprite>;
+	var gates:FlxTypedGroup<Gate>;
+	var plates:FlxTypedGroup<Plate>;
+	var levers:FlxTypedGroup<Lever>;
+	var switches:FlxTypedGroup<SwitchPad>;
+	var crates:FlxTypedGroup<Crate>;
+	var grates:FlxTypedGroup<FlxSprite>;
+	var sockets:FlxTypedGroup<Socket>;
+	var keysG:FlxTypedGroup<Pickup>;
+	var powerCells:FlxTypedGroup<Pickup>;
+	var benches:FlxTypedGroup<FlxSprite>;
+	var companions:FlxTypedGroup<Companion>;
+	var seqState:Map<Int, Int> = new Map();
+	var keysHeld:Map<Int, Bool> = new Map();
+	var carryCell:Int = -1;
+	var friendFound:Array<Int> = [0, 0, 0];
+	var benchBuilt:Bool = false;
+	var selComp:Int = 0;
+	var hudComp:FlxText;
 	var crumbles:FlxTypedGroup<Crumble>;
 	var movers:FlxTypedGroup<Mover>;
 	var bullets:FlxTypedGroup<Bullet>;
@@ -279,6 +315,7 @@ class PlayState extends FlxState
 		Audio.playMusic();
 		bgColor = 0xFF000000;
 		Parts.restore();
+		Companions.restore();
 		data = LevelData.generate(level);
 		worldW = data.w * LevelData.T;
 		worldH = LevelData.H * LevelData.T;
@@ -338,25 +375,73 @@ class PlayState extends FlxState
 		add(cracked);
 		gates = new FlxTypedGroup();
 		for (g in data.gates)
+			gates.add(new Gate(g.x, g.y, g.id, g.lock));
+		add(gates);
+		grates = new FlxTypedGroup();
+		for (g in data.grates)
 		{
 			var b = new FlxSprite(g.x, g.y);
-			b.loadGraphic(Art.gate(), false, 16, 16, false, "gate");
+			b.loadGraphic(Art.grate(), false, 16, 16, false, "grate");
 			b.immovable = true;
-			gates.add(b);
+			grates.add(b);
 		}
-		add(gates);
+		add(grates);
 		plates = new FlxTypedGroup();
 		for (p in data.plates)
-		{
-			var b = new FlxSprite(p.x, p.y);
-			b.loadGraphic(Art.plate(), true, 16, 6, false, "plate");
-			b.animation.add("up", [0], 1);
-			b.animation.add("down", [1], 1);
-			b.animation.play("up");
-			b.immovable = true;
-			plates.add(b);
-		}
+			plates.add(new Plate(p.x, p.y, p.id, p.hold));
 		add(plates);
+		levers = new FlxTypedGroup();
+		for (l in data.levers)
+			levers.add(new Lever(l.x, l.y, l.id));
+		add(levers);
+		switches = new FlxTypedGroup();
+		for (s in data.switches)
+		{
+			switches.add(new SwitchPad(s.x, s.y, s.id, s.idx, s.label));
+			var lb = new FlxText(s.x - 2, s.y - 11, 16, s.label, 8);
+			lb.setFormat(null, 8, 0xFFFFFFFF, CENTER);
+			add(lb);
+		}
+		add(switches);
+		crates = new FlxTypedGroup();
+		for (c in data.crates)
+			crates.add(new Crate(c.x, c.y));
+		add(crates);
+		sockets = new FlxTypedGroup();
+		for (s in data.sockets)
+			sockets.add(new Socket(s.x, s.y, s.id));
+		add(sockets);
+		keysG = new FlxTypedGroup();
+		for (k in data.keys)
+		{
+			var it = makePickup(k.x, k.y, Art.key(), 10, 8, "key");
+			it.idx = k.id;
+			keysG.add(it);
+		}
+		add(keysG);
+		powerCells = new FlxTypedGroup();
+		for (c in data.powerCells)
+		{
+			var it = makePickup(c.x, c.y, Art.powerCell(), 8, 12, "powercell");
+			it.idx = c.id;
+			powerCells.add(it);
+		}
+		add(powerCells);
+		benches = new FlxTypedGroup();
+		for (b in data.benches)
+		{
+			var s = new FlxSprite(b.x, b.y);
+			s.loadGraphic(Art.bench(), false, 24, 16, false, "bench");
+			s.ID = b.comp;
+			benches.add(s);
+		}
+		add(benches);
+		for (tx in data.texts)
+		{
+			var lb = new FlxText(tx.x, tx.y, 220, tx.text, 8);
+			lb.setFormat(null, 8, 0xFF999999, LEFT);
+			add(lb);
+		}
 		crumbles = new FlxTypedGroup();
 		for (c in data.crumbles)
 		{
@@ -426,6 +511,7 @@ class PlayState extends FlxState
 			it.animation.frameIndex = pt.icon;
 			it.icon = pt.icon;
 			it.label = pt.label;
+			it.friend = pt.friend != null ? pt.friend : -1;
 			it.idx = i;
 			partItems.add(it);
 		}
@@ -517,6 +603,11 @@ class PlayState extends FlxState
 			FlxG.camera.shake(0.002, 0.05);
 		};
 		add(player);
+		companions = new FlxTypedGroup();
+		add(companions);
+		for (k in 0...Companions.COUNT)
+			if (Companions.owned[k])
+				spawnCompanion(k, data.spawn.x - 18 * (k + 1), data.spawn.y);
 		respawn = FlxPoint.get(data.spawn.x, data.spawn.y);
 
 		particles = new FlxTypedGroup();
@@ -531,7 +622,9 @@ class PlayState extends FlxState
 		FlxG.camera.fade(0xFF000000, 0.35, true);
 
 		buildHud();
-		var names = [for (p in data.parts) p.label].join("  ");
+		var own = [for (p in data.parts) if (p.friend == null || p.friend < 0) p.label];
+		var fr = [for (p in data.parts) if (p.friend != null && p.friend >= 0) p.label];
+		var names = own.join("  ") + (fr.length > 0 ? "\nFRIEND PARTS: " + fr.join("  ") : "");
 		var off:Array<String> = [];
 		if (!Parts.has(Parts.LEGS))
 			off.push("JUMP");
@@ -630,6 +723,9 @@ class PlayState extends FlxState
 		radarSpr.scrollFactor.set(0, 0);
 		radarSpr.visible = false;
 		add(radarSpr);
+		hudComp = new FlxText(6, 258, 300, "", 8);
+		hudComp.scrollFactor.set(0, 0);
+		add(hudComp);
 		toast = label("", 46, 8, 0xFFFFFFFF);
 		toast.visible = false;
 		hint = label("", 100, 8, 0xFFFFFFFF);
@@ -832,6 +928,25 @@ class PlayState extends FlxState
 		}
 		FlxG.collide(player, cracked);
 		FlxG.collide(player, gates);
+		FlxG.collide(player, grates);
+		FlxG.collide(player, crates);
+		FlxG.collide(crates, solidMap);
+		FlxG.collide(crates, platMap);
+		FlxG.collide(crates, gates);
+		FlxG.collide(crates, grates);
+		FlxG.collide(crates, cracked);
+		FlxG.collide(companions, solidMap);
+		FlxG.collide(companions, platMap);
+		FlxG.collide(companions, gates);
+		companions.forEachAlive(c ->
+		{
+			if (c.kind == Companions.TALL)
+			{
+				FlxG.collide(c, grates);
+				if (c.mode == 1)
+					FlxG.collide(player, c);
+			}
+		});
 		FlxG.collide(grounded, solidMap);
 		FlxG.collide(grounded, platMap);
 		FlxG.collide(grounded, cracked);
@@ -847,15 +962,21 @@ class PlayState extends FlxState
 		FlxG.overlap(player, batts, onBatt);
 		FlxG.overlap(player, spikes, onSpike);
 		FlxG.overlap(player, checkpoints, onCheckpoint);
-		FlxG.overlap(player, plates, onPlate);
+		updatePuzzles();
 		FlxG.overlap(bullets, enemies, onBulletEnemy);
 		FlxG.overlap(bullets, cracked, onBulletCracked);
-		FlxG.overlap(bullets, gates, (b:Bullet, g:FlxSprite) -> b.kill());
+		FlxG.overlap(bullets, gates, (b:Bullet, g:Gate) ->
+		{
+			if (!g.isOpen)
+				b.kill();
+		});
+		FlxG.overlap(bullets, grates, (b:Bullet, g:FlxSprite) -> b.kill());
 
-		var allFound = partsFound >= data.parts.length;
+		var partsDone = partsFound >= data.parts.length;
+		var allFound = partsDone && (data.benches.length == 0 || benchBuilt);
 		var nearDoor = Math.abs((player.x + 4) - (door.x + 8)) < 12 && Math.abs((player.y + 6) - (door.y + 12)) < 18;
 		hint.visible = nearDoor && !allFound;
-		hint.text = "NEED " + (data.parts.length - partsFound) + " MORE PART" + (data.parts.length - partsFound == 1 ? "" : "S");
+		hint.text = partsDone ? "BUILD YOUR FRIEND AT THE WORKBENCH FIRST" : "NEED " + (data.parts.length - partsFound) + " MORE PART" + (data.parts.length - partsFound == 1 ? "" : "S");
 		if (nearDoor && allFound)
 			enterDoor();
 
@@ -1007,6 +1128,213 @@ class PlayState extends FlxState
 		}
 	}
 
+	/** Egy társ létrehozása a megadott helyen. */
+	function spawnCompanion(kind:Int, x:Float, y:Float):Companion
+	{
+		var c = new Companion(kind, x, y, data, player);
+		companions.add(c);
+		return c;
+	}
+
+	function nearTo(a:FlxSprite, b:FlxSprite, dx:Float, dy:Float):Bool
+		return Math.abs((a.x + a.width / 2) - (b.x + b.width / 2)) < dx && Math.abs((a.y + a.height / 2) - (b.y + b.height / 2)) < dy;
+
+	function setGate(id:Int, open:Bool):Void
+	{
+		var changed = false;
+		gates.forEach(g ->
+		{
+			if (g.gid == id && g.isOpen != open)
+			{
+				g.setOpen(open);
+				changed = true;
+				if (open)
+					burst(g.x + 8, g.y + 8, 3, 0xFFBBBBBB, 40);
+			}
+		});
+		if (changed)
+		{
+			Audio.play(open ? "plate" : "crumble", 0.9);
+			FlxG.camera.shake(0.005, 0.15);
+		}
+	}
+
+	/**
+	 * A rejtvény-elemek logikája: nyomólapok (a hős, láda vagy társ lenyomja), karok (ORB / hős), sorrend-kapcsolók, kulcs + zárt kapu,
+	 * áramcella + aljzat + emelő, szerelőasztal (társ megépítése), társ-parancsok.
+	 */
+	function updatePuzzles():Void
+	{
+		var act = Input.interactPressed();
+		// nyomólapok
+		for (p in plates)
+		{
+			var on = (p.overlaps(player) && player.isTouching(FlxDirectionFlags.FLOOR)) || p.overlaps(crates) || p.overlaps(companions);
+			if (p.hold)
+			{
+				if (on != p.pressed)
+				{
+					p.setPressed(on);
+					setGate(p.gid, on);
+					if (on)
+						showToast("GATE OPENED", 1.8);
+					else
+						showToast("GATE CLOSED", 1.2);
+				}
+			}
+			else if (on && !p.pressed)
+			{
+				p.setPressed(true);
+				setGate(p.gid, true);
+				showToast("GATE OPENED", 2.2);
+			}
+		}
+		// karok: az ORB (vagy a hős Fel / E-vel) átbillenti
+		for (l in levers)
+			if (!l.flipped)
+			{
+				var byOrb = false;
+				companions.forEachAlive(c ->
+				{
+					if (c.kind == Companions.ORB && l.overlaps(c))
+					{
+						byOrb = true;
+						c.setStay();
+					}
+				});
+				if (byOrb || (act && nearTo(player, l, 14, 18)))
+				{
+					l.flip();
+					setGate(l.gid, true);
+					Audio.play("plate", 1);
+					showToast("LEVER PULLED: GATE OPENED", 2.4);
+				}
+			}
+		// sorrend-kapcsolók
+		if (act)
+			for (s in switches)
+				if (nearTo(player, s, 14, 20))
+				{
+					var order = data.seqs.get(s.gid);
+					var st = seqState.exists(s.gid) ? seqState.get(s.gid) : 0;
+					if (order == null || st >= order.length)
+						continue;
+					if (order[st] == s.idx)
+					{
+						s.setDown(true);
+						Audio.play("blip", 1);
+						st++;
+						seqState.set(s.gid, st);
+						if (st >= order.length)
+						{
+							setGate(s.gid, true);
+							showToast("ACCESS GRANTED", 2.4);
+						}
+					}
+					else
+					{
+						seqState.set(s.gid, 0);
+						switches.forEach(o ->
+						{
+							if (o.gid == s.gid)
+								o.setDown(false);
+						});
+						Audio.play("hurt", 0.6);
+						showToast("WRONG ORDER: RESET", 2.0);
+					}
+					break;
+				}
+		// kulcsok és zárt kapuk
+		for (k in keysG)
+			if (k.alive && k.overlaps(player))
+			{
+				k.kill();
+				keysHeld.set(k.idx, true);
+				Audio.play("key", 0.9);
+				burst(k.x + 5, k.y + 4, 10, 0xFFFFFFFF, 60);
+				showToast("KEY FOUND", 2.0);
+			}
+		for (g in gates)
+			if (g.locked && !g.isOpen && keysHeld.exists(g.gid) && nearTo(player, g, 20, 60))
+			{
+				keysHeld.remove(g.gid);
+				setGate(g.gid, true);
+				showToast("UNLOCKED", 2.0);
+			}
+		// áramcella + aljzat + emelő
+		for (c in powerCells)
+			if (c.alive && c.overlaps(player))
+			{
+				c.kill();
+				carryCell = c.idx;
+				Audio.play("heal", 0.9);
+				burst(c.x + 4, c.y + 6, 10, 0xFFFFFFFF, 60);
+				showToast("POWER CELL: TAKE IT TO THE SOCKET", 2.6);
+			}
+		if (act && carryCell >= 0)
+			for (s in sockets)
+				if (!s.filled && s.gid == carryCell && nearTo(player, s, 16, 20))
+				{
+					s.fill();
+					carryCell = -1;
+					movers.forEach(m ->
+					{
+						if (m.gid == s.gid)
+							m.powered = true;
+					});
+					Audio.play("door", 0.8);
+					showToast("LIFT POWERED", 2.4);
+				}
+		// szerelőasztal: a társ megépítése
+		if (act)
+			for (b in benches)
+				if (nearTo(player, b, 20, 24) && !Companions.owned[b.ID])
+				{
+					if (friendFound[b.ID] >= 3)
+						buildFriend(b.ID, b);
+					else
+						showToast("NEED " + (3 - friendFound[b.ID]) + " MORE PART" + (3 - friendFound[b.ID] == 1 ? "" : "S") + " FOR " + Companions.NAMES[b.ID], 2.4);
+				}
+		// társ-parancsok
+		var list:Array<Companion> = [for (c in companions) if (c.alive) c];
+		if (list.length > 0)
+		{
+			if (selComp >= list.length)
+				selComp = 0;
+			if (Input.cyclePressed())
+				selComp = (selComp + 1) % list.length;
+			if (Input.commandPressed())
+			{
+				var c = list[selComp];
+				var dx = (Input.right() ? 1 : 0) - (Input.left() ? 1 : 0);
+				c.command(dx, 0);
+				Audio.play("blip", 0.8);
+			}
+			var c = list[selComp];
+			hudComp.text = Companions.NAMES[c.kind] + ": " + (c.mode == 0 ? "FOLLOWING" : (c.mode == 1 ? "WAITING" : "SENT")) + "  (Q: SEND/WAIT" + (list.length > 1 ? "  TAB: SWITCH" : "") + ")";
+		}
+		else
+			hudComp.text = carryCell >= 0 ? "CARRYING: POWER CELL" : "";
+	}
+
+	/** A társ összeépítése a szerelőasztalnál: látványos felvillanás, a társ megjelenik és csatlakozik. */
+	function buildFriend(kind:Int, bench:FlxSprite):Void
+	{
+		Companions.owned[kind] = true;
+		benchBuilt = true;
+		var c = spawnCompanion(kind, bench.x + 8, bench.y - 20);
+		c.mode = 0;
+		hitstop = 0.25;
+		ring(bench.x + 12, bench.y + 4, 30, 60);
+		ring(bench.x + 12, bench.y + 4, 24, 110);
+		burst(bench.x + 12, bench.y + 4, 30, 0xFFFFFFFF, 170);
+		FlxG.camera.flash(0xFFFFFFFF, 0.4);
+		Audio.play("door", 1);
+		showToast("YOU BUILT A FRIEND: " + Companions.NAMES[kind] + "\nQ: SEND / WAIT   TAB: SWITCH FRIEND", 4.5);
+		if (partsFound >= data.parts.length)
+			door.animation.play("open");
+	}
+
 	function onCrumble(p:Player, c:Crumble):Void
 	{
 		if (p.isTouching(FlxDirectionFlags.FLOOR))
@@ -1106,22 +1434,33 @@ class PlayState extends FlxState
 		it.kill();
 		found[it.idx] = true;
 		partsFound++;
-		var tier = Parts.add(it.icon);
-		player.refreshLook();
-		player.applyParts();
-		if (it.icon == Parts.CORE && player.hearts < player.maxHearts)
-			player.hearts++;
+		var tier = 1;
+		if (it.friend >= 0)
+			friendFound[it.friend]++;
+		else
+		{
+			tier = Parts.add(it.icon);
+			player.refreshLook();
+			player.applyParts();
+			if (it.icon == Parts.CORE && player.hearts < player.maxHearts)
+				player.hearts++;
+		}
 		score += 250;
 		Audio.play("key", 1);
 		burst(it.x + 5, it.y + 5, 16, 0xFFFFFFFF, 100);
 		FlxG.camera.flash(0xFFFFFFFF, 0.35);
 		partFx(it);
-		var info = tier <= 1 ? Parts.INFO[it.icon] : (Parts.INFO2[it.icon] != "" ? Parts.INFO2[it.icon] : "INSTALLED");
+		var info = it.friend >= 0 ? "A PART FOR YOUR FRIEND " + Companions.NAMES[it.friend] : (tier <= 1 ? Parts.INFO[it.icon] : (Parts.INFO2[it.icon] != "" ? Parts.INFO2[it.icon] : "INSTALLED"));
 		var msg = "FOUND: " + it.label + "\n" + info;
 		if (partsFound >= data.parts.length)
 		{
-			msg += "\nALL PARTS FOUND: GO TO THE DOOR";
-			door.animation.play("open");
+			if (data.benches.length > 0 && !benchBuilt)
+				msg += "\nALL PARTS FOUND: BUILD YOUR FRIEND AT THE WORKBENCH";
+			else
+			{
+				msg += "\nALL PARTS FOUND: GO TO THE DOOR";
+				door.animation.play("open");
+			}
 		}
 		showToast(msg, 3.6);
 	}
@@ -1186,6 +1525,7 @@ class PlayState extends FlxState
 
 	function toCheckpoint(penalty:Bool):Void
 	{
+		crates.forEach(c -> c.resetPos());
 		player.respawnAt(respawn.x, respawn.y);
 		inside = respawn.y > data.killRow * 16 - 40;
 		FlxG.camera.focusOn(player.getMidpoint());
@@ -1245,6 +1585,7 @@ class PlayState extends FlxState
 	{
 		totalScore = score;
 		Parts.commit();
+		Companions.commit();
 		level++;
 		if (level >= LevelData.COUNT)
 			FlxG.switchState(() -> new EndState());
