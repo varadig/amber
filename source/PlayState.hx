@@ -338,11 +338,14 @@ class PlayState extends FlxState
 		return super.add(basic);
 	}
 
-	/** Menü / minijáték a játékkamerán (shaderrel) rajzol: közben a HUD rejtve van (az update-ben újra látszik). */
+	/** Menü / minijáték a HUD-kamerán rajzol (effektmentesen); közben a HUD rejtve van (az update-ben újra látszik). */
 	override public function openSubState(subState:flixel.FlxSubState):Void
 	{
 		if (hudLayer != null)
 			hudLayer.visible = false;
+		// a menük és minijátékok is a HUD-kamerán rajzolnak: a sérülés-kisülés, az elmosás és a sötétítés őket sem érinti
+		if (hudCam != null)
+			subState.cameras = [hudCam];
 		super.openSubState(subState);
 	}
 
