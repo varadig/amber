@@ -85,6 +85,27 @@ class Audio
 		sounds.set(name, toSound(mix, 1, 0.8));
 	}
 
+	/**
+	 * A böngésző hangkörnyezete (AudioContext) induláskor felfüggesztett; a Flixel a billentyűket képkockánként olvassa (nem eseménykezelőből),
+	 * ezért a zene csak egy későbbi "feléledéskor" (pause / folytatás) szólalt meg. Itt kifejezetten felélesztjük, és ha a zenét már kérték, indítjuk.
+	 */
+	public static function unlock():Void
+	{
+		#if js
+		try
+		{
+			var ctx:Dynamic = lime.media.AudioManager.context.web;
+			if (ctx != null && ctx.state != "running")
+				ctx.resume();
+		}
+		catch (e:Dynamic) {}
+		#end
+		if (musicWanted && musicSound != null && (FlxG.sound.music == null || !FlxG.sound.music.playing))
+			FlxG.sound.playMusic(musicSound, null, MUSIC_VOLUME * musicVolume, true);
+	}
+
+	static var musicWanted:Bool = false;
+
 	public static function play(name:String, volume:Float = 1):Void
 	{
 		var s = sounds.get(name);
@@ -97,9 +118,12 @@ class Audio
 	{
 		if (musicSound == null)
 			return;
+		musicWanted = true;
+		unlock();
 		if (FlxG.sound.music != null && FlxG.sound.music.playing)
 			return;
 		FlxG.sound.playMusic(musicSound, null, MUSIC_VOLUME * musicVolume, true);
+		unlock();
 	}
 
 	public static function stopMusic():Void

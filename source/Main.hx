@@ -52,6 +52,9 @@ class Main extends Sprite
 		#end
 
 		#if js
+		// a hang feloldása valódi felhasználói eseményből (billentyű / kattintás / érintés): a böngésző csak így engedi a lejátszást
+		for (ev in ["keydown", "pointerdown", "touchend", "mousedown"])
+			js.Browser.window.addEventListener(ev, (_) -> Audio.unlock(), true);
 		// F: teljes képernyő (közvetlenül a billentyűeseményből, mert a böngésző csak felhasználói műveletre engedi)
 		js.Browser.window.addEventListener("keydown", (e:js.html.KeyboardEvent) ->
 		{
