@@ -3,6 +3,7 @@ package;
 import flixel.FlxSprite;
 import flixel.tweens.FlxTween;
 import flixel.util.FlxDirectionFlags;
+import Puzzle;
 
 /**
  * Egy társ-robot (a Lost Vikings mintájára: a három robot között váltani lehet, mindegyiket el kell juttatni az ajtóhoz).
@@ -20,6 +21,16 @@ class Companion extends FlxSprite
 	public var target:FlxSprite;
 	public var face:Int = 1;
 	public var exited:Bool = false;
+	/** Mindegyik társnak saját élete van, és ugyanúgy sérül, mint a hős. */
+	public var hearts:Int = 3;
+	public var maxHearts:Int = 3;
+	public var invuln:Float = 0;
+	/** WHEELIE: turbó-gurulás hátralévő ideje (áttöri a repedezett falat, kiüti az ellenséget). */
+	public var turboT:Float = 0;
+	var specialCd:Float = 0;
+	/** A különleges képesség gombja (X / Shift / V / J): a PlayState kezeli (WHEELIE turbó, TALL láda-emelés, ORB szikra). */
+	public var onSpecial:Companion->Void;
+	public var carrying:Crate = null;
 	var level:LevelData;
 	var bobT:Float = Math.random() * 6;
 	var stuckT:Float = 0;
@@ -62,6 +73,19 @@ class Companion extends FlxSprite
 		maxVelocity.set(190, 360);
 	}
 
+	/** Sérülés: elveszít egy szívet, rövid sérthetetlenség, hátralökődés. */
+	public function takeHit(fromX:Float):Bool
+	{
+		if (invuln > 0 || turboT > 0 || mode == 3 || fading)
+			return false;
+		hearts--;
+		invuln = 1.4;
+		velocity.x = (x + width / 2 < fromX ? -1 : 1) * 130;
+		if (kind != Companions.ORB)
+			velocity.y = -180;
+		return true;
+	}
+
 	public function enterDoor(dx:Float, dy:Float):Void
 	{
 		mode = 3;
@@ -88,6 +112,15 @@ class Companion extends FlxSprite
 			return;
 		}
 		bobT += elapsed;
+		if (invuln > 0)
+		{
+			invuln -= elapsed;
+			visible = invuln <= 0 || Std.int(invuln * 18) % 2 == 0;
+		}
+		else
+			visible = true;
+		if (specialCd > 0)
+			specialCd -= elapsed;
 		var t = touching;
 		var onFloor = t.has(FlxDirectionFlags.FLOOR);
 		var hitWall = t.has(FlxDirectionFlags.LEFT) || t.has(FlxDirectionFlags.RIGHT);
@@ -107,6 +140,11 @@ class Companion extends FlxSprite
 					velocity.y += (dy * 105 - velocity.y) * Math.min(1, 9 * elapsed);
 					if (dx != 0)
 						face = dx;
+					if (specialCd <= 0 && onSpecial != null && (Input.dashPressed() || Input.shootPressed()))
+					{
+						specialCd = 0.35;
+						onSpecial(this);
+					}
 				case 0:
 					var gx = tx - targetFace() * 16 - 4;
 					var gy = ty - 22 + Math.sin(bobT * 3) * 3;
@@ -168,6 +206,18 @@ class Companion extends FlxSprite
 	/** Irányított mozgás (a földön járó társak): gyorsulás, ugrás (coyote idő, bufferelt gomb, változó magasság). */
 	function control(elapsed:Float, onFloor:Bool):Void
 	{
+		if (specialCd <= 0 && onSpecial != null && (Input.dashPressed() || Input.shootPressed()))
+		{
+			specialCd = kind == Companions.WHEELIE ? 0.9 : 0.4;
+			onSpecial(this);
+		}
+		if (turboT > 0)
+		{
+			turboT -= elapsed;
+			velocity.x = face * 240;
+			acceleration.y = 900;
+			return;
+		}
 		var dir = (Input.right() ? 1 : 0) - (Input.left() ? 1 : 0);
 		var spd = kind == Companions.TALL ? 88.0 : 112.0;
 		var jumpV = kind == Companions.TALL ? 290.0 : 275.0;

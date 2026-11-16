@@ -121,8 +121,30 @@ class Crate extends FlxSprite
 		mass = 0.7;
 	}
 
+	public var carried:Bool = false;
+
+	/** A magas társ felemeli: nincs ütközés / gravitáció, a társ viszi. */
+	public function carry():Void
+	{
+		carried = true;
+		acceleration.y = 0;
+		velocity.set(0, 0);
+		allowCollisions = FlxDirectionFlags.NONE;
+	}
+
+	public function drop(px:Float, py:Float):Void
+	{
+		carried = false;
+		acceleration.y = 900;
+		allowCollisions = FlxDirectionFlags.ANY;
+		reset(px, py);
+	}
+
 	public function resetPos():Void
 	{
+		carried = false;
+		allowCollisions = FlxDirectionFlags.ANY;
+		acceleration.y = 900;
 		reset(ox, oy);
 		velocity.set(0, 0);
 	}

@@ -47,11 +47,11 @@ A robot egy elhagyott gépváros roncstelepén ébred, csupaszon. **Először sa
 | **TALL** (4. pálya) | magas, hosszú lábú | ha a helyén vár, a feje platform: a magas párkányok elérhetők (rá kell ugrani) |
 | **ORB** (5. pálya) | lebegő drón | felrepül, és átbillenti a magasan lévő karokat |
 
-**Lost Vikings-szerű irányítás:** a robotok között váltani lehet (**Tab** / kontroller R1 körbe, **1-4** közvetlenül); csak az éppen irányított robot reagál a gombokra, a többi vár (a kamera és egy kis nyíl mutatja, melyiket irányítod). **Q** (L1): a várakozó társak követnek / várnak. Mindegyik robot mást tud:
-- a hős: teljes képességkészlet (ugrás, dash, fal-kapaszkodás, lövés, repülő-cella), egyedül ő veszi fel az alkatrészeket, gyémántokat, akkut;
-- **WHEELIE**: gyors és fürge, átfér a rácson, a nyomólapra áll;
-- **TALL**: lassabb, de nagyot lép; ha vár, a feje platform (a hős és a többi robot rá tud állni);
-- **ORB**: négy irányba lebeg (nyilak), a magas karokat átbillenti.
+**Lost Vikings-szerű irányítás:** a robotok között váltani lehet (**Tab** / kontroller R1 körbe, **1-4** közvetlenül); csak az éppen irányított robot reagál a gombokra (a kamera és egy kis nyíl mutatja, melyiket). **Q** (L1): a többi robot (a hős is) követi az irányítottat / vár. **Minden robot egyenrangú:** mind felvesz gyémántot, szívet, akkut és alkatrészt, ugrik, ellenségre lép, sérül (saját szívei vannak; ha elfogynak, a mentési pontra kerül vissza), és saját különleges képessége van az X / Shift / V / J gombon:
+- a hős: dash, lövés, fal-kapaszkodás, repülő-cella (az alkatrészek adják);
+- **WHEELIE**: gyors; **turbó-gurulás** (X): áttöri a repedezett falat, kiüti az ellenséget; átfér a rácson;
+- **TALL**: nagyot lép; **láda-emelés** (X): felveszi és leteszi a ládát; ha vár, a feje platform (bárki rá tud állni);
+- **ORB**: négy irányba lebeg; **szikra** (X): átbillenti a távoli kart, ellenséget üt; csak ő éri el a lebegő alkatrészt.
 
 **A pálya végén mindenkinek be kell érnie az ajtóhoz:** az irányított robot a Fel / E gombbal lép be (a hős csak akkor, ha minden alkatrész megvan és a társ megépült); belépés után a vezérlés a következő robotra ugrik, és a pálya akkor ér véget, ha mind bent van. R: az irányított robot a mentési pontra kerül vissza.
 

@@ -122,7 +122,8 @@ typedef RoomDef =
  *  - cell: áramcella az aljzatba, az emelő felviszi a magas polcra
  *  - tunnel: rács mögötti kamra (csak a WHEELIE fér be), benne a nyomólap
  *  - ledge: magas párkány (a TALL fején át érhető el)
- *  - orb: magas kar (az ORB billenti át)
+ *  - orb: magas kar (az ORB szikrája / érintése billenti át)
+ *  - float: magasan lebegő alkatrész (csak az ORB éri el)
  *  - bench: szerelőasztal: itt építhető össze a társ a megtalált alkatrészeiből
  *  - building: épület: az ajtón (fel / E) belépve a talajba vájt belső terem, benne polcokkal, őrökkel; a kijárat a belső ajtó
  * A talajszint változik (dombok, völgyek), így a pálya felfelé és lefelé is halad.
@@ -178,8 +179,8 @@ class LevelData
 			{room: "seq", icon: Parts.MOTOR, label: "ROTOR", friend: 2},
 			{room: "building", icon: Parts.HEAD, label: "SPARK CORE", guard: true, friend: 2},
 			{room: "bench", icon: Parts.HEAD, label: "WORKBENCH", friend: 2},
-			{room: "orb", icon: Parts.ANTENNA, label: "RADIO"},
-			{room: "ledge", icon: Parts.GEAR, label: "ACTUATOR"}
+			{room: "float", icon: Parts.ANTENNA, label: "RADIO"},
+			{room: "orb", icon: Parts.GEAR, label: "ACTUATOR"}
 		]
 	];
 
@@ -398,6 +399,8 @@ class LevelData
 				roomLedge(r);
 			case "orb":
 				roomOrb(r);
+			case "float":
+				roomFloat(r);
 			case "bench":
 				roomBench(r);
 			default:
@@ -755,15 +758,14 @@ class LevelData
 		var c0 = top.length;
 		flat(19, cur);
 		checkpointAt(c0);
-		var id = nextId++;
+		// 2 csempe magas kamra (a társak is átmásznak rajta), a bal oldalán rács: a hős nem fér be, a kicsi igen; az alkatrész bent van
 		for (x in c0 + 5...c0 + 12)
 			bricks.push({x: x, y: cur - 2});
 		bricks.push({x: c0 + 11, y: cur - 1});
 		grates.push({x: (c0 + 5) * T, y: (cur - 1) * T});
-		plates.push({x: (c0 + 10) * T, y: cur * T - 6, id: id, hold: false});
-		gateColumn(c0 + 14, id, false);
-		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 17) * T + 3, y: cur * T - 14});
-		texts.push({x: (c0 + 4) * T, y: (cur - 5) * T, text: "TOO NARROW FOR YOU"});
+		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 8) * T + 3, y: cur * T - 14});
+		texts.push({x: (c0 + 3) * T, y: (cur - 5) * T, text: "ONLY THE SMALL ONE FITS"});
+		gem(c0 + 14, cur - 2);
 	}
 
 	/** Magas párkány (6 csempe): a TALL fejéről érhető el. */
@@ -780,6 +782,19 @@ class LevelData
 	}
 
 	/** Magas kar: az ORB felrepül és átbillenti; a kar nyitja a kaput. */
+	/** Magasan lebegő alkatrész: csak az ORB éri el (repülve veszi fel). */
+	function roomFloat(r:RoomDef):Void
+	{
+		moveTo(Std.int(Math.max(15, Math.min(24, cur))));
+		var c0 = top.length;
+		flat(16, cur);
+		checkpointAt(c0);
+		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 8) * T + 3, y: (cur - 12) * T});
+		texts.push({x: (c0 + 3) * T, y: (cur - 6) * T, text: "TOO HIGH FOR ANYONE WHO CAN'T FLY"});
+		gem(c0 + 6, cur - 3);
+		gem(c0 + 10, cur - 3);
+	}
+
 	function roomOrb(r:RoomDef):Void
 	{
 		var c0 = top.length;

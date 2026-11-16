@@ -30,6 +30,11 @@ class Player extends FlxSprite
 	public var frozen:Bool = false;
 	/** Lost Vikings-szerű váltás: csak az irányított robot reagál a bemenetre (a többi vár). */
 	public var controlled:Bool = true;
+	/** Követés (Q): a nem irányított hős ezt a robotot követi (null = vár). */
+	public var followTarget:FlxSprite = null;
+	public var level:LevelData = null;
+	var aiJump:Bool = false;
+	var aiJumpT:Float = 0;
 	/** Lemerült akku: ennyi másodpercig nem irányítható a robot (újraindulás). */
 	public var powerDown:Float = 0;
 	public var stunned(get, never):Bool;
@@ -116,6 +121,67 @@ class Player extends FlxSprite
 		animation.add("off", [10], 1);
 	}
 
+	/**
+	 * A követő hős döntése (a társak követésével azonos elv): falra / lépcsőre (≤ 3 csempe) ugrik, a szakadékot átugorja, ha átugorható,
+	 * különben a peremen vár; lefelé csak akkor lép, ha a cél lent van és lent talaj is van. Visszaadja az irányt (-1 / 0 / 1).
+	 */
+	function aiDecide(onFloor:Bool):Int
+	{
+		var cx = x + width / 2;
+		var dx = followTarget.x + followTarget.width / 2 - cx;
+		if (Math.abs(dx) <= 28)
+			return 0;
+		var dir = dx > 0 ? 1 : -1;
+		if (!onFloor)
+			return dir;
+		var T = LevelData.T;
+		var colAhead = Std.int((cx + dir * (width / 2 + 5)) / T);
+		var footRow = Std.int((y + height + 2) / T);
+		var bodyRow = Std.int((y + height - 5) / T);
+		if (level.isSolid(colAhead, bodyRow))
+		{
+			var h = 1;
+			while (h <= 3 && level.isSolid(colAhead, bodyRow - h))
+				h++;
+			if (h <= 3 && !level.isSolid(colAhead, bodyRow - h - 1))
+			{
+				aiJump = true;
+				return dir;
+			}
+			return 0;
+		}
+		if (!level.isStandable(colAhead, footRow))
+		{
+			var below = false;
+			for (k in 1...7)
+				if (level.isStandable(colAhead, footRow + k))
+				{
+					below = true;
+					break;
+				}
+			if (below && followTarget.y > y + height + 20)
+				return dir;
+			var ok = false;
+			var maxGap = Parts.has(Parts.LEGS) ? 4 : 1;
+			for (k in 1...maxGap + 2)
+			{
+				var c = colAhead + dir * k;
+				for (r in -2...3)
+					if (level.isStandable(c, footRow + r) && !level.isSolid(c, footRow + r - 1) && !level.isSolid(c, footRow + r - 2))
+						ok = true;
+				if (ok)
+					break;
+			}
+			if (ok)
+			{
+				aiJump = true;
+				return dir;
+			}
+			return 0;
+		}
+		return dir;
+	}
+
 	/** Futósebesség: csupaszon lassú. */
 	function runSpeed():Float
 		return Parts.has(Parts.LEGS) ? (Parts.tier(Parts.LEGS) >= 2 ? 130.0 : 118.0) : 78.0;
@@ -170,14 +236,24 @@ class Player extends FlxSprite
 			coyote -= elapsed;
 		wasOnFloor = onFloor;
 
-		var dir = ctl ? ((Input.right() ? 1 : 0) - (Input.left() ? 1 : 0)) : 0;
+		var ai = on && !controlled && followTarget != null && level != null && stun <= 0;
+		aiJump = false;
+		var aiDir = ai ? aiDecide(onFloor) : 0;
+		if (aiJumpT > 0)
+			aiJumpT -= elapsed;
+		var dir = ctl ? ((Input.right() ? 1 : 0) - (Input.left() ? 1 : 0)) : aiDir;
 		if (stun > 0)
 			dir = 0;
 		if (dir != 0 && !clinging)
 			face = dir;
-		var jumpHeld = ctl && Input.jumpHeld();
+		var jumpHeld = (ctl && Input.jumpHeld()) || (ai && aiJumpT > 0 && velocity.y < 0);
 		// processzor nélkül a vezérlés késve reagál (az ugrás gomb ~90 ms-mal később hat), és a mozgás-bemenet lomhán követi a kart
 		var chip = Parts.tier(Parts.CHIP);
+		if (ai && aiJump && onFloor)
+		{
+			buffer = 0.12;
+			aiJumpT = 0.35;
+		}
 		if (ctl && Input.jumpPressed())
 		{
 			if (chip == 0)

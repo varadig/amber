@@ -2,11 +2,11 @@
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 function Up { Key "keyDown" "e" "KeyE" 69; Start-Sleep -Milliseconds 700; Key "keyUp" "e" "KeyE" 69; Start-Sleep -Milliseconds 1200 }
-function Load($lvl) { Send-Cdp "Page.navigate" @{ url = ($Base + "?level=" + $lvl + "&r=" + (Get-Random)) } | Out-Null; Start-Sleep -Seconds 9 }
+function Load($lvl) { Send-Cdp "Page.navigate" @{ url = ($Base + "?level=" + $lvl + "&r=" + (Get-Random)) } | Out-Null; Start-Sleep -Seconds 14 }
 function Tp($x, $y) { Js "(function(){var p=window.__ps; p.player.reset($x,$y); p.player.invuln=5;})()" | Out-Null }
 try {
     Start-Cdp ($Base + "?level=0") $Out
-    Start-Sleep -Seconds 9
+    Start-Sleep -Seconds 14
     # 1. láda a résbe -> lap lenyomva, kapu nyitva
     Js "(function(){var p=window.__ps; var pl=p.plates.members[0]; var c=p.crates.members[0]; c.reset(pl.x, pl.y-16);})()" | Out-Null
     Start-Sleep -Seconds 3
@@ -57,6 +57,6 @@ try {
     Key "keyDown" "ArrowRight" "ArrowRight" 39
     Start-Sleep -Seconds 7
     Key "keyUp" "ArrowRight" "ArrowRight" 39
-    "wheelie x vs grate: " + (Js "JSON.stringify({c:Math.round(window.__ps.companions.members[0].x),g:Math.round(window.__ps.grates.members[0].x),plate:window.__ps.plates.members.filter(function(p){return p.pressed}).length,ctrl:window.__ps.nameOf(window.__ps.ctrl)})")
+    "wheelie x vs grate: " + (Js "JSON.stringify({c:Math.round(window.__ps.companions.members[0].x),g:Math.round(window.__ps.grates.members[0].x),pf:window.__ps.partsFound,ctrl:window.__ps.nameOf(window.__ps.ctrl)})")
     "errors: " + ((Js "window.__errors") -join '; ')
 } finally { Stop-Cdp }

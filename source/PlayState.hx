@@ -265,6 +265,7 @@ class PlayState extends FlxState
 	var ctrl:FlxSprite;
 	var followAll:Bool = false;
 	var heroExited:Bool = false;
+	var heroStuckT:Float = 0;
 	var marker:FlxText;
 	var crumbles:FlxTypedGroup<Crumble>;
 	var movers:FlxTypedGroup<Mover>;
@@ -609,6 +610,7 @@ class PlayState extends FlxState
 			FlxG.camera.shake(0.002, 0.05);
 		};
 		add(player);
+		player.level = data;
 		ctrl = player;
 		companions = new FlxTypedGroup();
 		add(companions);
@@ -748,9 +750,9 @@ class PlayState extends FlxState
 	function refreshHud():Void
 	{
 		for (i in 0...hudHearts.length)
-			hudHearts[i].visible = i < player.maxHearts;
+			hudHearts[i].visible = i < maxHeartsOf(ctrl);
 		for (i in 0...hudHearts.length)
-			hudHearts[i].loadGraphic(i < player.hearts ? Art.heart() : Art.heartEmpty(), false, 8, 8, false, i < player.hearts ? "heart" : "heartEmpty");
+			hudHearts[i].loadGraphic(i < heartsOf(ctrl) ? Art.heart() : Art.heartEmpty(), false, 8, 8, false, i < heartsOf(ctrl) ? "heart" : "heartEmpty");
 		for (i in 0...hudParts.length)
 			hudParts[i].alpha = found[i] ? 1 : 0.25;
 		hudGems.text = "GEMS " + gemsGot + "/" + gemsTotal;
@@ -968,14 +970,19 @@ class PlayState extends FlxState
 		if (player.isTouching(FlxDirectionFlags.FLOOR))
 			combo = 0;
 
-		FlxG.overlap(player, enemies, onEnemy);
-		FlxG.overlap(player, gems, onGem);
-		FlxG.overlap(player, hearts, onHeart);
-		FlxG.overlap(player, partItems, onPart);
+		// minden robot (a hős és a társak) ugyanúgy felvesz, sérül és ellenségre ugrik; csak a repülő-cella a hősé
+		for (r in robots())
+		{
+			FlxG.overlap(r, enemies, onEnemy);
+			FlxG.overlap(r, gems, onGem);
+			FlxG.overlap(r, hearts, onHeart);
+			FlxG.overlap(r, partItems, onPart);
+			FlxG.overlap(r, batts, onBatt);
+			FlxG.overlap(r, spikes, onSpike);
+			FlxG.overlap(r, checkpoints, onCheckpoint);
+		}
 		FlxG.overlap(player, cells, onCell);
-		FlxG.overlap(player, batts, onBatt);
-		FlxG.overlap(player, spikes, onSpike);
-		FlxG.overlap(player, checkpoints, onCheckpoint);
+		updateFriendSkills();
 		updatePuzzles();
 		FlxG.overlap(bullets, enemies, onBulletEnemy);
 		FlxG.overlap(bullets, cracked, onBulletCracked);
@@ -1004,6 +1011,22 @@ class PlayState extends FlxState
 				c.velocity.set(0, 0);
 			}
 		});
+		// a követő hős lemaradása / elakadása: a kiválasztott robot mellé kerül
+		if (ctrl != player && followAll && !heroExited)
+		{
+			var hd = Math.abs(player.x - ctrl.x);
+			if (hd > 100 && player.onFloor && Math.abs(player.velocity.x) < 4)
+				heroStuckT += FlxG.elapsed;
+			else
+				heroStuckT = 0;
+			if (hd > 300 || Math.abs(player.y - ctrl.y) > 180 || heroStuckT > 1.6)
+			{
+				heroStuckT = 0;
+				player.reset(ctrl.x - 18, ctrl.y - 6);
+				player.velocity.set(0, 0);
+				player.invuln = 0.5;
+			}
+		}
 		marker.visible = companions.countLiving() > 0 && !heroExitedAll();
 		marker.x = ctrl.x + ctrl.width / 2 - 6;
 		marker.y = ctrl.y - 12 + Math.sin(time * 6) * 2;
@@ -1116,9 +1139,9 @@ class PlayState extends FlxState
 		battIcon.animation.frameIndex = low && !blink ? 1 : 0;
 	}
 
-	function onBatt(p:Player, b:Pickup):Void
+	function onBatt(p:FlxSprite, b:Pickup):Void
 	{
-		if (p.powerDown > 0)
+		if (player.powerDown > 0)
 			return;
 		b.kill();
 		Parts.battery = Math.min(100, Parts.battery + 35);
@@ -1202,6 +1225,7 @@ class PlayState extends FlxState
 	{
 		var c = new Companion(kind, x, y, data, ctrl != null ? ctrl : player);
 		c.mode = followAll ? 0 : 1;
+		c.onSpecial = doSpecial;
 		companions.add(c);
 		return c;
 	}
@@ -1409,6 +1433,8 @@ class PlayState extends FlxState
 
 	function applyModes():Void
 	{
+		// követés: a nem irányított hős is a kiválasztott robotot követi (Q)
+		player.followTarget = ctrl != player && followAll ? ctrl : null;
 		companions.forEachAlive(c ->
 		{
 			c.target = ctrl;
@@ -1452,7 +1478,137 @@ class PlayState extends FlxState
 			p.x += m.dx;
 	}
 
-	function onEnemy(p:Player, e:Enemy):Void
+	/** Ellenségre ugrás / ütközés: a hősre és a társakra ugyanaz a szabály (a WHEELIE turbó közben kiüti, a többiek rálépnek vagy megsérülnek). */
+	function onEnemy(p:FlxSprite, e:Enemy):Void
+	{
+		if (p == player)
+		{
+			onEnemyHero(player, e);
+			return;
+		}
+		var c = cast(p, Companion);
+		if (!e.alive || e.dying >= 0)
+			return;
+		if (c.turboT > 0)
+		{
+			defeat(e, 150);
+			return;
+		}
+		var above = c.velocity.y > 20 && (c.last.y + c.height) <= e.y + 6;
+		if (e.stompable && above)
+		{
+			defeat(e, 100);
+			c.velocity.y = -260;
+			hitstop = 0.05;
+			return;
+		}
+		if (c.takeHit(e.x + e.width / 2))
+			damagedCompanion(c);
+	}
+
+	function damagedCompanion(c:Companion):Void
+	{
+		Audio.play("hurt", 0.8);
+		FlxG.camera.shake(0.008, 0.15);
+		burst(c.x + 4, c.y + 4, 8, 0xFFFFFFFF, 80);
+		if (c.hearts <= 0)
+		{
+			c.hearts = c.maxHearts;
+			c.reset(respawn.x - 4, respawn.y);
+			c.velocity.set(0, 0);
+			showToast(Companions.NAMES[c.kind] + " WAS DEFEATED: BACK AT THE CHECKPOINT", 2.6);
+		}
+	}
+
+	function heartsOf(s:FlxSprite):Int
+		return s == player ? player.hearts : cast(s, Companion).hearts;
+
+	function maxHeartsOf(s:FlxSprite):Int
+		return s == player ? player.maxHearts : cast(s, Companion).maxHearts;
+
+	/** A társak különleges képességei: WHEELIE turbó-gurulás (áttöri a repedezett falat), TALL láda-emelés, ORB szikra (kart billent, ellenséget üt); a szállított láda követi a társat. */
+	function updateFriendSkills():Void
+	{
+		companions.forEachAlive(c ->
+		{
+			if (c.carrying != null)
+			{
+				c.carrying.x = c.x + c.width / 2 - 8;
+				c.carrying.y = c.y - 17;
+			}
+			if (c.turboT > 0)
+			{
+				FlxG.overlap(c, cracked, (a:FlxSprite, b:FlxSprite) ->
+				{
+					b.kill();
+					Audio.play("break", 1);
+					burst(b.x + 8, b.y + 8, 12, 0xFFBBBBBB, 90);
+					FlxG.camera.shake(0.006, 0.12);
+				});
+				dust(c.x + 4, c.y + 8, 1);
+			}
+		});
+		FlxG.overlap(bullets, levers, (b:Bullet, l:Lever) ->
+		{
+			if (!l.flipped)
+			{
+				b.kill();
+				l.flip();
+				setGate(l.gid, true);
+				Audio.play("plate", 1);
+				showToast("LEVER ZAPPED: GATE OPENED", 2.4);
+			}
+		});
+	}
+
+	function doSpecial(c:Companion):Void
+	{
+		switch (c.kind)
+		{
+			case Companions.WHEELIE:
+				c.turboT = 0.45;
+				Audio.play("dash", 0.9);
+				FlxG.camera.shake(0.004, 0.08);
+			case Companions.TALL:
+				if (c.carrying != null)
+				{
+					var cr = c.carrying;
+					c.carrying = null;
+					cr.drop(c.x + c.width / 2 + c.face * 12 - 8, c.y + 6);
+					Audio.play("land", 0.8);
+				}
+				else
+				{
+					var best:Crate = null;
+					var bd = 40.0;
+					for (cr in crates)
+					{
+						if (cr.carried)
+							continue;
+						var d = Math.abs(cr.x + 8 - (c.x + c.width / 2)) + Math.abs(cr.y + 8 - (c.y + c.height - 8));
+						if (d < bd)
+						{
+							bd = d;
+							best = cr;
+						}
+					}
+					if (best != null)
+					{
+						best.carry();
+						c.carrying = best;
+						Audio.play("key", 0.7);
+					}
+					else
+						showToast("NOTHING TO LIFT", 1.2);
+				}
+			default:
+				var b = bullets.recycle(Bullet);
+				b.fire(c.x + c.width / 2 + c.face * 6, c.y + 3, c.face, data);
+				Audio.play("shoot", 0.7);
+		}
+	}
+
+	function onEnemyHero(p:Player, e:Enemy):Void
 	{
 		if (!e.alive || e.dying >= 0)
 			return;
@@ -1513,7 +1669,7 @@ class PlayState extends FlxState
 			die();
 	}
 
-	function onGem(p:Player, g:Pickup):Void
+	function onGem(p:FlxSprite, g:Pickup):Void
 	{
 		g.kill();
 		gemsGot++;
@@ -1522,19 +1678,35 @@ class PlayState extends FlxState
 		burst(g.x + 4, g.y + 4, 6, 0xFFFFFFFF, 50);
 	}
 
-	function onHeart(p:Player, h:Pickup):Void
+	function onHeart(p:FlxSprite, h:Pickup):Void
 	{
 		h.kill();
-		if (player.hearts < player.maxHearts)
-			player.hearts++;
+		var healed = false;
+		if (p == player)
+		{
+			if (player.hearts < player.maxHearts)
+			{
+				player.hearts++;
+				healed = true;
+			}
+		}
 		else
+		{
+			var c = cast(p, Companion);
+			if (c.hearts < c.maxHearts)
+			{
+				c.hearts++;
+				healed = true;
+			}
+		}
+		if (!healed)
 			score += 50;
 		Audio.play("heal", 0.9);
 		burst(h.x + 4, h.y + 4, 8, 0xFFFFFFFF, 60);
 	}
 
 	/** Alkatrész felvétele: a küldetés előrehalad, a képesség (ha új) visszatér, a robot megjelenése is változik. */
-	function onPart(p:Player, it:Pickup):Void
+	function onPart(p:FlxSprite, it:Pickup):Void
 	{
 		it.kill();
 		found[it.idx] = true;
@@ -1579,16 +1751,28 @@ class PlayState extends FlxState
 		showToast("JET CELL: HOLD JUMP IN THE AIR TO FLY", 3.2);
 	}
 
-	function onSpike(p:Player, s:FlxSprite):Void
+	function onSpike(p:FlxSprite, s:FlxSprite):Void
 	{
-		if (p.takeHit(s.x + 6))
+		if (p == player)
 		{
-			p.velocity.y = -230;
-			damaged();
+			if (player.takeHit(s.x + 6))
+			{
+				player.velocity.y = -230;
+				damaged();
+			}
+		}
+		else
+		{
+			var c = cast(p, Companion);
+			if (c.takeHit(s.x + 6))
+			{
+				c.velocity.y = -230;
+				damagedCompanion(c);
+			}
 		}
 	}
 
-	function onCheckpoint(p:Player, c:Pickup):Void
+	function onCheckpoint(p:FlxSprite, c:Pickup):Void
 	{
 		if (c.animation.name == "on")
 			return;
