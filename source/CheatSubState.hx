@@ -31,6 +31,10 @@ class CheatSubState extends FlxSubState
 	var sel:Int = 0;
 	var top:Int = 0;
 	var stickPrev:Int = 0;
+	/** A megnyitás óta eltelt idő: az első 0,4 mp-ben nem zár be (a megnyitó gombnyomás villanásai ne csukják be rögtön). */
+	var age:Float = 0;
+	var padInfo:FlxText;
+	var padInfoT:Float = 0;
 	var pendingPage:Null<String> = null;
 	var backStack:Array<String> = [];
 
@@ -65,6 +69,11 @@ class CheatSubState extends FlxSubState
 		hint.color = 0xFF888888;
 		hint.scrollFactor.set(0, 0);
 		add(hint);
+		padInfo = new FlxText(0, 236, FlxG.width, "", 8);
+		padInfo.alignment = CENTER;
+		padInfo.color = 0xFF55AA55;
+		padInfo.scrollFactor.set(0, 0);
+		add(padInfo);
 		buildPage("main");
 	}
 
@@ -286,7 +295,16 @@ class CheatSubState extends FlxSubState
 		var up = k.UP || k.W || (pad != null && pad.justPressed.DPAD_UP) || (fresh && s == 1);
 		var down = k.DOWN || k.S || (pad != null && pad.justPressed.DPAD_DOWN) || (fresh && s == 2);
 		var use = k.ENTER || k.SPACE || k.Z || (pad != null && pad.justPressed.A);
-		var back = k.ESCAPE || k.F9 || Input.r2New || (pad != null && (pad.justPressed.B || pad.justPressed.BACK));
+		age += elapsed;
+		var pd = Input.padDebug();
+		if (pd != "")
+		{
+			padInfo.text = "LAST PAD INPUT: " + pd;
+			padInfoT = 3;
+		}
+		else if (padInfoT > 0 && (padInfoT -= elapsed) <= 0)
+			padInfo.text = "";
+		var back = age > 0.4 && (k.ESCAPE || k.F9 || Input.r2New || (pad != null && (pad.justPressed.B || pad.justPressed.BACK)));
 		if (back)
 		{
 			goBack();

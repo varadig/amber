@@ -95,10 +95,24 @@ class Input
 	/** R2 (PS4): a cheat-menü gombja; digitális gomb vagy analóg trigger is lehet (a böngésző-leképezéstől függően). */
 	public static function r2Held():Bool
 	{
-		var p = pad();
-		if (p == null)
-			return false;
-		return p.pressed.RIGHT_TRIGGER || p.pressed.RIGHT_TRIGGER_BUTTON || p.analog.value.RIGHT_TRIGGER > 0.6;
+		// az összes aktív kontrollert nézi (a böngésző néha két bejegyzést ad ugyanarra a kontrollerre, és a "legutóbb aktív" közöttük ugrál)
+		for (p in FlxG.gamepads.getActiveGamepads())
+			if (p.pressed.RIGHT_TRIGGER || p.pressed.RIGHT_TRIGGER_BUTTON || p.analog.value.RIGHT_TRIGGER > 0.6)
+				return true;
+		return false;
+	}
+
+	/** Diagnosztika: az éppen lenyomott kontroller-gomb(ok) neve (a cheat-menü alján látszik). */
+	public static function padDebug():String
+	{
+		var s = "";
+		for (p in FlxG.gamepads.getActiveGamepads())
+		{
+			var id = p.firstJustPressedID();
+			if (id != flixel.input.gamepad.FlxGamepadInputID.NONE)
+				s += "PAD" + p.id + ":" + flixel.input.gamepad.FlxGamepadInputID.toStringMap.get(id) + " ";
+		}
+		return s;
 	}
 
 	/** R2: az állapot képkockánként egyszer (a Main preUpdate-je hívja), így az élváltás (r2New) állapotoktól / menüktől függetlenül egyetlen helyen számolódik. */
