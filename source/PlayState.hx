@@ -318,6 +318,28 @@ class PlayState extends FlxState
 	var worldW:Int;
 	var worldH:Int;
 
+	// A HUD külön kamerán (hudCam) rajzol, amin nincs shader: a sérülés-kisülés, a fáradtság-elmosás és a homályos látás a játékot érinti,
+	// a fontos információ (szívek, akku, alkatrészek) viszont mindig tisztán olvasható.
+	var hudCam:flixel.FlxCamera;
+	var hudLayer:flixel.group.FlxGroup;
+	var hudAdding:Bool = false;
+
+	/** A hudAdding közben létrehozott elemek a HUD-rétegre (hudCam) kerülnek, a többi a játékra. */
+	override public function add(basic:flixel.FlxBasic):flixel.FlxBasic
+	{
+		if (hudAdding && hudLayer != null)
+			return hudLayer.add(basic);
+		return super.add(basic);
+	}
+
+	/** Menü / minijáték a játékkamerán (shaderrel) rajzol: közben a HUD rejtve van (az update-ben újra látszik). */
+	override public function openSubState(subState:flixel.FlxSubState):Void
+	{
+		if (hudLayer != null)
+			hudLayer.visible = false;
+		super.openSubState(subState);
+	}
+
 	override public function create():Void
 	{
 		super.create();
@@ -649,6 +671,15 @@ class PlayState extends FlxState
 		FlxG.camera.focusOn(player.getMidpoint());
 		FlxG.camera.fade(0xFF000000, 0.35, true);
 
+		hudCam = new flixel.FlxCamera(0, 0, FlxG.width, FlxG.height);
+		hudCam.bgColor = 0x00000000;
+		hudCam.pixelPerfectRender = true;
+		hudCam.antialiasing = false;
+		hudCam.filters = [new openfl.filters.ShaderFilter(new HudShader())]; // borostyán árnyalat, de effektek nélkül
+		FlxG.cameras.add(hudCam, false);
+		hudLayer = new flixel.group.FlxGroup();
+		hudLayer.cameras = [hudCam];
+		super.add(hudLayer);
 		buildHud();
 		var own = [for (p in data.parts) if (p.friend == null || p.friend < 0) p.label];
 		var fr = [for (p in data.parts) if (p.friend != null && p.friend >= 0) p.label];
@@ -698,6 +729,7 @@ class PlayState extends FlxState
 
 	function buildHud():Void
 	{
+		hudAdding = true;
 		for (i in 0...5)
 		{
 			var h = new FlxSprite(6 + i * 10, 6);
@@ -754,15 +786,18 @@ class PlayState extends FlxState
 		hudComp = new FlxText(6, 258, 400, "", 8);
 		hudComp.scrollFactor.set(0, 0);
 		add(hudComp);
-		marker = new FlxText(0, 0, 12, "v", 8);
+		marker = new FlxText(0, 0, 12, "v", 8); // a vezérelt robot jelölője a világban van, nem a HUD-on
 		marker.setFormat(null, 8, 0xFFFFFFFF, CENTER);
+		hudAdding = false;
 		add(marker);
+		hudAdding = true;
 		toast = label("", 46, 8, 0xFFFFFFFF);
 		toast.visible = false;
 		hint = label("", 100, 8, 0xFFFFFFFF);
 		hint.visible = false;
 		overlay = label("", 96, 8, 0xFFFFFFFF);
 		overlay.visible = false;
+		hudAdding = false;
 		refreshHud();
 	}
 
@@ -891,6 +926,8 @@ class PlayState extends FlxState
 		Main.sightTarget = Parts.has(Parts.VISOR) ? (Parts.tier(Parts.VISOR) >= 2 ? 1.2 : 1.0) : 0.4;
 		// fáradtság: a lemerülő akku fokozatosan elsötétíti és elmossa a képet; leálláskor erősen
 		Main.tiredTarget = player != null && player.powerDown > 0 ? 1.0 : (Parts.battery < 25 ? (25 - Parts.battery) / 25 * 0.75 : 0.0);
+		if (subState == null && hudLayer != null)
+			hudLayer.visible = true;
 		#if cheats
 		cheatUpdate();
 		#end
@@ -1187,7 +1224,9 @@ class PlayState extends FlxState
 		big.animation.frameIndex = it.icon;
 		big.scrollFactor.set(0, 0);
 		big.scale.set(0.2, 0.2);
+		hudAdding = true;
 		add(big);
+		hudAdding = false;
 		var n = data.parts.length;
 		var sx = 240 - n * 7 + it.idx * 14;
 		FlxTween.tween(big.scale, {x: 7, y: 7}, 0.4, {ease: FlxEase.backOut});
