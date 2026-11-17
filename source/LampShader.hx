@@ -65,11 +65,8 @@ class LampShader extends FlxShader
 			lit = floor(lit * 6.0 + 0.5) / 6.0;
 			float amb = max(zoneAt(uZ0, p), zoneAt(uZ1, p)) * uAmbient;
 			float dark = amb * (1.0 - lit);
-			// köd a nyalábban + lassan lebegő porszemek
+			// köd a nyalábban
 			float haze = floor(clamp(s.y, 0.0, 1.0) * 8.0 + 0.5) / 8.0 * 0.32;
-			vec2 cell = floor(p / 2.0) + floor(uTime * 2.5);
-			float n = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
-			haze += step(0.975, n) * clamp(s.y * 2.0, 0.0, 1.0) * 0.5;
 			haze = clamp(haze, 0.0, 1.0);
 			vec3 col = vec3(1.0, 0.85, 0.55) * haze;
 			gl_FragColor = vec4(col, dark);
@@ -79,7 +76,7 @@ class LampShader extends FlxShader
 	{
 		super();
 		uTime.value = [0.0];
-		uAmbient.value = [0.62];
+		uAmbient.value = [0.36];
 		uZ0.value = [0.0, 0.0, 0.0, 0.0];
 		uZ1.value = [0.0, 0.0, 0.0, 0.0];
 		for (i in 0...8)
