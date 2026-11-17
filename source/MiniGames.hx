@@ -154,9 +154,26 @@ class MiniGame extends FlxSubState
 		jback = k.ESCAPE || (Input.just(FlxGamepadInputID.B) || Input.just(FlxGamepadInputID.BACK));
 	}
 
+	#if cheats
+	/** Cheat: a mini-játék azonnali megoldása. */
+	public function cheatSolve():Void
+	{
+		win();
+	}
+	#end
+
 	override public function update(elapsed:Float):Void
 	{
 		super.update(elapsed);
+		#if cheats
+		// a cheat-menü a mini-játékból is elérhető (F9 / R2)
+		var ps = Std.downcast(FlxG.state, PlayState);
+		if (ps != null && !closed && !finished && (FlxG.keys.justPressed.F9 || Input.r2New))
+		{
+			openSubState(ps.cheatMenuFrom(this));
+			return;
+		}
+		#end
 		pollNav();
 		if (closed)
 			return;

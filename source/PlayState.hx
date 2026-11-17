@@ -2268,13 +2268,41 @@ class PlayState extends FlxState
 	public function cheatSolveTerminals():Void
 	{
 		for (s in terminals)
-			if (!termSolved.exists(s.ID))
-			{
-				termSolved.set(s.ID, true);
-				s.animation.play("done");
-				setGate(s.ID, true);
-			}
+			solveTerminal(s);
 		showToast("CHEAT: TERMINALS SOLVED", 1.6);
+	}
+
+	function solveTerminal(s:FlxSprite):Void
+	{
+		if (termSolved.exists(s.ID))
+			return;
+		termSolved.set(s.ID, true);
+		s.animation.play("done");
+		setGate(s.ID, true);
+	}
+
+	public function cheatTerminalCount():Int
+		return terminals.members.length;
+
+	public function cheatTerminalName(i:Int):String
+	{
+		var s = terminals.members[i];
+		return "TERMINAL " + (i + 1) + ": " + MiniGames.TITLES[termGame.get(s.ID) % MiniGames.COUNT] + (termSolved.exists(s.ID) ? "  (SOLVED)" : "");
+	}
+
+	/** Egy terminál azonnali feloldása (kinyílik a belső kapu). */
+	public function cheatUnlockTerminal(i:Int):Void
+	{
+		solveTerminal(terminals.members[i]);
+		showToast("CHEAT: TERMINAL " + (i + 1) + " UNLOCKED", 1.6);
+	}
+
+	/** A cheat-menü megnyitása egy futó mini-játékból (a HUD-kamerán, hogy az effektek ne érintsék). */
+	public function cheatMenuFrom(mini:MiniGames.MiniGame):CheatSubState
+	{
+		var c = new CheatSubState(this, mini);
+		c.cameras = [hudCam];
+		return c;
 	}
 
 	public function cheatComplete():Void

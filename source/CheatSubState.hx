@@ -5,6 +5,7 @@ import flixel.FlxG;
 import flixel.FlxSubState;
 import flixel.input.gamepad.FlxGamepadInputID;
 import flixel.text.FlxText;
+import MiniGames.MiniGame;
 
 /** Egy cheat-menüpont: felirat (dinamikus) és a művelet; a művelet true-val zárja be a menüt. */
 typedef CheatItem =
@@ -24,6 +25,8 @@ class CheatSubState extends FlxSubState
 	static inline var ROWS:Int = 12;
 
 	var game:PlayState;
+	/** Ha mini-játékból nyílt: az a mini-játék (a lista szűkebb, és megoldható). */
+	var mini:MiniGame;
 	var title:FlxText;
 	var rows:Array<FlxText> = [];
 	var more:FlxText;
@@ -39,10 +42,11 @@ class CheatSubState extends FlxSubState
 	var pendingPage:Null<String> = null;
 	var backStack:Array<String> = [];
 
-	public function new(game:PlayState)
+	public function new(game:PlayState, ?mini:MiniGame)
 	{
 		super(0xE0101010);
 		this.game = game;
+		this.mini = mini;
 		Cheats.used = true;
 	}
 
@@ -169,8 +173,19 @@ class CheatSubState extends FlxSubState
 					}),
 					act("HURT ALL FRIENDS", g.cheatHurtFriends)
 				];
+			case "unlock":
+				var l:Array<CheatItem> = [];
+				for (i in 0...g.cheatTerminalCount())
+					l.push(dyn(() -> g.cheatTerminalName(i), () ->
+					{
+						g.cheatUnlockTerminal(i);
+						return false;
+					}));
+				l.push(act("UNLOCK ALL TERMINALS", g.cheatSolveTerminals));
+				return l;
 			case "world":
 				return [
+					sub("UNLOCK TERMINALS", "unlock"),
 					act("OPEN ALL GATES", g.cheatOpenGates),
 					act("SOLVE ALL TERMINALS", g.cheatSolveTerminals),
 					act("COMPLETE LEVEL (CLEAR SCREEN)", g.cheatComplete),
@@ -209,6 +224,15 @@ class CheatSubState extends FlxSubState
 					})
 				];
 			default:
+				if (mini != null)
+					return [
+						act("SOLVE THIS MINI-GAME NOW", mini.cheatSolve),
+						sub("UNLOCK TERMINALS", "unlock"),
+						sub("PARTS", "parts"),
+						sub("BATTERY & SCREEN EFFECTS", "screen"),
+						sub("TOGGLES", "toggles"),
+						item("CLOSE", () -> true)
+					];
 				return [
 					sub("HERO", "hero"),
 					sub("PARTS", "parts"),
@@ -240,6 +264,7 @@ class CheatSubState extends FlxSubState
 			case "enemies": "ENEMIES";
 			case "minigames": "MINI-GAMES";
 			case "toggles": "TOGGLES";
+			case "unlock": "UNLOCK TERMINALS";
 			default: "CHEATS";
 		};
 		refresh();
