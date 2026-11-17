@@ -1,4 +1,4 @@
-﻿# Amber Ascent fordítása (HTML5). Kapcsolók: -Test (teszt-build: egyből a játék indul, window.__ps), -Debug, -Cheats (fejlesztői build cheat-menüvel, a címképernyővel).
+﻿# Amber fordítása (HTML5). Kapcsolók: -Test (teszt-build: egyből a játék indul, window.__ps), -Debug, -Cheats (fejlesztői build cheat-menüvel, a címképernyővel).
 #   powershell -ExecutionPolicy Bypass -File scripts/build.ps1 [-Test]
 param([switch]$Test, [switch]$Debug, [switch]$Cheats)
 $root = Split-Path -Parent $PSScriptRoot

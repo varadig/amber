@@ -1,4 +1,4 @@
-﻿# Leállítja az Amber Ascent helyi szerverét (alapból a 3220-as port; -Port a másikhoz).
+﻿# Leállítja az Amber helyi szerverét (alapból a 3220-as port; -Port a másikhoz).
 param([int]$Port = 3220)
 $conn = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue
 if (-not $conn) { Write-Host "A $Port porton nem fut szerver."; exit 0 }

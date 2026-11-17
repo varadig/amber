@@ -1,4 +1,4 @@
-# Amber Ascent: projekt jegyzetek
+# Amber: projekt jegyzetek
 
 - Nyelv/engine: Haxe 4.3.6, HaxeFlixel 6.2.1 (lime 8.3.2, openfl 9.5.2). Csak ezekre a verziókra írj kódot.
 - Build: `scripts/build.ps1` (vagy `haxelib run lime build html5 [-Dtest]`); a hibát mindig ellenőrizd (`| grep -E "\.hx:[0-9]+"`), mert a lime csendben a régi JS-t hagyja.

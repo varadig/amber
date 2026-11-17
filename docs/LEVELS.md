@@ -1,6 +1,6 @@
 # Pályák szerkesztése Tiled-ben
 
-Az Amber Ascent pályái a [Tiled](https://www.mapeditor.org) térképszerkesztőben szerkeszthetők (`levels/levelN.tmj`).
+Az Amber pályái a [Tiled](https://www.mapeditor.org) térképszerkesztőben szerkeszthetők (`levels/levelN.tmj`).
 A játék a Tiled JSON formátumát olvassa; a fájlok be vannak ágyazva (`Project.xml`: `assets path="levels"`), tehát **mentés után újra kell fordítani**
 (VS Code: *Build HTML5*). Ha egy pályának nincs `.tmj` fájlja (vagy hibás), a játék a régi módon, a generátorból (`LevelData.generate`) építi.
 

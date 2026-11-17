@@ -22,7 +22,7 @@ $text = [IO.File]::ReadAllText($js[0].FullName)
 foreach ($forbidden in @("window.__ps", "window.__cam", "CheatSubState", "LevelExport")) {
     if ($text.Contains($forbidden)) { Fail "a release build tartalmazza a teszt-kódot: '$forbidden' (-Dtest nélkül kell fordítani)." }
 }
-$zip = Join-Path $root "dist\amberascent-html5.zip"
+$zip = Join-Path $root "dist\amber-html5.zip"
 if (-not (Test-Path $zip)) { Fail "a zip nem készült el: $zip" }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $z = [IO.Compression.ZipFile]::OpenRead($zip)

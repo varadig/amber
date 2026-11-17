@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <project>
-	<meta title="Ämber" package="com.varadig.amberascent" version="0.1.0" company="varadig" />
-	<app main="Main" file="AmberAscent" path="export" />
+	<meta title="Ämber" package="com.varadig.amber" version="0.1.0" company="varadig" />
+	<app main="Main" file="Amber" path="export" />
 
 	<window width="960" height="540" fps="60" background="#000000" hardware="true" vsync="true" />
 	<!-- Böngészőben a vászon kitölti az ablakot (0x0), a játék belső felbontása 480x270 -->

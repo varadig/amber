@@ -135,7 +135,7 @@
 		},
 		{
 			"label": "Package for itch.io",
-			"detail": "Normál HTML5 build, majd dist/amberascent-html5.zip (index.html a zip gyökerében)",
+			"detail": "Normál HTML5 build, majd dist/amber-html5.zip (index.html a zip gyökerében)",
 			"type": "shell",
 			"command": "powershell",
 			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/package-itch.ps1"],
@@ -159,7 +159,7 @@
 		},
 		{
 			"label": "Release (build + package, no publish)",
-			"detail": "Mint a teljes kiadás, de feltöltés nélkül: csak a dist/amberascent-html5.zip készül el és ellenőrződik",
+			"detail": "Mint a teljes kiadás, de feltöltés nélkül: csak a dist/amber-html5.zip készül el és ellenőrződik",
 			"type": "shell",
 			"command": "powershell",
 			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/release.ps1", "-SkipPublish"],
