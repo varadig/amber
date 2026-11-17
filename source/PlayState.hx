@@ -266,6 +266,9 @@ class PlayState extends FlxState
 	var ctrl:FlxSprite;
 	var followAll:Bool = true;
 	var heroExited:Bool = false;
+	/** Valamelyik robot belépett a kijáratba: a pálya hamarosan véget ér. */
+	var exiting:Bool = false;
+	var exitT:Float = 0;
 	var heroStuckT:Float = 0;
 	var terminals:FlxTypedGroup<FlxSprite>;
 	var termGame:Map<Int, Int> = new Map();
@@ -1344,10 +1347,18 @@ class PlayState extends FlxState
 		hint.visible = nearDoor;
 		hint.text = allFound ? "WALK INTO THE EXIT" : (partsDone ? "BUILD YOUR FRIEND AT THE WORKBENCH FIRST" : "NEED " + (data.parts.length - partsFound) + " MORE PART" + (data.parts.length - partsFound == 1 ? "" : "S"));
 		// a kijáratnál nem kell felfelé nyomni: elég nekimenni (az irányított robot belép, ha minden megvan)
-		if (nearDoor && allFound && !(ctrl == player && heroExited))
+		if (nearDoor && allFound && !exiting && !(ctrl == player && heroExited))
 			robotEnters(ctrl);
-		if (allRobotsExited())
-			levelClear();
+		// elég egyetlen robotnak bemennie: a többi magától követi az ajtóhoz, a pálya akkor ér véget, ha mind beolvadt
+		if (exiting)
+		{
+			exitT += FlxG.elapsed;
+			// a nem irányított hős (AI) az ajtóhoz sétál, és ott belép (időtúllépéskor akkor is)
+			if (!heroExited && (nearTo(player, door, 14, 20) || exitT > 4))
+				robotEnters(player);
+			if (allRobotsExited() || exitT > 9)
+				levelClear();
+		}
 		// a társak leesése: a mentési pontra kerülnek vissza
 		companions.forEachAlive(c ->
 		{
@@ -1871,6 +1882,8 @@ class PlayState extends FlxState
 	/** Az irányított robot kiválasztása: a többi vár (vagy követ); a kamera az irányított robotot követi. */
 	function setControl(s:FlxSprite):Void
 	{
+		if (exiting)
+			return; // a kijáratnál már az automatikus belépés zajlik
 		ctrl = s;
 		player.controlled = s == player;
 		applyModes();
@@ -2311,6 +2324,10 @@ NEXT: " + navTarget().label + " >>";
 	/** Belépés az ajtón: a robot az ajtó közepére megy és beleolvad; a vezérlés a következő robotra ugrik. A pálya akkor ér véget, ha mind bent van. */
 	function robotEnters(r:FlxSprite):Void
 	{
+		var first = !exiting;
+		exiting = true;
+		if (first)
+			exitT = 0;
 		hint.visible = false;
 		door.animation.play("open");
 		Audio.play("door", 1);
@@ -2333,9 +2350,19 @@ NEXT: " + navTarget().label + " >>";
 		}
 		else
 			cast(r, Companion).enterDoor(door.x + 8, door.y + door.height);
-		var bots = robots();
-		if (bots.length > 0)
-			setControl(bots[0]);
+		if (!first)
+			return;
+		// a többi robot automatikusan követi: a társak az ajtóhoz mennek (mode 3), a hőst az AI viszi oda
+		companions.forEachAlive(c ->
+		{
+			if (c != r && c.mode != 3)
+				c.enterDoor(door.x + 8, door.y + door.height);
+		});
+		if (r != player && !heroExited)
+		{
+			player.controlled = false;
+			player.followTarget = door;
+		}
 	}
 
 	function levelClear():Void
