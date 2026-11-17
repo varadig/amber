@@ -712,14 +712,14 @@
 			"class": "Lamp",
 			"properties": [
 				{
-					"name": "radius",
-					"type": "int",
-					"value": 56
+					"name": "angle",
+					"type": "float",
+					"value": 90
 				},
 				{
-					"name": "color",
-					"type": "string",
-					"value": "#ffcf70"
+					"name": "flicker",
+					"type": "bool",
+					"value": true
 				},
 				{
 					"name": "intensity",
@@ -727,9 +727,14 @@
 					"value": 1
 				},
 				{
-					"name": "flicker",
-					"type": "bool",
-					"value": true
+					"name": "radius",
+					"type": "int",
+					"value": 110
+				},
+				{
+					"name": "spread",
+					"type": "float",
+					"value": 50
 				}
 			]
 		}

@@ -46,18 +46,20 @@ fs.writeFileSync(path.join(dir, "sprites", "lamp.png"), lampPng());
 // --- objects.tsj ---
 const tsjPath = path.join(dir, "objects.tsj");
 const tsj = JSON.parse(fs.readFileSync(tsjPath, "utf8").replace(/^﻿/, ""));
-if (!tsj.tiles.some((t) => t.class === "Lamp")) {
-  tsj.tiles.push({
-    id: LAMP_IDX, image: "sprites/lamp.png", imagewidth: 8, imageheight: 8, class: "Lamp",
-    properties: [
-      { name: "radius", type: "int", value: 56 }, { name: "color", type: "string", value: "#ffcf70" },
-      { name: "intensity", type: "float", value: 1 }, { name: "flicker", type: "bool", value: true }
-    ]
-  });
+// A lámpa tulajdonságai: radius (a nyaláb hatótávja px), intensity, flicker, angle (fok, 90 = lefelé), spread (a kúp nyílásszöge fok)
+const LAMP_PROPS = () => [
+  { name: "angle", type: "float", value: 90 }, { name: "flicker", type: "bool", value: true },
+  { name: "intensity", type: "float", value: 1 }, { name: "radius", type: "int", value: 110 }, { name: "spread", type: "float", value: 50 }
+];
+let lt = tsj.tiles.find((t) => t.class === "Lamp");
+if (!lt) {
+  lt = { id: LAMP_IDX, image: "sprites/lamp.png", imagewidth: 8, imageheight: 8, class: "Lamp" };
+  tsj.tiles.push(lt);
   tsj.tilecount = tsj.tiles.length;
-  fs.writeFileSync(tsjPath, JSON.stringify(tsj, null, "\t"));
-  console.log("objects.tsj: Lamp felvéve");
 }
+lt.properties = LAMP_PROPS();
+fs.writeFileSync(tsjPath, JSON.stringify(tsj, null, "	"));
+console.log("objects.tsj: Lamp frissítve");
 
 // --- pályák ---
 let total = 0;
@@ -77,6 +79,16 @@ for (const f of fs.readdirSync(dir).filter((n) => /^level\d+\.tmj$/.test(n))) {
     if (cls === "Lamp" || (o.properties || []).some((q) => q.name === "radius")) lamps.push(o);
     if (cls === "BuildingRoom") rooms.push(o);
   }
+  // régi lámpák átállítása az új tulajdonságokra (nyaláb): a color kikerül, az angle / spread bekerül, a régi 76-os sugár 110 lesz
+  for (const o of lamps) {
+    o.properties = (o.properties || []).filter((q) => q.name !== "color");
+    const has = (n) => o.properties.some((q) => q.name === n);
+    if (!has("angle")) o.properties.push({ name: "angle", type: "float", value: 90 });
+    if (!has("spread")) o.properties.push({ name: "spread", type: "float", value: 50 });
+    const rq = o.properties.find((q) => q.name === "radius");
+    if (rq && rq.value === 76) rq.value = 110;
+  }
+  if (lamps.length) fs.writeFileSync(p, JSON.stringify(m));
   let added = 0;
   for (const r of rooms) {
     if (lamps.some((o) => o.x >= r.x && o.x <= r.x + r.width && o.y >= r.y && o.y <= r.y + r.height + 8)) continue;
@@ -85,10 +97,7 @@ for (const f of fs.readdirSync(dir).filter((n) => /^level\d+\.tmj$/.test(n))) {
       const cx = r.x + lx + 1, cy = r.y + 8; // lámpa közepe
       items.objects.push({
         id: m.nextobjectid++, name: "", class: "Lamp", x: cx - 4, y: cy + 4, width: 8, height: 8, gid, rotation: 0, visible: true,
-        properties: [
-          { name: "color", type: "string", value: "#ffcf70" }, { name: "flicker", type: "bool", value: true },
-          { name: "intensity", type: "float", value: 1 }, { name: "radius", type: "int", value: 76 }
-        ]
+        properties: LAMP_PROPS()
       });
       added++;
     }

@@ -108,6 +108,6 @@ A térkép-sáv (minimap, alul) mindig látszik, a következő cél villog rajta
 A gyémántok helyett **atom-részecskéket** kell gyűjteni (a Tiled-ben az objektum osztálya a régi `Gem` maradt).
 
 ## Lámpa (Lamp) és alkatrész-felirat
-- `Lamp` objektum (az `objects` készlet utolsó csempéje): bárhová letehető; tulajdonságai `radius` (fénysugár px), `color` (`#rrggbb`), `intensity`, `flicker`. A játék a lámpatestet és egy additív `LampShader` fényfoltot rajzol. A generátor az épületek mennyezetére tesz (a régi, falpapírra festett lámpák helyére); a meglévő pályákhoz `node scripts/add-lamps.js`.
+- `Lamp` objektum (az `objects` készlet utolsó csempéje): bárhová letehető; fénynyalábot rajzol (kúp, köddel és lebegő porszemekkel), és a lámpás termekben (ahol van Lamp) sötétséget terít, amit a nyaláb kivilágosít. Tulajdonságok: `radius` (a nyaláb hatótávja px), `angle` (irány fokban, 90 = lefelé), `spread` (a kúp nyílásszöge fokban), `intensity`, `flicker`. Egyszerre a képernyőn legfeljebb 8 lámpa számít. A generátor az épületek mennyezetére tesz (a régi, falpapírra festett lámpák helyére); a meglévő pályákhoz `node scripts/add-lamps.js` (a régi tulajdonságokat is átállítja).
 - Alkatrész (`Part`): ha az objektumnak nincs saját `icon` tulajdonsága, a `label` ("VISOR", "LEGS", ...) dönt a képességről; a saját `icon` felülírja.
 - Megoldott rejtvény (kapu kinyílt): a közelében lévő `Text` feliratok és a kapcsoló-betűk eltűnnek.

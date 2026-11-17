@@ -13,15 +13,16 @@ typedef EnemySpawn =
 	y:Float
 }
 
-/** Lámpa (Tiled: Lamp objektum): a fény sugara (px), színe, erőssége és vibrálása. */
+/** Lámpa (Tiled: Lamp objektum): a fénynyaláb hatótávja (px), erőssége, vibrálása, iránya (fok, 90 = lefelé) és nyílásszöge (fok). */
 typedef LampDef =
 {
 	x:Float,
 	y:Float,
 	radius:Float,
-	color:Int,
 	intensity:Float,
-	flicker:Bool
+	flicker:Bool,
+	angle:Float,
+	spread:Float
 }
 
 typedef PartSpawn =
@@ -728,7 +729,7 @@ class LevelData
 		var lampX = 40;
 		while (lampX < wI * T - 20)
 		{
-			lamps.push({x: x0 * T + lampX + 1, y: y0 * T + 8, radius: 76, color: 0xFFCF70, intensity: 1.0, flicker: true});
+			lamps.push({x: x0 * T + lampX + 1, y: y0 * T + 8, radius: 110, intensity: 1.0, flicker: true, angle: 90, spread: 50});
 			lampX += 90;
 		}
 		buildings.push({sx: (c0 + 12) * T, sy: cur * T - 24, ix: (x0 + 1) * T, iy: yBot * T - 24, x0: x0, y0: y0, w: wI, h: 10});

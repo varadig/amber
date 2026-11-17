@@ -12,6 +12,7 @@ import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
 import flixel.util.FlxTimer;
 import flixel.util.FlxDirectionFlags;
+import LevelData.LampDef;
 import Puzzle;
 
 /** Egy felvehető / dekorációs tárgy (gyémánt, szív, alkatrész, repülő-cella, ellenőrzőpont). */
@@ -306,7 +307,9 @@ class PlayState extends FlxState
 	var infoText:FlxText;
 	var worldTexts:Array<{x:Float, y:Float, s:String, solved:Bool}> = [];
 	var switchLabels:Array<{t:FlxText, gid:Int}> = [];
-	var lampShaders:Array<LampShader> = [];
+	var lampShader:LampShader;
+	var lampOverlay:FlxSprite;
+	var lampZones:Array<{x:Float, y:Float, w:Float, h:Float}> = [];
 	var lampClock:Float = 0;
 	var hint:FlxText;
 	var overlay:FlxText;
@@ -708,6 +711,7 @@ class PlayState extends FlxState
 		FlxG.camera.focusOn(player.getMidpoint());
 		FlxG.camera.fade(0xFF000000, 0.35, true);
 
+		createLightOverlay();
 		hudCam = new flixel.FlxCamera(0, 0, FlxG.width, FlxG.height);
 		hudCam.bgColor = 0x00000000;
 		hudCam.pixelPerfectRender = true;
@@ -738,28 +742,86 @@ class PlayState extends FlxState
 		#end
 	}
 
-	/** Lámpák (Tiled: Lamp): lámpatest + additív fényfolt a LampShaderrel; a fény a falakra és a hősre is rávetül. */
+	/** Lámpák (Tiled: Lamp): lámpatestek; a fényt (nyaláb + sötétség) a createLightOverlay rajzolja a LampShaderrel. */
 	function addLamps():Void
 	{
-		var seed = 0;
 		for (l in data.lamps)
 		{
 			var body = new FlxSprite(l.x - 4, l.y - 4);
 			body.loadGraphic(Art.lamp(), false, 8, 8, false, "lamp");
 			add(body);
-			var r = Std.int(Math.max(8, l.radius));
-			var glow = new FlxSprite(l.x - r, l.y - r);
-			glow.makeGraphic(r * 2, r * 2, 0xFFFFFFFF, false, "lampglow" + r);
-			var sh = new LampShader();
-			sh.uColor.value = [((l.color >> 16) & 0xFF) / 255, ((l.color >> 8) & 0xFF) / 255, (l.color & 0xFF) / 255];
-			sh.uIntensity.value = [l.intensity];
-			sh.uFlicker.value = [l.flicker ? 1.0 : 0.0];
-			sh.uSeed.value = [seed++ * 1.7];
-			glow.shader = sh;
-			glow.blend = openfl.display.BlendMode.ADD;
-			add(glow);
-			lampShaders.push(sh);
 		}
+	}
+
+	/** Teljes képernyős fény-réteg (a világ felett, a HUD alatt): nyalábok, ragyogás és sötétség a lámpás termekben. */
+	function createLightOverlay():Void
+	{
+		if (data.lamps.length == 0)
+			return;
+		// sötét zónák: azok a termek (fal-kerettel), amikben van lámpa
+		for (b in data.buildings)
+		{
+			var zx = (b.x0 - 1) * 16.0, zy = (b.y0 - 1) * 16.0, zw = (b.w + 2) * 16.0, zh = (b.h + 2) * 16.0;
+			for (l in data.lamps)
+				if (l.x >= zx && l.x <= zx + zw && l.y >= zy && l.y <= zy + zh)
+				{
+					lampZones.push({x: zx, y: zy, w: zw, h: zh});
+					break;
+				}
+		}
+		lampShader = new LampShader();
+		lampOverlay = new FlxSprite(0, 0);
+		lampOverlay.makeGraphic(480, 270, 0xFFFFFFFF, false, "lampoverlay");
+		lampOverlay.scrollFactor.set(0, 0);
+		lampOverlay.shader = lampShader;
+		add(lampOverlay);
+	}
+
+	/** A képernyőn lévő (legközelebbi 8) lámpa és a 2 legközelebbi sötét zóna átadása a shadernek (rajzolás előtt, a kamera végleges görgetésével). */
+	function updateLampUniforms():Void
+	{
+		var sx = Math.round(FlxG.camera.scroll.x), sy = Math.round(FlxG.camera.scroll.y);
+		var cx = sx + 240, cy = sy + 135;
+		var vis:Array<{l:LampDef, d:Float}> = [];
+		for (l in data.lamps)
+			if (l.x + l.radius > sx && l.x - l.radius < sx + 480 && l.y + l.radius > sy && l.y - l.radius < sy + 270)
+				vis.push({l: l, d: (l.x - cx) * (l.x - cx) + (l.y - cy) * (l.y - cy)});
+		vis.sort((p, q) -> p.d < q.d ? -1 : (p.d > q.d ? 1 : 0));
+		for (i in 0...8)
+		{
+			var A = Reflect.field(lampShader.data, "uA" + i);
+			var B = Reflect.field(lampShader.data, "uB" + i);
+			if (i < vis.length)
+			{
+				var l = vis[i].l;
+				var a = l.angle * Math.PI / 180;
+				A.value = [l.x - sx, l.y - sy, l.radius, l.intensity];
+				B.value = [Math.cos(a), Math.sin(a), Math.cos(l.spread * Math.PI / 360), (l.flicker ? 1.0 : -1.0) * (1.0 + i * 1.7)];
+			}
+			else
+			{
+				A.value = [0.0, 0.0, 0.0, 0.0];
+				B.value = [0.0, 1.0, 0.0, 0.0];
+			}
+		}
+		var zs:Array<{x:Float, y:Float, w:Float, h:Float, d:Float}> = [];
+		for (z in lampZones)
+			if (z.x + z.w > sx && z.x < sx + 480 && z.y + z.h > sy && z.y < sy + 270)
+				zs.push({x: z.x, y: z.y, w: z.w, h: z.h, d: (z.x + z.w / 2 - cx) * (z.x + z.w / 2 - cx)});
+		zs.sort((p, q) -> p.d < q.d ? -1 : (p.d > q.d ? 1 : 0));
+		for (i in 0...2)
+		{
+			var Z = Reflect.field(lampShader.data, "uZ" + i);
+			Z.value = i < zs.length ? [zs[i].x - sx, zs[i].y - sy, zs[i].w, zs[i].h] : [0.0, 0.0, 0.0, 0.0];
+		}
+		lampShader.uTime.value = [lampClock];
+	}
+
+	override public function draw():Void
+	{
+		if (lampShader != null)
+			updateLampUniforms();
+		super.draw();
 	}
 
 	function addBackdrop(bmp:openfl.display.BitmapData, fx:Float, fy:Float, y:Float):Void
@@ -1120,8 +1182,6 @@ class PlayState extends FlxState
 	{
 		Audio.guard();
 		lampClock += elapsed;
-		for (sh in lampShaders)
-			sh.uTime.value = [lampClock];
 		composeInfo(elapsed);
 		// látás: VISOR nélkül homályos kép (a shader uSight értéke); a LENS (II. szint) kicsit fényesít
 		Main.sightTarget = Parts.has(Parts.VISOR) ? (Parts.tier(Parts.VISOR) >= 2 ? 1.2 : 1.0) : 0.4;

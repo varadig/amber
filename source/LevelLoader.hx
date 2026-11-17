@@ -171,23 +171,14 @@ class LevelLoader
 					}
 					d.parts.push(ps);
 				case "Lamp":
-					var col = 0xFFCF70;
-					if (p.color != null)
-					{
-						var cs = StringTools.replace(Std.string(p.color), "#", "");
-						if (cs.length == 8)
-							cs = cs.substr(2); // Tiled: #AARRGGBB
-						var pc = Std.parseInt("0x" + cs);
-						if (pc != null)
-							col = pc & 0xFFFFFF;
-					}
 					d.lamps.push({
 						x: x + num(o.width, 8) / 2,
 						y: y + num(o.height, 8) / 2,
-						radius: Math.max(8, num(p.radius, 56)),
-						color: col,
+						radius: Math.max(8, num(p.radius, 110)),
 						intensity: num(p.intensity, 1.0),
-						flicker: p.flicker != false
+						flicker: p.flicker != false,
+						angle: num(p.angle, 90),
+						spread: Math.max(5, Math.min(170, num(p.spread, 50)))
 					});
 				case "Text":
 					var t:Dynamic = o.text;
