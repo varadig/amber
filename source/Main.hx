@@ -58,12 +58,31 @@ class Main extends Sprite
 		});
 
 		// Belső felbontás 480x270 (C64-szerű pixelek), arányos nagyítással
+		#if cheats
+		// fejlesztői URL-paraméterek (csak -debug / -Dtest / -Dcheats buildben): ?level=N (0-tól) a megadott pályával indít, ?goto=<pont> a pálya egy pontjára ugrik
+		// (spawn, cpN, partN, buildingN, doorN, terminalN, benchN, exit, vagy "x,y" pixel), ?parts=prev|all az előző pályák / minden alkatrészt megadja
+		var qs = js.Browser.location.search;
+		var direct = false;
+		var lm = ~/[?&]level=([0-9]+)/;
+		if (lm.match(qs))
+		{
+			PlayState.level = Std.parseInt(lm.matched(1));
+			direct = true;
+		}
+		var gm = ~/[?&]goto=([A-Za-z0-9,._-]+)/;
+		if (gm.match(qs))
+		{
+			PlayState.devGoto = gm.matched(1);
+			direct = true;
+		}
+		var pm = ~/[?&]parts=([a-z]+)/;
+		if (pm.match(qs))
+			PlayState.devParts = pm.matched(1);
 		#if test
-		// ?level=N: a megadott pályától indul (csak teszt-buildben)
-		var m = ~/[?&]level=([0-9]+)/;
-		if (m.match(js.Browser.location.search))
-			PlayState.level = Std.parseInt(m.matched(1));
-		addChild(new FlxGame(480, 270, PlayState, 60, 60, true));
+		direct = true;
+		#end
+		var first:Class<flixel.FlxState> = direct ? PlayState : TitleState;
+		addChild(new FlxGame(480, 270, first, 60, 60, true));
 		#else
 		addChild(new FlxGame(480, 270, TitleState, 60, 60, true));
 		#end

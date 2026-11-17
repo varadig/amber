@@ -737,6 +737,9 @@ class PlayState extends FlxState
 		var offLine = off.length > 0 ? "\nSYSTEMS OFFLINE: " + off.join(", ") : "";
 		bannerStr = (data.name + (data.buildings.length > 0 ? "\n(UP / E ENTERS DOORS)" : "") + "\nMISSION: FIND THE " + data.parts.length + " MISSING PARTS\n" + names + offLine);
 		bannerT = 4.2;
+		#if cheats
+		applyDevGoto();
+		#end
 		#if test
 		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}; window.__LevelLoader = {5}; window.__Audio = {6}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery, LevelLoader, Audio);
 		#end
@@ -2391,6 +2394,18 @@ NEXT: " + navTarget().label + " >>";
 			pendingMini = -1;
 			openSubState(MiniGames.make(g, level + 1, (won:Bool) -> {}));
 		}
+		// fejlesztői gyorsbillentyűk: PageDown / PageUp: következő / előző ugrási pont a pályán; F7 / F8: előző / következő pálya
+		if (subState == null && mode == 0)
+		{
+			if (FlxG.keys.justPressed.PAGEDOWN)
+				cheatStep(1);
+			else if (FlxG.keys.justPressed.PAGEUP)
+				cheatStep(-1);
+			else if (FlxG.keys.justPressed.F8)
+				cheatGoto((level + 1) % LevelData.COUNT);
+			else if (FlxG.keys.justPressed.F7)
+				cheatGoto((level + LevelData.COUNT - 1) % LevelData.COUNT);
+		}
 		if (subState == null && mode == 0 && (FlxG.keys.justPressed.F9 || Input.r2New))
 			openSubState(new CheatSubState(this));
 	}
@@ -2414,6 +2429,105 @@ NEXT: " + navTarget().label + " >>";
 	{
 		player.hearts = 0;
 		die();
+	}
+
+	/** URL-ből (?goto=...&parts=...) kért fejlesztői ugrás: a pálya betöltése után lefut (Main állítja). */
+	public static var devGoto:String = null;
+	public static var devParts:String = null;
+	var spotIdx:Int = -1;
+
+	/** Fejlesztői ugrási pontok a pályán: kulcs (URL-hez), név (menühöz) és a hős helye. */
+	public function cheatSpots():Array<{key:String, name:String, x:Float, y:Float}>
+	{
+		var l:Array<{key:String, name:String, x:Float, y:Float}> = [];
+		var ph = player.height;
+		l.push({key: "spawn", name: "SPAWN", x: data.spawn.x, y: data.spawn.y});
+		for (i in 0...data.checkpoints.length)
+			l.push({key: "cp" + (i + 1), name: "CHECKPOINT " + (i + 1), x: data.checkpoints[i].x, y: data.checkpoints[i].y});
+		for (i in 0...data.parts.length)
+			l.push({key: "part" + (i + 1), name: "PART " + (i + 1) + ": " + data.parts[i].label, x: data.parts[i].x - 2, y: data.parts[i].y - 6});
+		for (i in 0...data.buildings.length)
+		{
+			var b = data.buildings[i];
+			l.push({key: "building" + (i + 1), name: "INSIDE BUILDING " + (i + 1), x: b.x0 * 16 + 24, y: (b.y0 + b.h) * 16 - ph - 2});
+		}
+		for (i in 0...bDoors.length)
+		{
+			var d = bDoors[i];
+			l.push({key: "door" + (i + 1), name: "DOOR " + (i + 1) + (d.fromInside == true ? " (INSIDE)" : " (OUTSIDE)"), x: d.spr.x, y: d.spr.y + d.spr.height - ph});
+		}
+		for (i in 0...data.terminals.length)
+			l.push({key: "terminal" + (i + 1), name: "TERMINAL " + (i + 1), x: data.terminals[i].x, y: data.terminals[i].y + 16 - ph});
+		for (i in 0...data.benches.length)
+			l.push({key: "bench" + (i + 1), name: "WORKBENCH " + (i + 1), x: data.benches[i].x, y: data.benches[i].y + 16 - ph});
+		l.push({key: "exit", name: "EXIT DOOR", x: data.door.x, y: data.door.y + 24 - ph});
+		return l;
+	}
+
+	/** A hős (és a barátai) odaugrik; a feléledési pont is ide kerül, így a halál után itt folytatódik a teszt. */
+	public function cheatTeleportTo(x:Float, y:Float):Void
+	{
+		player.reset(x, y);
+		player.velocity.set(0, 0);
+		ctrl = player;
+		inside = y > data.killRow * 16 - 40;
+		respawn.set(x, y);
+		FlxG.camera.focusOn(player.getMidpoint());
+		bannerT = 0;
+		cheatGather();
+	}
+
+	public function cheatStep(d:Int):Void
+	{
+		var sp = cheatSpots();
+		spotIdx = ((spotIdx + d) % sp.length + sp.length) % sp.length;
+		cheatTeleportTo(sp[spotIdx].x, sp[spotIdx].y);
+		showToast("TELEPORT " + (spotIdx + 1) + "/" + sp.length + ": " + sp[spotIdx].name, 1.6);
+	}
+
+	/** Az előző pályák alkatrészei (mintha végigjátszottad volna őket): a pálya-ugrás utáni fejlesztéshez. */
+	public function cheatPartsOfEarlierLevels():Void
+	{
+		for (i in 0...level)
+		{
+			var d = LevelLoader.load(i);
+			for (p in d.parts)
+				if ((p.friend == null || p.friend < 0) && p.icon >= 0 && p.icon < Parts.COUNT)
+					Parts.add(p.icon);
+		}
+		Parts.commit();
+		player.applyParts();
+		player.refreshLook();
+		showToast("CHEAT: PARTS OF PREVIOUS LEVELS", 1.6);
+	}
+
+	function applyDevGoto():Void
+	{
+		if (devParts == "prev")
+			cheatPartsOfEarlierLevels();
+		else if (devParts == "all")
+			cheatAllParts();
+		devParts = null;
+		if (devGoto == null)
+			return;
+		var g = devGoto;
+		devGoto = null;
+		var xy = ~/^(-?[0-9.]+),(-?[0-9.]+)$/;
+		if (xy.match(g))
+		{
+			cheatTeleportTo(Std.parseFloat(xy.matched(1)), Std.parseFloat(xy.matched(2)));
+			return;
+		}
+		var sp = cheatSpots();
+		for (i in 0...sp.length)
+			if (sp[i].key == g)
+			{
+				spotIdx = i;
+				cheatTeleportTo(sp[i].x, sp[i].y);
+				showToast("TELEPORT: " + sp[i].name, 2.0);
+				return;
+			}
+		showToast("UNKNOWN GOTO: " + g, 3.0);
 	}
 
 	public function cheatToDoor():Void

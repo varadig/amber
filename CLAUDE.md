@@ -37,3 +37,4 @@
 - Zene: `Music.start(theme)` → `MusicJob.step(ms)` részletekben renderel (10 téma: harmóniakészlet × hangnem × tempó × hangszer; pályánként más: `Audio.playMusic(level)`); `Audio.tick()` képkockánként ~5 ms-ot dolgozik, a következő pálya témája előre elkészül; a hurok vége az elejére hajlik. Soha ne renderelj egyben a játék szálán (másodpercekig akadna).
 - Beállítások: `SettingsSubState` (O / háromszög a szünetből és a címképernyőről), zene/SFX hangerő mentve (`Audio.saveVolumes`), a menü alatt szól a zene (`previewOn/Off`).
 - Lámpa: `LampShader`, `PlayState.addLamps`, `Lamp` Tiled-objektum (lásd docs/LEVELS.md). Teszt: `tests/lamps.ps1` (képernyőkép: tests/out/lamps.png).
+- Fejlesztői ugrás: `PlayState.cheatSpots/cheatTeleportTo/applyDevGoto`, URL-paraméterek a `Main`-ben (`?level=&goto=&parts=`), leírás: docs/LEVELS.md.

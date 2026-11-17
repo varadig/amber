@@ -139,6 +139,7 @@ class CheatSubState extends FlxSubState
 						return false;
 					}));
 				l.push(act("ALL PARTS", g.cheatAllParts));
+				l.push(act("PARTS OF PREVIOUS LEVELS", g.cheatPartsOfEarlierLevels));
 				l.push(act("STRIP ALL PARTS (NAKED ROBOT)", g.cheatStripParts));
 				return l;
 			case "screen":
@@ -194,6 +195,8 @@ class CheatSubState extends FlxSubState
 					act("RESTART LEVEL", g.cheatRestart),
 					sub("JUMP TO LEVEL", "levels")
 				];
+			case "teleport":
+				return [for (s in g.cheatSpots()) act(s.name, () -> g.cheatTeleportTo(s.x, s.y))];
 			case "levels":
 				return [for (i in 0...LevelData.COUNT) act("LEVEL " + (i + 1), () -> g.cheatGoto(i))];
 			case "enemies":
@@ -238,6 +241,7 @@ class CheatSubState extends FlxSubState
 					sub("PARTS", "parts"),
 					sub("BATTERY & SCREEN EFFECTS", "screen"),
 					sub("ROBOTS (FRIENDS)", "robots"),
+					sub("TELEPORT IN THIS LEVEL", "teleport"),
 					sub("WORLD & LEVELS", "world"),
 					sub("ENEMIES", "enemies"),
 					sub("MINI-GAMES", "minigames"),
@@ -261,6 +265,7 @@ class CheatSubState extends FlxSubState
 			case "robots": "ROBOTS";
 			case "world": "WORLD";
 			case "levels": "JUMP TO LEVEL";
+			case "teleport": "TELEPORT";
 			case "enemies": "ENEMIES";
 			case "minigames": "MINI-GAMES";
 			case "toggles": "TOGGLES";

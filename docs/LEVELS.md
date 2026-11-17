@@ -111,3 +111,8 @@ A gyémántok helyett **atom-részecskéket** kell gyűjteni (a Tiled-ben az obj
 - `Lamp` objektum (az `objects` készlet utolsó csempéje): bárhová letehető; fénynyalábot rajzol (kúp, köddel és lebegő porszemekkel), és a lámpás termekben (ahol van Lamp) sötétséget terít, amit a nyaláb kivilágosít. Tulajdonságok: `radius` (a nyaláb hatótávja px), `angle` (irány fokban, 90 = lefelé), `spread` (a kúp nyílásszöge fokban), `intensity`, `flicker`. Egyszerre a képernyőn legfeljebb 8 lámpa számít. A generátor az épületek mennyezetére tesz (a régi, falpapírra festett lámpák helyére); a meglévő pályákhoz `node scripts/add-lamps.js` (a régi tulajdonságokat is átállítja).
 - Alkatrész (`Part`): ha az objektumnak nincs saját `icon` tulajdonsága, a `label` ("VISOR", "LEGS", ...) dönt a képességről; a saját `icon` felülírja.
 - Megoldott rejtvény (kapu kinyílt): a közelében lévő `Text` feliratok és a kapcsoló-betűk eltűnnek.
+
+## Fejlesztői ugrás (csak -debug / -Dtest / -Dcheats build)
+- URL: `?level=N` (0-tól) a pályával indít; `&goto=<pont>`: `spawn`, `cpN` (checkpoint), `partN`, `buildingN` (az épület belseje), `doorN`, `terminalN`, `benchN`, `exit` vagy `x,y` pixelben; `&parts=prev|all`: az előző pályák / minden alkatrész. Pl. `?level=3&goto=building1&parts=prev`.
+- Játék közben: PageDown / PageUp a következő / előző ugrási pont, F7 / F8 előző / következő pálya, F9 menü > TELEPORT IN THIS LEVEL. Az ugrás a feléledési pontot is áthelyezi.
+- Teszt: `tests/devgoto.ps1`.
