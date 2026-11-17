@@ -104,6 +104,16 @@ typedef BuildingDef =
 	h:Int
 }
 
+/** Épület-ajtó (Tiled-pályákon): a hely, az azonosító, a célajtó azonosítója (ide visz) és hogy az épület belsejében van-e. */
+typedef DoorDef =
+{
+	x:Float,
+	y:Float,
+	id:Int,
+	target:Int,
+	inside:Bool
+}
+
 /** Egy küldetés-szoba: típus (start / open / tower / well / vault / sky / gated), az alkatrész ikonja és neve, őrzött-e. */
 typedef RoomDef =
 {
@@ -266,6 +276,8 @@ class LevelData
 	/** Rejtett akkupakkok (az út mellett, fülkékben, szakadékok párkányain, épületekben). */
 	public var batteries:Array<Pt> = [];
 	public var buildings:Array<BuildingDef> = [];
+	/** Tiled-pályákon az épület-ajtók (tetszőleges ajtópárok / láncok: bunkerből bunkerbe); üresen a `buildings` külső / belső ajtópárjai érvényesek. */
+	public var doors:Array<DoorDef> = [];
 	/** Épület-homlokzatok (csempe-koordináták x, y, szélesség, magasság), csak díszlet. */
 	public var decor:Array<{x:Int, y:Int, w:Int, h:Int}> = [];
 	/** Ennél a sornál mélyebbre esve a hős meghal (a felszíni szakadékokhoz; a belső termek ez alatt vannak). */

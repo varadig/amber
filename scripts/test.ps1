@@ -106,6 +106,11 @@ try {
     $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tests/tiledlevels.ps1"
     $r | ForEach-Object { Write-Host $_ }
     if (@($r | Where-Object { $_ -match '"tiled":true' }).Count -ne 5) { Write-Host "Nem mind az 5 pálya a Tiled-térképből töltődött." -ForegroundColor Yellow; $fail++ }
+    $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tests/bunkers.ps1"
+    $r | ForEach-Object { Write-Host $_ }
+    $txt = ($r -join "`n")
+    if ($txt -notmatch "hero x tile after door .*: 52") { Write-Host "A bunkerből bunkerbe vezető ajtó nem működik." -ForegroundColor Yellow; $fail++ }
+    if ($txt -notmatch "interior empty: True") { Write-Host "A BuildingRoom belseje nem ürült ki / nem épült fal." -ForegroundColor Yellow; $fail++ }
 }
 finally {
     Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue

@@ -36,7 +36,21 @@ foreach ($f in $files) {
     if ($cls["Spawn"] -ne 1) { Err $n "pontosan egy Spawn kell (van: $($cls['Spawn']))" }
     if ($cls["Door"] -ne 1) { Err $n "pontosan egy Door kell (van: $($cls['Door']))" }
     if (-not $cls["Part"]) { Warn $n "nincs Part: nincs mit gyűjteni" }
-    if ($cls["BuildingRoom"] -ne $cls["BuildingDoor"] / 2) { Err $n "minden BuildingRoom-hoz két BuildingDoor kell (külső + belső, azonos 'room', inside=true/false)" }
+    # ajtók: azonosító (id) + cél (target), vagy a régi páros (azonos room, inside=true/false)
+    $doors = @($objs | Where-Object { ($_.class -eq "BuildingDoor") -or ($_.type -eq "BuildingDoor") })
+    $dprops = @{}
+    foreach ($d in $doors) { $p = @{}; foreach ($q in $d.properties) { $p[$q.name] = $q.value }; $dprops[$d.id] = $p }
+    $ids = @($dprops.Values | Where-Object { $_.id -gt 0 } | ForEach-Object { $_.id })
+    foreach ($d in $doors) {
+        $p = $dprops[$d.id]
+        if ($p.target -gt 0) {
+            if ($ids -notcontains $p.target) { Err $n "a(z) $($p.id). BuildingDoor célja ($($p.target)) nem létezik" }
+        }
+        elseif (-not ($doors | Where-Object { $_.id -ne $d.id -and $dprops[$_.id].room -eq $p.room -and $dprops[$_.id].inside -ne $p.inside })) {
+            Err $n "a BuildingDoor (id $($d.id), room $($p.room)) nem visz sehova: adj meg 'target'-et (a célajtó 'id'-ja), vagy párosítsd (azonos 'room', másik 'inside')"
+        }
+    }
+    if ($cls["BuildingRoom"] -and -not $doors.Count) { Warn $n "van BuildingRoom, de nincs BuildingDoor: nem lehet belépni" }
     Write-Host ("OK     {0}: {1}x{2}, {3} objektum" -f $n, $m.width, $m.height, $objs.Count) -ForegroundColor DarkGray
 }
 Write-Host "`n$errors hiba, $warnings figyelmeztetés" -ForegroundColor $(if ($errors) { "Red" } else { "Green" })

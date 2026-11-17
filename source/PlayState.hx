@@ -275,7 +275,7 @@ class PlayState extends FlxState
 	var bullets:FlxTypedGroup<Bullet>;
 	var door:FlxSprite;
 	/** Épület-ajtók: a felszíni (be) és a belső (ki) ajtók; mindegyik a célpontját tudja. */
-	var bDoors:Array<{spr:FlxSprite, tx:Float, ty:Float, toInside:Bool}> = [];
+	var bDoors:Array<{spr:FlxSprite, tx:Float, ty:Float, toInside:Bool, ?fromInside:Bool}> = [];
 	var inside:Bool = false;
 	var teleporting:Bool = false;
 	var particles:FlxTypedGroup<Particle>;
@@ -529,17 +529,35 @@ class PlayState extends FlxState
 		door.animation.add("open", [1, 2], 6);
 		door.animation.play("closed");
 		add(door);
-		for (b in data.buildings)
+		if (data.doors.length > 0)
 		{
-			var outer = new FlxSprite(b.sx, b.sy);
-			outer.loadGraphic(Art.bdoor(), false, 16, 24, false, "bdoor");
-			add(outer);
-			var inner = new FlxSprite(b.ix, b.iy);
-			inner.loadGraphic(Art.bdoor(), false, 16, 24, false, "bdoor");
-			add(inner);
-			bDoors.push({spr: outer, tx: b.ix + 4, ty: b.iy + 24 - 30, toInside: true});
-			bDoors.push({spr: inner, tx: b.sx + 4, ty: b.sy + 24 - 30, toInside: false});
+			// Tiled-pályán: tetszőleges ajtók, mindegyik a célajtó (target) elé visz (bunkerből bunkerbe is)
+			for (dd in data.doors)
+			{
+				var tg = null;
+				for (o in data.doors)
+					if (o.id == dd.target)
+						tg = o;
+				if (tg == null)
+					continue;
+				var sp = new FlxSprite(dd.x, dd.y);
+				sp.loadGraphic(Art.bdoor(), false, 16, 24, false, "bdoor");
+				add(sp);
+				bDoors.push({spr: sp, tx: tg.x + 4, ty: tg.y + 24 - 30, toInside: tg.inside, fromInside: dd.inside});
+			}
 		}
+		else
+			for (b in data.buildings)
+			{
+				var outer = new FlxSprite(b.sx, b.sy);
+				outer.loadGraphic(Art.bdoor(), false, 16, 24, false, "bdoor");
+				add(outer);
+				var inner = new FlxSprite(b.ix, b.iy);
+				inner.loadGraphic(Art.bdoor(), false, 16, 24, false, "bdoor");
+				add(inner);
+				bDoors.push({spr: outer, tx: b.ix + 4, ty: b.iy + 24 - 30, toInside: true, fromInside: false});
+				bDoors.push({spr: inner, tx: b.sx + 4, ty: b.sy + 24 - 30, toInside: false, fromInside: true});
+			}
 
 		gems = new FlxTypedGroup();
 		for (g in data.gems)
@@ -704,7 +722,7 @@ class PlayState extends FlxState
 		bannerStr = (data.name + (data.buildings.length > 0 ? "\n(UP / E ENTERS DOORS)" : "") + "\nMISSION: FIND THE " + data.parts.length + " MISSING PARTS\n" + names + offLine);
 		bannerT = 4.2;
 		#if test
-		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery);
+		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}; window.__LevelLoader = {5}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery, LevelLoader);
 		#end
 	}
 
@@ -1132,7 +1150,7 @@ class PlayState extends FlxState
 		// a társak leesése: a mentési pontra kerülnek vissza
 		companions.forEachAlive(c ->
 		{
-			if (c.mode != 3 && ((c.y > data.killRow * 16 && (data.buildings.length == 0 || c.y < data.buildings[0].y0 * 16 - 32)) || c.y > worldH + 40))
+			if (c.mode != 3 && ((c.y > data.killRow * 16 && !inAnyRoom(c)) || c.y > worldH + 40))
 			{
 				c.reset(respawn.x - 4, respawn.y);
 				c.velocity.set(0, 0);
@@ -1172,7 +1190,8 @@ class PlayState extends FlxState
 		if (nearB >= 0 && !hint.visible)
 		{
 			hint.visible = true;
-			hint.text = bDoors[nearB].toInside ? "UP / E: ENTER BUILDING" : "UP / E: LEAVE BUILDING";
+			var bd = bDoors[nearB];
+			hint.text = bd.fromInside == true && bd.toInside ? "UP / E: GO THROUGH" : (bd.toInside ? "UP / E: ENTER BUILDING" : "UP / E: LEAVE BUILDING");
 		}
 		if (nearB >= 0 && Input.interactPressed() && !teleporting)
 			useDoor(bDoors[nearB]);
@@ -1643,6 +1662,15 @@ class PlayState extends FlxState
 	/** Az irányított robot repül-e (az ORB lebeg, a többi nem tud követni). */
 	function ctrlFlies():Bool
 		return ctrl != player && Std.isOfType(ctrl, Companion) && cast(ctrl, Companion).kind == Companions.ORB;
+
+	/** A robot egy épület belső termében (vagy közvetlenül a környékén) van-e (a mélyben a leesés-ellenőrzéshez). */
+	function inAnyRoom(c:FlxSprite):Bool
+	{
+		for (b in data.buildings)
+			if (c.x > b.x0 * 16 - 32 && c.x < (b.x0 + b.w) * 16 + 32 && c.y > b.y0 * 16 - 32 && c.y < (b.y0 + b.h) * 16 + 64)
+				return true;
+		return false;
+	}
 
 	function heroExitedAll():Bool
 		return heroExited && companions.countLiving() <= 0;

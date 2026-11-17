@@ -398,6 +398,16 @@
                     "name": "inside",
                     "type": "bool",
                     "value": false
+                },
+                {
+                    "name": "id",
+                    "type": "int",
+                    "value": 0
+                },
+                {
+                    "name": "target",
+                    "type": "int",
+                    "value": 0
                 }
             ],
             "useAs": [
@@ -475,6 +485,16 @@
                     "name": "id",
                     "type": "int",
                     "value": 1
+                },
+                {
+                    "name": "walls",
+                    "type": "bool",
+                    "value": true
+                },
+                {
+                    "name": "clear",
+                    "type": "bool",
+                    "value": true
                 }
             ],
             "useAs": [

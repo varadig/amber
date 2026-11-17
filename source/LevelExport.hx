@@ -177,7 +177,11 @@ class LevelExport
 				}
 			cls(sd.cls, colors.exists(sd.cls) ? colors.get(sd.cls) : "#ffc08020", members);
 		}
-		cls("BuildingRoom", "#ff8060c0", [o(["name", "id", "type", "int", "value", 1])]);
+		cls("BuildingRoom", "#ff8060c0", [
+			o(["name", "id", "type", "int", "value", 1]),
+			o(["name", "walls", "type", "bool", "value", true]),
+			o(["name", "clear", "type", "bool", "value", true])
+		]);
 		cls("Decor", "#ff505050", []);
 		cls("Text", "#ffffffff", [], false);
 		return Json.stringify(o([

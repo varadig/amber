@@ -54,7 +54,7 @@ class LevelFormat
 			{name: "powercell", cls: "PowerCell", def: {id: 1}},
 			{name: "bench", cls: "Bench", def: {comp: 0}},
 			{name: "terminal", cls: "Terminal", def: {id: 1, game: 0}},
-			{name: "bdoor", cls: "BuildingDoor", def: {room: 1, inside: false}},
+			{name: "bdoor", cls: "BuildingDoor", def: {room: 1, inside: false, id: 0, target: 0}},
 			{name: "walker", cls: "Enemy", def: {kind: "WALKER"}},
 			{name: "flyer", cls: "Enemy", def: {kind: "FLYER"}},
 			{name: "crawler", cls: "Enemy", def: {kind: "CRAWLER"}},

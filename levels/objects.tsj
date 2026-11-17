@@ -329,6 +329,16 @@
 					"name": "inside",
 					"type": "bool",
 					"value": false
+				},
+				{
+					"name": "id",
+					"type": "int",
+					"value": 0
+				},
+				{
+					"name": "target",
+					"type": "int",
+					"value": 0
 				}
 			]
 		},

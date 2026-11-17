@@ -60,11 +60,19 @@ A rétegek neve szabad (a játék minden objektumréteget beolvas, a rejtetteket
 | `Bench` | `comp` (0) | Szerelőasztal: a `comp` társ itt építhető össze |
 | `Terminal` | `id`, `game` (0-3) | Számítógép mini-játékkal (0 CIRCUIT REPAIR, 1 DOOR LOCK, 2 MEMORY BANK, 3 DEFENSE SIMULATION); megoldása az `id` kapuit nyitja |
 | `Text` | (szöveg-objektum) | Világ-felirat (Tiled text object, Insert Text) |
-| `BuildingRoom` | `id` | Az épület belső termének **téglalapja** (a belső tér csempéi; a körülötte lévő téglafalat a `solid` réteg adja) |
-| `BuildingDoor` | `room`, `inside` | Az épület ajtaja: `inside = false` a felszíni, `true` a belső kijárat; a `room` a `BuildingRoom` `id`-ja |
+| `BuildingRoom` | `id`, `walls` (true), `clear` (true) | Az épület / bunker belső termének **téglalapja** (csempehatárokra igazítva). A játék **automatikusan téglafalat épít köré** (1 csempe vastag keret, a szoba alatt és mellett is), a belsejét pedig kiüríti: elég egy téglalapot húznod egy tömör talajba. `walls = false`: nem épít falat (kézzel festett fal); `clear = false`: a belső csempéket meghagyja (saját belső szerkezet, pl. platformok a `solid` rétegen) |
+| `BuildingDoor` | `id`, `target`, `room`, `inside` | Épület-ajtó (Fel / E belép). **`target`** = annak az ajtónak az `id`-ja, ahova ez az ajtó visz: így bunkerből bunkerbe is át lehet menni, láncban, körben, nem csak vissza a főrészre. A `target` ajtó az `id`-ja szerint keresendő, ezért minden célzott ajtónak legyen egyedi `id`-ja (> 0). Régi módszer (ha nincs `target`): két ajtó azonos `room`-mal és eltérő `inside`-dal egymás párja. A játék a belső / külső helyzetet az ajtó mélységéből (a `killRow` alatt) számolja |
 | `Decor` | – | Az épület homlokzata (téglalap, csak díszlet) |
 
-Minden épülethez 1 `BuildingRoom` és 2 `BuildingDoor` kell. Az objektum-osztály a Tiled `Class` mezője; ha egy csempe-objektumnál üres, a csempe osztálya számít.
+## Saját bunkerek építése
+
+1. Húzz egy **`BuildingRoom`** téglalapot a talajba (a `buildings` rétegen; a méretet és a helyet csempehatárra igazítsd, 16 px). A fal és a kiürített belső tér betöltéskor elkészül (a Tiled-ben a `solid` rétegen még nem látszik: ha látni akarod, fesd meg a téglafalat kézzel, vagy használd a `walls = false` opciót).
+2. Tegyél be **`BuildingDoor`** objektumokat (csempe-objektum, a lába a padlón): a bunkerben és a felszínen is. Adj mindegyiknek egyedi `id`-t, és a `target` mezőbe írd annak az ajtónak az `id`-ját, ahova vezet.
+3. **Bunker a bunkerbe**: a bunker egyik ajtajának `target`-je egy másik bunker ajtaja. Minden ajtó egyirányú: a visszaútnak külön ajtó (a másik oldalon, a `target` az eredeti `id`) kell.
+4. A felszín felett a `Decor` téglalap adja a homlokzatot (csak díszlet). A `killRow` legyen a bunkerek fölött (különben a hős leesik a felszínen); a bunkerek a `killRow` alatt vannak.
+5. Ellenőrzés: *Validate Tiled levels* (hiányzó vagy nem létező `target`-et jelez). Példa és teszt: `tests/bunkers.ps1`.
+
+Minden épülethez legalább 1 `BuildingRoom` és 2 `BuildingDoor` kell. Az objektum-osztály a Tiled `Class` mezője; ha egy csempe-objektumnál üres, a csempe osztálya számít.
 
 ## Eszközök és fájlok
 
