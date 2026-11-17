@@ -10,6 +10,14 @@
 	},
 	"tasks": [
 		{
+			"label": "Bake bunker walls into Tiled levels",
+			"detail": "A BuildingRoom téglalapok falait a solid rétegbe írja (a Tiled-ben látszik és szerkeszthető); a szobát walls=false / clear=false-ra állítja",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/bake-bunkers.ps1"],
+			"problemMatcher": []
+		},
+		{
 			"label": "Open levels in Tiled",
 			"detail": "A pályák (levels/levelN.tmj) szerkesztése Tiled-ben, valós sprite-előnézettel; mentés után: Build",
 			"type": "shell",
