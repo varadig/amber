@@ -124,8 +124,36 @@ class Audio
 	/** Ugyanaz a hang 60 ms-on belül nem szólal meg kétszer (több forrásból egyszerre kiváltott események: dupla hang). */
 	static var lastPlayed = new Map<String, Float>();
 
+	/** Hangonként egyetlen, újrahasznosított hangcsatorna: ugyanaz a hang nem szólhat egyszerre kétszer (újraindul), és nem gyűlnek a példányok. */
+	static var voices = new Map<String, flixel.sound.FlxSound>();
+
+	/** Szünetben a böngésző fókusz-visszatérése a Flixelnek megmondja, hogy folytassa a zenét: ilyenkor újra megállítjuk. */
+	public static function keepHeld():Void
+	{
+		if (musicHeld && FlxG.sound.music != null && FlxG.sound.music.playing)
+			FlxG.sound.music.pause();
+	}
+
+	#if test
+	/** Teszt: a lejátszott hangok naplója és a most szóló hangok hossza (dupla hangok keresése). */
+	public static var log:Array<Dynamic> = [];
+
+	public static function debug():String
+	{
+		var playing:Array<Int> = [];
+		for (s in FlxG.sound.list.members)
+			if (s != null && s.exists && s.playing)
+				playing.push(Std.int(s.length));
+		var m = FlxG.sound.music;
+		return haxe.Json.stringify({playing: playing, music: m != null, musicPlaying: m != null && m.playing, held: musicHeld});
+	}
+	#end
+
 	public static function play(name:String, volume:Float = 1):Void
 	{
+		#if test
+		log.push({n: name, v: Std.int(volume * 100), t: Std.int(haxe.Timer.stamp() * 1000) % 1000000});
+		#end
 		var s = sounds.get(name);
 		if (s == null || sfxVolume <= 0)
 			return;
@@ -134,7 +162,15 @@ class Audio
 		if (last != null && now - last < 0.06)
 			return;
 		lastPlayed.set(name, now);
-		FlxG.sound.play(s, volume * sfxVolume);
+		var v = voices.get(name);
+		if (v == null || !v.exists)
+		{
+			v = FlxG.sound.create(s);
+			v.persist = true;
+			voices.set(name, v);
+		}
+		v.volume = volume * sfxVolume;
+		v.play(true);
 	}
 
 	/** A háttérzene indítása (ha már szól, nem indul újra). */

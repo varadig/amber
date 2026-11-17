@@ -39,12 +39,15 @@ try {
     $sid = Js "window.__ps.data.switches[0].id"
     "seq gate open: " + (Js "window.__ps.gates.members.filter(function(g){return g.gid==$sid})[0].visible===false")
 
-    # 3. szerelőasztal + társ, áramcella + emelő, WHEELIE a rács mögött (3. pálya)
-    Load 2
+    # 3. szerelőasztal + társ (5. pálya)
+    Load 4
     Js "(function(){window.__parts[0]=true;window.__parts[4]=true;window.__ps.player.refreshLook(); var p=window.__ps; p.friendFound[0]=3; var b=p.benches.members[0]; p.player.reset(b.x+6,b.y-4);})()" | Out-Null
     Start-Sleep -Seconds 1
     Up
     "companions: " + (Js "window.__ps.companions.length") + " benchBuilt=" + (Js "window.__ps.benchBuilt")
+    # áramcella + emelő, WHEELIE a rács mögött (6. pálya)
+    Load 5
+    Js "(function(){window.__parts[0]=true;window.__parts[4]=true;window.__ps.player.refreshLook(); var p=window.__ps; p.friendFound[0]=3; p.spawnCompanion(0,p.player.x+20,p.player.y);})()" | Out-Null
     Js "(function(){var p=window.__ps; var c=p.power? 0:0; var pc=p.powerCells.members[0]; p.player.reset(pc.x-2,pc.y-4);})()" | Out-Null
     Start-Sleep -Seconds 2
     "carry: " + (Js "window.__ps.carryCell")

@@ -4,9 +4,9 @@ param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\ou
 function Load($lvl) { Send-Cdp "Page.navigate" @{ url = ($Base + "?level=" + $lvl + "&r=" + (Get-Random)) } | Out-Null; Start-Sleep -Seconds 9 }
 function Tap($key, $code, $vk) { Key "keyDown" $key $code $vk; Start-Sleep -Milliseconds 700; Key "keyUp" $key $code $vk; Start-Sleep -Milliseconds 400 }
 try {
-    Start-Cdp ($Base + "?level=2") $Out
+    Start-Cdp ($Base + "?level=4") $Out
     Start-Sleep -Seconds 9
-    # 1. a WHEELIE gyémántot és alkatrészt vesz fel, turbóval áttöri a repedezett falat (3. pálya)
+    # 1. a WHEELIE gyémántot és alkatrészt vesz fel, turbóval áttöri a repedezett falat (5. pálya)
     Js "(function(){var p=window.__ps; var g=p.gems.members[0]; var w=p.spawnCompanion(0,g.x-2,g.y-2); window.__w=w; p.setControl(w); window.__g0=p.gemsGot;})()" | Out-Null
     Start-Sleep -Seconds 2
     "wheelie picked gem: " + ((Js "window.__ps.gemsGot") -gt (Js "window.__g0"))
@@ -19,8 +19,8 @@ try {
     Start-Sleep -Seconds 4
     "wheelie rammed the cracked wall: " + (Js "window.__ps.cracked.members[0].alive===false")
 
-    # 2. a TALL felemeli a ládát (4. pálya)
-    Load 3
+    # 2. a TALL felemeli a ládát (2. pálya)
+    Load 1
     Js "(function(){var p=window.__ps; var cr=p.crates.members[0]; var t=p.spawnCompanion(1,cr.x-8,cr.y-14); window.__t=t; p.setControl(t);})()" | Out-Null
     Start-Sleep -Seconds 2
     Tap "x" "KeyX" 88
@@ -29,8 +29,8 @@ try {
     Tap "x" "KeyX" 88
     "tall dropped crate: " + (Js "window.__t.carrying==null")
 
-    # 3. az ORB szikrája átbillenti a kart (5. pálya)
-    Load 4
+    # 3. az ORB szikrája átbillenti a kart (10. pálya)
+    Load 9
     Js "(function(){var p=window.__ps; var l=p.levers.members[0]; var o=p.spawnCompanion(2,l.x-60,l.y-4); window.__o=o; o.face=1; p.setControl(o);})()" | Out-Null
     Start-Sleep -Seconds 2
     Tap "x" "KeyX" 88

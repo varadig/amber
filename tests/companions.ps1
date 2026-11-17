@@ -14,8 +14,8 @@ try {
     Start-Sleep -Seconds 2
     "tall: top=" + [math]::Round([double](Js "window.__tall.y"),1) + " playerFeet=" + [math]::Round([double](Js "window.__ps.player.y+window.__ps.player.height"),1) + " onFloor=" + (Js "window.__ps.player.onFloor")
     Shot "comp_tall.png"
-    # ORB: irányítva felrepül és átbillenti a kart (5. pálya)
-    Load 4
+    # ORB: irányítva felrepül és átbillenti a kart (10. pálya)
+    Load 9
     Js "(function(){var p=window.__ps; var l=p.levers.members[0]; var o=p.spawnCompanion(2,l.x+4,l.y+110); p.player.reset(l.x-40,l.y+120); o.x=l.x+4; o.y=l.y+100; p.setControl(o); window.__lev=l;})()" | Out-Null
     Key "keyDown" "ArrowUp" "ArrowUp" 38
     Start-Sleep -Seconds 6

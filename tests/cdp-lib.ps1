@@ -24,7 +24,7 @@ function Start-Cdp([string]$Url, [string]$OutDir) {
     Send-Cdp "Network.enable" @{} | Out-Null
     Send-Cdp "Network.setCacheDisabled" @{ cacheDisabled = $true } | Out-Null
     # JS-hibák gyűjtése: window.__errors
-    Send-Cdp "Page.addScriptToEvaluateOnNewDocument" @{ source = "window.__errors = []; window.addEventListener('error', e => window.__errors.push(String(e.message)));" } | Out-Null
+    Send-Cdp "Page.addScriptToEvaluateOnNewDocument" @{ source = "window.__navId = Math.random(); window.__errors = []; window.addEventListener('error', e => window.__errors.push(String(e.message)));" } | Out-Null
     Send-Cdp "Page.navigate" @{ url = $Url } | Out-Null
 }
 
@@ -35,7 +35,29 @@ function Stop-Cdp {
     Get-CimInstance Win32_Process -Filter "Name = 'msedge.exe'" | Where-Object { $_.CommandLine -like "*edge-cdp*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 }
 
+# Oldal-váltás után megvárja, hogy az ÚJ oldalon a játék (PlayState) kész legyen (nagy pályáknál a fix várakozás kevés volt: ingadozó tesztek)
+function Wait-Game($prev) {
+    for ($i = 0; $i -lt 100; $i++) {
+        Start-Sleep -Milliseconds 400
+        try {
+            $r = Send-Cdp "Runtime.evaluate" @{ expression = "(window.__navId && window.__navId !== $prev && window.__ps && window.__ps.player && window.__ps.data) ? 1 : 0"; returnByValue = $true }
+            if ($r.result.result.value -eq 1) { Start-Sleep -Milliseconds 800; return }
+        } catch {}
+    }
+}
+
 function Send-Cdp($method, $params) {
+    if ($method -eq "Page.navigate" -and -not $script:CdpWaiting) {
+        $script:CdpWaiting = $true
+        try {
+            $pv = $null
+            try { $rr = Send-Cdp "Runtime.evaluate" @{ expression = "window.__navId || 0"; returnByValue = $true }; $pv = $rr.result.result.value } catch {}
+            if ($null -eq $pv) { $pv = 0 }
+            $res = Send-Cdp $method $params
+            Wait-Game $pv
+            return $res
+        } finally { $script:CdpWaiting = $false }
+    }
     $script:CdpId++
     $id = $script:CdpId
     $json = @{ id = $id; method = $method; params = $params } | ConvertTo-Json -Depth 10 -Compress

@@ -4,6 +4,8 @@ import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.FlxState;
 import flixel.text.FlxText;
+import flixel.tweens.FlxEase;
+import flixel.tweens.FlxTween;
 
 /** Nyitóképernyő: logó, villogó felirat, a hős futása a rom-sziluett előtt. */
 class TitleState extends FlxState
@@ -51,12 +53,15 @@ class TitleState extends FlxState
 		hero.animation.play("run");
 		add(hero);
 
-		var title = new FlxText(0, 56, 480, "AMBER", 32);
+		var title = new FlxText(0, 70, 480, "ÄMBER", 32);
 		title.setFormat(null, 32, 0xFFFFFFFF, CENTER);
 		add(title);
-		var title2 = new FlxText(0, 92, 480, "ASCENT", 32);
-		title2.setFormat(null, 32, 0xFFBBBBBB, CENTER);
-		add(title2);
+		var mascot = new FlxSprite(340, 62);
+		mascot.loadGraphic(Art.mascot(), false, 14, 18, false, "mascot");
+		mascot.scale.set(2, 2);
+		mascot.updateHitbox();
+		add(mascot);
+		FlxTween.tween(mascot, {y: 56}, 0.9, {type: PINGPONG, ease: FlxEase.sineInOut});
 		var sub = new FlxText(0, 136, 480, "REBUILD YOURSELF. THEN BUILD YOUR FRIENDS.", 8);
 		sub.setFormat(null, 8, 0xFF777777, CENTER);
 		add(sub);

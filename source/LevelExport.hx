@@ -54,7 +54,7 @@ class LevelExport
 			case "spawn": {b: Art.player(), w: 12, h: 14, f: 0};
 			case "door": {b: Art.door(), w: 16, h: 24, f: 0};
 			case "checkpoint": {b: Art.checkpoint(), w: 8, h: 16, f: 0};
-			case "gem": {b: Art.gem(), w: 8, h: 8, f: 0};
+			case "gem": {b: Art.atom(), w: 8, h: 8, f: 0};
 			case "heart": {b: Art.heart(), w: 8, h: 8, f: 0};
 			case "battery": {b: Art.battery(), w: 8, h: 10, f: 0};
 			case "spikes": {b: Art.spikes(), w: 16, h: 8, f: 0};
@@ -78,7 +78,7 @@ class LevelExport
 			case "flyer": {b: Art.flyer(), w: 14, h: 8, f: 0};
 			case "crawler": {b: Art.crawler(), w: 14, h: 10, f: 0};
 			case "cell": {b: Art.partIcons(), w: 10, h: 10, f: Parts.JET};
-			default: {b: Art.gem(), w: 8, h: 8, f: 0};
+			default: {b: Art.atom(), w: 8, h: 8, f: 0};
 		}
 	}
 

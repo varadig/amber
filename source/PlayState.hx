@@ -287,6 +287,8 @@ class PlayState extends FlxState
 	var hudScore:FlxText;
 	var hudParts2:FlxText;
 	var hudScan:FlxText;
+	/** Képernyőszéli nyíl a következő cél felé, ha az nem látszik. */
+	var navArrow:FlxText;
 	var hudFuel:FlxText;
 	var radarSpr:FlxSprite;
 	var radarT:Float = 0;
@@ -319,6 +321,9 @@ class PlayState extends FlxState
 	var hitstop:Float = 0;
 	var mode:Int = 0; // 0 játék, 1 pálya kész, 2 vége (halál), 3 belép az ajtón
 	var paused:Bool = false;
+	/** A földet érés hangja egy kicsit késik: ha közben ugrás jön (pergő ugrás), elmarad, így nem szólal meg egyszerre az ugrással. */
+	var landT:Float = 0;
+	var landVol:Float = 0;
 	var modeT:Float = 0;
 	var thrustT:Float = 0;
 	var worldW:Int;
@@ -562,7 +567,7 @@ class PlayState extends FlxState
 		gems = new FlxTypedGroup();
 		for (g in data.gems)
 		{
-			var p = makePickup(g.x, g.y, Art.gem(), 8, 8, "gem");
+			var p = makePickup(g.x, g.y, Art.atom(), 8, 8, "gem");
 			p.animation.add("spin", [0, 1, 2, 3], 6);
 			p.animation.play("spin");
 			gems.add(p);
@@ -628,6 +633,7 @@ class PlayState extends FlxState
 		player = new Player(data.spawn.x, data.spawn.y);
 		player.onJump = () ->
 		{
+			landT = 0;
 			Audio.play("jump", player.controlled ? 0.8 : 0.25); // a követő (nem irányított) hős ugrása halkabb
 			player.squash(0.78, 1.25);
 			dust(player.x + 4, player.y + 12, 3);
@@ -640,7 +646,8 @@ class PlayState extends FlxState
 		};
 		player.onLand = (vy:Float) ->
 		{
-			Audio.play("land", player.controlled ? 0.6 : 0.2);
+			landT = 0.07;
+			landVol = player.controlled ? 0.6 : 0.2;
 			player.squash(1.3, 0.75);
 			dust(player.x + 4, player.y + 12, 4);
 		};
@@ -722,7 +729,7 @@ class PlayState extends FlxState
 		bannerStr = (data.name + (data.buildings.length > 0 ? "\n(UP / E ENTERS DOORS)" : "") + "\nMISSION: FIND THE " + data.parts.length + " MISSING PARTS\n" + names + offLine);
 		bannerT = 4.2;
 		#if test
-		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}; window.__LevelLoader = {5}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery, LevelLoader);
+		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}; window.__LevelLoader = {5}; window.__Audio = {6}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery, LevelLoader, Audio);
 		#end
 	}
 
@@ -786,6 +793,10 @@ class PlayState extends FlxState
 		hudScan = new FlxText(6, 39, 200, "", 8);
 		hudScan.scrollFactor.set(0, 0);
 		add(hudScan);
+		navArrow = new FlxText(0, 0, 150, "", 8);
+		navArrow.scrollFactor.set(0, 0);
+		navArrow.visible = false;
+		add(navArrow);
 		hudFuel = new FlxText(6, 50, 200, "", 8);
 		hudFuel.scrollFactor.set(0, 0);
 		add(hudFuel);
@@ -848,6 +859,91 @@ class PlayState extends FlxState
 		refreshHud();
 	}
 
+	/**
+	 * A következő cél: a sorrendben (balról jobbra) legközelebbi hiányzó alkatrész, majd a szerelőasztal, végül a kijárat.
+	 * Ha a cél épületben van és a hős kívül (vagy fordítva), a megfelelő épület-ajtóra mutat.
+	 */
+	function navTarget():{x:Float, y:Float, label:String}
+	{
+		var tx:Float = door.x, ty:Float = door.y, label = "EXIT";
+		if (partsFound < data.parts.length)
+		{
+			var best:Pickup = null;
+			for (it in partItems)
+				if (it.alive && (best == null || it.x < best.x))
+					best = it;
+			if (best != null)
+			{
+				tx = best.x;
+				ty = best.y;
+				label = best.label;
+			}
+		}
+		else if (data.benches.length > 0 && !benchBuilt)
+		{
+			for (b in benches)
+			{
+				tx = b.x;
+				ty = b.y;
+				label = "WORKBENCH";
+				break;
+			}
+		}
+		var tIn = ty > data.killRow * 16;
+		if (tIn != inside)
+		{
+			var bestD:Dynamic = null;
+			var bd = 1e9;
+			for (d in bDoors)
+				if (d.toInside == tIn)
+				{
+					var dist = Math.abs(d.spr.x - (tIn ? tx : player.x));
+					if (dist < bd)
+					{
+						bd = dist;
+						bestD = d;
+					}
+				}
+			if (bestD != null)
+			{
+				tx = bestD.spr.x;
+				ty = bestD.spr.y;
+				label += " (" + (tIn ? "ENTER BUILDING" : "LEAVE BUILDING") + ")";
+			}
+		}
+		return {x: tx, y: ty, label: label};
+	}
+
+	/** Képernyőszéli nyíl: ha a cél nem látszik, a képernyő szélén jelzi az irányt és a távolságot. */
+	function updateNavArrow(nt:{x:Float, y:Float, label:String}):Void
+	{
+		var sx = nt.x - FlxG.camera.scroll.x, sy = nt.y - FlxG.camera.scroll.y;
+		var offX = sx < 2 ? -1 : (sx > 476 ? 1 : 0);
+		var offY = sy < 2 ? -1 : (sy > 266 ? 1 : 0);
+		if (offX == 0 && offY == 0 || teleporting)
+		{
+			navArrow.visible = false;
+			return;
+		}
+		var dist = Std.int(Math.sqrt((nt.x - player.x) * (nt.x - player.x) + (nt.y - player.y) * (nt.y - player.y)) / 16);
+		navArrow.visible = true;
+		navArrow.alpha = 0.6 + 0.4 * Math.abs(Math.sin(time * 4));
+		if (offX != 0)
+		{
+			navArrow.alignment = offX < 0 ? LEFT : RIGHT;
+			navArrow.text = offX < 0 ? "< " + nt.label + " " + dist + "M" : nt.label + " " + dist + "M >";
+			navArrow.x = offX < 0 ? 2 : 480 - 150 - 2;
+			navArrow.y = Math.max(52, Math.min(246, sy - 4));
+		}
+		else
+		{
+			navArrow.alignment = CENTER;
+			navArrow.text = (offY < 0 ? "^ " : "v ") + nt.label + " " + dist + "M";
+			navArrow.x = Math.max(2, Math.min(328, sx - 75));
+			navArrow.y = offY < 0 ? 52 : 246;
+		}
+	}
+
 	function refreshHud():Void
 	{
 		for (i in 0...hudHearts.length)
@@ -856,42 +952,25 @@ class PlayState extends FlxState
 			hudHearts[i].loadGraphic(i < heartsOf(ctrl) ? Art.heart() : Art.heartEmpty(), false, 8, 8, false, i < heartsOf(ctrl) ? "heart" : "heartEmpty");
 		for (i in 0...hudParts.length)
 			hudParts[i].alpha = found[i] ? 1 : 0.25;
-		hudGems.text = "GEMS " + gemsGot + "/" + gemsTotal;
+		hudGems.text = "ATOMS " + gemsGot + "/" + gemsTotal;
 		hudScore.text = "SCORE " + score;
 		hudParts2.text = "PARTS " + partsFound + "/" + data.parts.length;
-		// a VISOR iránytűje a legközelebbi hiányzó alkatrész felé
-		hudScan.text = "";
-		if (Parts.has(Parts.ANTENNA) && partsFound < data.parts.length)
-		{
-			var best:Pickup = null;
-			var bd = 1e9;
-			for (it in partItems)
-				if (it.alive)
-				{
-					var d = Math.abs(it.x - player.x) + Math.abs(it.y - player.y);
-					if (d < bd)
-					{
-						bd = d;
-						best = it;
-					}
-				}
-			if (best != null)
-			{
-				var dx = best.x - player.x, dy = best.y - player.y;
-				var arrow = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? ">>" : "<<") : (dy < 0 ? "^^" : "vv");
-				hudScan.text = "SCAN " + best.label + " " + arrow + " " + Std.int(Math.sqrt(dx * dx + dy * dy) / 16) + "M";
-			}
-		}
+		// iránymutatás: a következő cél (alkatrész / szerelőasztal / kijárat), mindig látszik
+		var nt = navTarget();
+		var ndx = nt.x - player.x, ndy = nt.y - player.y;
+		var narrow = Math.abs(ndx) > Math.abs(ndy) ? (ndx > 0 ? ">>" : "<<") : (ndy < 0 ? "^^" : "vv");
+		hudScan.text = "NEXT " + nt.label + " " + narrow + " " + Std.int(Math.sqrt(ndx * ndx + ndy * ndy) / 16) + "M";
+		updateNavArrow(nt);
 		updateRadar();
 		updateBatteryHud();
 		hudFuel.text = player.flightT > 0 ? "JET " + StringTools.rpad("", "#", Std.int(Math.ceil(player.flightT * 2))) : "";
 	}
 
-	/** A radar (ANTENNA): térkép-sáv a pálya egészéről; a II. szinten az ellenségek is látszanak. */
+	/** A térkép-sáv (minimap) mindig látszik: a következő cél villog; az ANTENNA az összes alkatrészt, a II. szint az ellenségeket is mutatja. */
 	function updateRadar():Void
 	{
-		radarSpr.visible = Parts.has(Parts.ANTENNA);
-		if (!radarSpr.visible || time - radarT < 0.1)
+		radarSpr.visible = true;
+		if (time - radarT < 0.1)
 			return;
 		radarT = time;
 		var bd = radarSpr.pixels;
@@ -909,9 +988,14 @@ class PlayState extends FlxState
 					bd.fillRect(new openfl.geom.Rectangle(mx(b.x), 1, 1, 2), 0xFFBBBBBB);
 		bd.fillRect(new openfl.geom.Rectangle(mx(door.x), 1, 2, 5), 0xFFBBBBBB);
 		if (Std.int(time * 4) % 2 == 0)
-			for (it in partItems)
-				if (it.alive)
-					bd.fillRect(new openfl.geom.Rectangle(mx(it.x), 2, 2, 3), 0xFFFFFFFF);
+		{
+			if (Parts.has(Parts.ANTENNA))
+				for (it in partItems)
+					if (it.alive)
+						bd.fillRect(new openfl.geom.Rectangle(mx(it.x), 2, 2, 3), 0xFFFFFFFF);
+			var rt = navTarget();
+			bd.fillRect(new openfl.geom.Rectangle(mx(rt.x) - 1, 0, 4, 7), 0xFFFFFFFF);
+		}
 		bd.fillRect(new openfl.geom.Rectangle(mx(player.x) - 1, 0, 3, 7), 0xFFFFFFFF);
 		radarSpr.dirty = true;
 	}
@@ -1022,11 +1106,27 @@ class PlayState extends FlxState
 				Audio.pauseMusic();
 			else
 				Audio.resumeMusic();
-			overlay.text = "PAUSED\n\nESC / P: RESUME      R: RESPAWN AT CHECKPOINT";
+			overlay.text = "PAUSED\n\nESC / P / START: RESUME\nR / SQUARE / SHARE: RESPAWN AT CHECKPOINT";
 			overlay.visible = paused;
 		}
 		if (paused)
+		{
+			Audio.keepHeld();
+			if (Input.respawnPausedPressed())
+			{
+				paused = false;
+				overlay.visible = false;
+				Audio.resumeMusic();
+				toCheckpoint(false);
+			}
 			return;
+		}
+		if (landT > 0)
+		{
+			landT -= elapsed;
+			if (landT <= 0)
+				Audio.play("land", landVol);
+		}
 		if (hitstop > 0)
 		{
 			hitstop -= elapsed;
@@ -1970,6 +2070,9 @@ class PlayState extends FlxState
 				door.animation.play("open");
 			}
 		}
+		if (partsFound < data.parts.length)
+			msg += "
+NEXT: " + navTarget().label + " >>";
 		showToast(msg, 3.6);
 	}
 
@@ -2110,7 +2213,7 @@ class PlayState extends FlxState
 		score += bonus + Std.int(Math.max(0, 600 - time) * 2);
 		var m = Std.int(time / 60), s = Std.int(time % 60);
 		var names = [for (p in data.parts) p.label].join(" ");
-		var lines = "LEVEL " + (level + 1) + " CLEAR\n\nPARTS " + names + "\nGEMS " + gemsGot + "/" + gemsTotal + (bonus > 0 ? "  ALL FOUND +500" : "") + "\nTIME " + m + ":" + (s < 10 ? "0" : "") + s + "\nSCORE " + score + "\n\nPRESS JUMP";
+		var lines = "LEVEL " + (level + 1) + " CLEAR\n\nPARTS " + names + "\nATOMS " + gemsGot + "/" + gemsTotal + (bonus > 0 ? "  ALL FOUND +500" : "") + "\nTIME " + m + ":" + (s < 10 ? "0" : "") + s + "\nSCORE " + score + "\n\nPRESS JUMP";
 		overlay.text = lines;
 		overlay.visible = true;
 		refreshHud();

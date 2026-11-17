@@ -151,57 +151,86 @@ class LevelData
 {
 	public static inline var T = 16;
 	public static inline var H = 56;
-	public static inline var COUNT = 5;
+	public static inline var COUNT = 10;
 	public static inline var WALKER = 0;
 	public static inline var FLYER = 1;
 	public static inline var CRAWLER = 2;
 
-	public static final NAMES = ["RUSTED CAVES", "COPPER WELLS", "NEON RUINS", "DEEP STATIC", "THE AMBER CORE"];
+	public static final NAMES = ["RUSTED CAVES", "COPPER WELLS", "NEON RUINS", "DEEP STATIC", "THE HOLLOW", "SIGNAL TOWERS", "GLASS GARDEN", "BLACK RELAY", "THE LONG DARK", "THE AMBER CORE"];
 
 	/** Pályánként a küldetés-szobák sorrendben (az ajtóhoz mindegyik alkatrész kell). */
 	public static final RECIPES:Array<Array<RoomDef>> = [
-		// 1. pálya: a saját alkatrészek (a robot csupaszon indul)
 		[
 			{room: "start", icon: Parts.LEGS, label: "LEGS"},
 			{room: "crate", icon: Parts.CORE, label: "CORE"},
-			{room: "tower", icon: Parts.VISOR, label: "VISOR"},
+			{room: "lock", icon: -1, label: "BONUS"},
 			{room: "building", icon: -1, label: "ARCHIVE"}
 		],
-		// 2. pálya: még saját alkatrészek, kulcs- és sorrend-rejtvény
 		[
+			{room: "tower", icon: Parts.VISOR, label: "VISOR"},
+			{room: "seq", icon: -1, label: "BONUS"},
 			{room: "lock", icon: Parts.THRUSTER, label: "THRUSTER"},
-			{room: "seq", icon: Parts.CLAWS, label: "CLAWS"},
-			{room: "well", icon: Parts.CHIP, label: "PROCESSOR"},
-			{room: "building", icon: -1, label: "ARCHIVE"}
+			{room: "crate", icon: -1, label: "BONUS"},
+			{room: "building", icon: -1, label: "ARCHIVE", guard: true}
 		],
-		// 3. pálya: a maradék saját alkatrész + az első társ (WHEELIE) alkatrészei
+		[
+			{room: "seq", icon: Parts.CLAWS, label: "CLAWS"},
+			{room: "gated", icon: -1, label: "BONUS"},
+			{room: "well", icon: Parts.CHIP, label: "PROCESSOR"},
+			{room: "lock", icon: -1, label: "BONUS"},
+			{room: "building", icon: -1, label: "ARCHIVE", guard: true}
+		],
 		[
 			{room: "open", icon: Parts.BLASTER, label: "BLASTER", guard: true},
+			{room: "lock", icon: -1, label: "BONUS"},
+			{room: "seq", icon: -1, label: "BONUS"},
+			{room: "building", icon: Parts.GEAR, label: "SERVOS", guard: true},
+			{room: "sky", icon: -1, label: "BONUS"}
+		],
+		[
 			{room: "vault", icon: Parts.FRAME, label: "SMALL FRAME", friend: 0},
 			{room: "gated", icon: Parts.MOTOR, label: "WHEEL MOTOR", friend: 0},
+			{room: "seq", icon: -1, label: "BONUS"},
 			{room: "building", icon: Parts.HEAD, label: "TINY HEAD", guard: true, friend: 0},
-			{room: "bench", icon: Parts.HEAD, label: "WORKBENCH", friend: 0},
-			{room: "tunnel", icon: Parts.GEAR, label: "SERVOS"},
-			{room: "cell", icon: Parts.ANTENNA, label: "ANTENNA"}
+			{room: "bench", icon: Parts.HEAD, label: "WORKBENCH", friend: 0}
 		],
-		// 4. pálya: fejlesztések + a második társ (TALL)
+		[
+			{room: "tunnel", icon: Parts.GEAR, label: "SERVOS"},
+			{room: "lock", icon: -1, label: "BONUS"},
+			{room: "cell", icon: Parts.ANTENNA, label: "ANTENNA"},
+			{room: "crate", icon: -1, label: "BONUS"},
+			{room: "well", icon: -1, label: "BONUS"},
+			{room: "building", icon: -1, label: "ARCHIVE", guard: true}
+		],
 		[
 			{room: "tower", icon: Parts.FRAME, label: "LONG LEGS", friend: 1},
+			{room: "seq", icon: -1, label: "BONUS"},
 			{room: "sky", icon: Parts.MOTOR, label: "TALL FRAME", friend: 1},
 			{room: "crate", icon: Parts.HEAD, label: "HEAD LAMP", friend: 1},
-			{room: "bench", icon: Parts.HEAD, label: "WORKBENCH", friend: 1},
-			{room: "ledge", icon: Parts.LEGS, label: "SPRINGS"},
-			{room: "tunnel", icon: Parts.CORE, label: "REACTOR"},
-			{room: "building", icon: -1, label: "ARCHIVE"}
+			{room: "bench", icon: Parts.HEAD, label: "WORKBENCH", friend: 1}
 		],
-		// 5. pálya: a harmadik társ (ORB) és a végső fejlesztések
+		[
+			{room: "ledge", icon: Parts.LEGS, label: "SPRINGS"},
+			{room: "lock", icon: -1, label: "BONUS"},
+			{room: "tunnel", icon: Parts.CORE, label: "REACTOR"},
+			{room: "seq", icon: -1, label: "BONUS"},
+			{room: "gated", icon: -1, label: "BONUS"},
+			{room: "building", icon: -1, label: "ARCHIVE", guard: true}
+		],
 		[
 			{room: "lock", icon: Parts.FRAME, label: "GLASS BULB", friend: 2},
 			{room: "seq", icon: Parts.MOTOR, label: "ROTOR", friend: 2},
+			{room: "cell", icon: -1, label: "BONUS"},
 			{room: "building", icon: Parts.HEAD, label: "SPARK CORE", guard: true, friend: 2},
-			{room: "bench", icon: Parts.HEAD, label: "WORKBENCH", friend: 2},
+			{room: "bench", icon: Parts.HEAD, label: "WORKBENCH", friend: 2}
+		],
+		[
+			{room: "orb", icon: Parts.GEAR, label: "ACTUATOR"},
+			{room: "lock", icon: -1, label: "BONUS"},
 			{room: "float", icon: Parts.ANTENNA, label: "RADIO"},
-			{room: "orb", icon: Parts.GEAR, label: "ACTUATOR"}
+			{room: "seq", icon: -1, label: "BONUS"},
+			{room: "crate", icon: -1, label: "BONUS"},
+			{room: "building", icon: -1, label: "ARCHIVE", guard: true}
 		]
 	];
 
@@ -314,6 +343,17 @@ class LevelData
 			top.push(h);
 	}
 
+	/** A szoba jutalma: alkatrész; icon < 0 esetén bónusz-szoba (nincs alkatrész): a jutalom egy plusz szív. */
+	function addPart(r:RoomDef, x:Float, y:Float):Void
+	{
+		if (r.icon < 0)
+		{
+			hearts.push({x: x + 1, y: y + 4});
+			return;
+		}
+		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: x, y: y});
+	}
+
 	function gem(col:Float, row:Float):Void
 		gems.push({x: col * T + 4, y: row * T + 4});
 
@@ -370,18 +410,18 @@ class LevelData
 		if (rooms[0].room == "start")
 		{
 			var r = rooms.shift();
-			parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: 6 * T + 3, y: cur * T - 14});
+			addPart(r, 6 * T + 3, cur * T - 14);
 			gem(4, cur - 2);
 		}
 		var si = 0;
-		var fillers = rooms.length >= 6 ? 1 : 2 + (L >= 2 ? 1 : 0);
+		var fillers = 3 + (L >= 4 ? 1 : 0) + (L >= 7 ? 1 : 0);
 		for (r in rooms)
 		{
 			for (k in 0...fillers)
 				filler(si++);
 			room(r);
 		}
-		for (k in 0...2)
+		for (k in 0...4)
 			filler(si++);
 		// vég: sík szakasz az ajtóval
 		var c0 = top.length;
@@ -545,7 +585,7 @@ class LevelData
 
 	function segPit(L:Int):Void
 	{
-		var len = ri(2, 3 + (L >= 2 ? 1 : 0));
+		var len = ri(L >= 5 ? 3 : 2, 3 + (L >= 2 ? 1 : 0));
 		var c0 = top.length;
 		for (i in 0...len)
 			top.push(99);
@@ -602,11 +642,13 @@ class LevelData
 		var c0 = top.length;
 		var len = ri(10, 12);
 		flat(len, cur);
-		var nw = ri(1, 2) + (L >= 2 ? 1 : 0);
+		var nw = ri(1, 2) + (L >= 2 ? 1 : 0) + (L >= 5 ? 1 : 0);
 		for (i in 0...nw)
 			enemies.push({kind: WALKER, x: (c0 + 2 + i * 3) * T, y: cur * T - 10});
 		if (L >= 1)
 			enemies.push({kind: FLYER, x: (c0 + len / 2) * T, y: (cur - 5) * T});
+		if (L >= 5)
+			enemies.push({kind: FLYER, x: (c0 + len - 2) * T, y: (cur - 6) * T});
 		if (L >= 2 && rnd() < 0.7)
 			enemies.push({kind: CRAWLER, x: (c0 + len - 3) * T, y: cur * T - 10});
 		for (i in 0...4)
@@ -679,7 +721,7 @@ class LevelData
 		platList.push({x: x0 + 5, y: yBot - 3, w: 4});
 		platList.push({x: x0 + 11, y: yBot - 6, w: 4});
 		if (r.icon >= 0)
-			parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (x0 + 12) * T + 3, y: (yBot - 6) * T - 14});
+			addPart(r, (x0 + 12) * T + 3, (yBot - 6) * T - 14);
 		gem(x0 + 6, yBot - 5);
 		gem(x0 + 7, yBot - 5);
 		gem(x0 + 12, yBot - 8);
@@ -720,7 +762,7 @@ class LevelData
 		plates.push({x: (c0 + 6) * T, y: (cur + 2) * T - 6, id: id, hold: true});
 		crates.push({x: (c0 + 2) * T, y: cur * T - 16});
 		gateColumn(c0 + 13, id, false);
-		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 16) * T + 3, y: cur * T - 14});
+		addPart(r, (c0 + 16) * T + 3, cur * T - 14);
 		texts.push({x: (c0 + 1) * T, y: (cur - 4) * T, text: "PUSH THE CRATE INTO THE SLOT"});
 		gem(c0 + 9, cur - 2);
 	}
@@ -736,7 +778,7 @@ class LevelData
 		platList.push({x: c0 + 5, y: cur - 4, w: 2});
 		keys.push({x: (c0 + 5) * T + 3, y: (cur - 4) * T - 12, id: id});
 		gateColumn(c0 + 11, id, true);
-		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 14) * T + 3, y: cur * T - 14});
+		addPart(r, (c0 + 14) * T + 3, cur * T - 14);
 		gem(c0 + 3, cur - 4);
 	}
 
@@ -747,23 +789,24 @@ class LevelData
 		flat(20, cur);
 		checkpointAt(c0);
 		var id = nextId++;
-		var order = [0, 1, 2];
-		for (i in 0...2)
+		var nsw = level >= 5 ? 4 : 3;
+		var order = [for (i in 0...nsw) i];
+		for (i in 0...nsw - 1)
 		{
-			var j = ri(i, 2);
+			var j = ri(i, nsw - 1);
 			var tmp = order[i];
 			order[i] = order[j];
 			order[j] = tmp;
 		}
 		if (order[0] == 0 && order[1] == 1)
-			order = [2, 0, 1];
-		var labels = ["A", "B", "C"];
-		for (i in 0...3)
+			order = nsw == 4 ? [2, 0, 3, 1] : [2, 0, 1];
+		var labels = ["A", "B", "C", "D"];
+		for (i in 0...nsw)
 			switches.push({x: (c0 + 3 + i * 3) * T + 2, y: cur * T - 14, id: id, idx: i, label: labels[i]});
 		seqs.set(id, order);
 		texts.push({x: (c0 + 2) * T, y: (cur - 5) * T, text: "ORDER: " + [for (o in order) labels[o]].join(" > ")});
 		gateColumn(c0 + 14, id, false);
-		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 17) * T + 3, y: cur * T - 14});
+		addPart(r, (c0 + 17) * T + 3, cur * T - 14);
 	}
 
 	/** Áramcella + emelő: a cella egy fülkében van, az aljzatba téve az emelő felviszi a hőst a magas polcra az alkatrészhez. */
@@ -780,7 +823,7 @@ class LevelData
 		sockets.push({x: (c0 + 10) * T + 2, y: cur * T - 12, id: id});
 		movers.push({x: (c0 + 13) * T, y: cur * T, w: 3, axis: "y", range: 10 * T, speed: 46, id: id, active: false});
 		platList.push({x: c0 + 17, y: cur - 10, w: 4});
-		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 18) * T + 3, y: (cur - 10) * T - 14});
+		addPart(r, (c0 + 18) * T + 3, (cur - 10) * T - 14);
 		texts.push({x: (c0 + 8) * T, y: (cur - 4) * T, text: "SOCKET NEEDS A POWER CELL"});
 		gem(c0 + 11, cur - 3);
 	}
@@ -796,7 +839,7 @@ class LevelData
 			bricks.push({x: x, y: cur - 2});
 		bricks.push({x: c0 + 11, y: cur - 1});
 		grates.push({x: (c0 + 5) * T, y: (cur - 1) * T});
-		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 8) * T + 3, y: cur * T - 14});
+		addPart(r, (c0 + 8) * T + 3, cur * T - 14);
 		texts.push({x: (c0 + 3) * T, y: (cur - 5) * T, text: "ONLY THE SMALL ONE FITS"});
 		gem(c0 + 14, cur - 2);
 	}
@@ -809,7 +852,7 @@ class LevelData
 		flat(16, cur);
 		checkpointAt(c0);
 		platList.push({x: c0 + 9, y: cur - 6, w: 4});
-		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 10) * T + 3, y: (cur - 6) * T - 14});
+		addPart(r, (c0 + 10) * T + 3, (cur - 6) * T - 14);
 		texts.push({x: (c0 + 3) * T, y: (cur - 7) * T, text: "TOO HIGH. NEED A BOOST"});
 		gem(c0 + 5, cur - 3);
 	}
@@ -822,7 +865,7 @@ class LevelData
 		var c0 = top.length;
 		flat(16, cur);
 		checkpointAt(c0);
-		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 8) * T + 3, y: (cur - 12) * T});
+		addPart(r, (c0 + 8) * T + 3, (cur - 12) * T);
 		texts.push({x: (c0 + 3) * T, y: (cur - 6) * T, text: "TOO HIGH FOR ANYONE WHO CAN'T FLY"});
 		gem(c0 + 6, cur - 3);
 		gem(c0 + 10, cur - 3);
@@ -836,7 +879,7 @@ class LevelData
 		var id = nextId++;
 		levers.push({x: (c0 + 8) * T, y: (cur - 10) * T + 6, id: id});
 		gateColumn(c0 + 13, id, false);
-		parts.push({friend: r.friend != null ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 16) * T + 3, y: cur * T - 14});
+		addPart(r, (c0 + 16) * T + 3, cur * T - 14);
 		texts.push({x: (c0 + 5) * T, y: (cur - 6) * T, text: "LEVER OUT OF REACH"});
 	}
 
@@ -856,7 +899,7 @@ class LevelData
 		var c0 = top.length;
 		flat(10, cur);
 		checkpointAt(c0);
-		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 6) * T + 3, y: cur * T - 14});
+		addPart(r, (c0 + 6) * T + 3, cur * T - 14);
 		if (r.guard == true)
 		{
 			enemies.push({kind: WALKER, x: (c0 + 4) * T, y: cur * T - 10});
@@ -885,7 +928,7 @@ class LevelData
 				gem(px + 2, row - 2);
 			}
 			else
-				parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (px + 1) * T + 3, y: row * T - 14});
+				addPart(r, (px + 1) * T + 3, row * T - 14);
 		}
 		gem(c0 + 5, cur - 2);
 	}
@@ -897,7 +940,7 @@ class LevelData
 		var c0 = top.length;
 		for (i in 0...3)
 			top.push(cur + 6);
-		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 1) * T + 3, y: (cur + 6) * T - 14});
+		addPart(r, (c0 + 1) * T + 3, (cur + 6) * T - 14);
 		gem(c0 + 1, cur + 2);
 		gem(c0 + 1, cur + 4);
 		flat(4, cur);
@@ -913,7 +956,7 @@ class LevelData
 			bricks.push({x: x, y: cur - 2});
 		bricks.push({x: c0 + 11, y: cur - 1});
 		crackeds.push({x: (c0 + 5) * T, y: (cur - 1) * T});
-		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 8) * T + 3, y: cur * T - 14});
+		addPart(r, (c0 + 8) * T + 3, cur * T - 14);
 		gem(c0 + 7, cur - 5);
 		gem(c0 + 9, cur - 5);
 	}
@@ -927,7 +970,7 @@ class LevelData
 		cells.push({x: (c0 + 3) * T + 3, y: cur * T - 14});
 		var row = cur - 12;
 		platList.push({x: c0 + 9, y: row, w: 3});
-		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 10) * T + 3, y: row * T - 14});
+		addPart(r, (c0 + 10) * T + 3, row * T - 14);
 		for (i in 0...4)
 			gem(c0 + 4 + i * 0.5, cur - 3 - i * 2.5);
 	}
@@ -944,7 +987,7 @@ class LevelData
 		plates.push({x: (c0 + 4) * T, y: (cur - 3) * T - 6, id: gid, hold: false});
 		for (k in 1...7)
 			gates.push({x: (c0 + 9) * T, y: (cur - k) * T, id: gid, lock: false});
-		parts.push({friend: r.friend != null && r.room != "bench" ? r.friend : -1, icon: r.icon, label: r.label, x: (c0 + 13) * T + 3, y: cur * T - 14});
+		addPart(r, (c0 + 13) * T + 3, cur * T - 14);
 		gem(c0 + 11, cur - 2);
 	}
 

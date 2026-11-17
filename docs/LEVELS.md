@@ -82,3 +82,27 @@ Minden épülethez legalább 1 `BuildingRoom` és 2 `BuildingDoor` kell. Az obje
   `LevelExport.art`-ban, kezeld a `LevelLoader`-ben, és futtasd a *Regenerate Tiled assets* feladatot.
 - `source/LevelLoader.hx`: a `.tmj` beolvasása `LevelData`-vá; `source/LevelExport.hx` (csak cheats buildben): a generátor pályáinak exportja + körút-ellenőrzés.
 - Hibakeresés: a loader hibáit a böngésző konzolja mutatja (`LevelLoader: ...`); hiba esetén a generátor pályája töltődik.
+
+## A kampány (10 pálya)
+
+A pályákat a `LevelData.RECIPES` receptjei építik (szobák sorrendben); a `scripts/generate-levels.ps1 -Force` ebből írja a `levels/levelN.tmj` fájlokat (a kézi szerkesztést felülírja: előtte mentsd a régieket). A `backup/old5-levels/` az eredeti 5 pálya mentése.
+Az alkatrészek szétszórva jönnek (pályánként 1-3), a három társ robot külön-külön a 5., 7. és 9. pályán épül össze; a szobák a már megszerzett képességekre méretezettek. A `BONUS` szobák (a recept `icon: -1`) puzzle-k (kulcs, sorrend-kapcsoló, láda, kapu, áramcella, kút, épület) alkatrész nélkül: a jutalom egy extra szív. A 6. pályától a sorrend-rejtvény 4 kapcsolós.
+
+| # | Név | Új alkatrészek / társ |
+|---|---|---|
+| 1 | RUSTED CAVES | LEGS, CORE |
+| 2 | COPPER WELLS | VISOR, THRUSTER |
+| 3 | NEON RUINS | CLAWS, PROCESSOR |
+| 4 | DEEP STATIC | BLASTER, SERVOS |
+| 5 | THE HOLLOW | WHEELIE (keret, motor, fej, szerelőasztal) |
+| 6 | SIGNAL TOWERS | SERVOS (WHEELIE kell), ANTENNA |
+| 7 | GLASS GARDEN | TALL (keret, motor, fej, szerelőasztal) |
+| 8 | BLACK RELAY | SPRINGS (TALL kell), REACTOR (WHEELIE kell) |
+| 9 | THE LONG DARK | ORB (keret, motor, fej, szerelőasztal) |
+| 10 | THE AMBER CORE | ACTUATOR, RADIO (ORB kell) |
+
+## Iránymutatás
+
+A HUD mindig kiírja a következő célt (`NEXT <név> >> <távolság>`): a sorrendben legközelebbi hiányzó alkatrész, aztán a szerelőasztal, végül a kijárat. Épületben lévő célnál (vagy ha a hős épületben van) a megfelelő épület-ajtóra mutat.
+A térkép-sáv (minimap, alul) mindig látszik, a következő cél villog rajta; az ANTENNA az összes alkatrészt, a II. szintje az ellenségeket és akkukat is mutatja. Ha a cél nem látszik a képernyőn, a szélén nyíl jelzi az irányt és a távolságot. Alkatrész felvételekor a következő cél is kiíródik.
+A gyémántok helyett **atom-részecskéket** kell gyűjteni (a Tiled-ben az objektum osztálya a régi `Gem` maradt).

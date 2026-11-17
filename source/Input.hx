@@ -175,6 +175,11 @@ class Input
 		return FlxG.keys.anyJustPressed([ENTER, SPACE, Z, UP, W, C]) || (just(FlxGamepadInputID.A) || just(FlxGamepadInputID.START));
 	}
 
+	/** Újraéledés az ellenőrzőpontnál játék közben: R / kontroller BACK (Share). */
 	public static function restartPressed():Bool
-		return FlxG.keys.justPressed.R;
+		return FlxG.keys.justPressed.R || just(FlxGamepadInputID.BACK);
+
+	/** Újraéledés a szünet-menüből: R / kontroller X (négyzet) / BACK (Share). */
+	public static function respawnPausedPressed():Bool
+		return FlxG.keys.justPressed.R || just(FlxGamepadInputID.X) || just(FlxGamepadInputID.BACK);
 }

@@ -17,8 +17,8 @@ try {
     Start-Sleep -Milliseconds 600
     "legs owned: " + (Js "window.__parts[0]") + "  parts found: " + (Js "window.__ps.partsFound")
     Shot "f_legs.png"
-    # 3. fal-kapaszkodás: karmok + kút (2. pálya)
-    Send-Cdp "Page.navigate" @{ url = ($Base + "?level=1&r=1") } | Out-Null
+    # 3. fal-kapaszkodás: karmok + kút (3. pálya)
+    Send-Cdp "Page.navigate" @{ url = ($Base + "?level=2&r=1") } | Out-Null
     Start-Sleep -Seconds 8
     Tp "(function(){window.__parts[0]=true;window.__parts[4]=true;window.__ps.player.refreshLook();})()"
     Tp "(function(){var p=window.__ps; var d=p.data; var c=-1; for(var x=1;x<d.w-3;x++){ if(d.top[x]-d.top[x-1]==6 && d.top[x+1]==d.top[x]){c=x;break;} } window.__wallX=c; p.player.reset((c+1)*16+4,(d.top[c-1]+1)*16); window.__cam.focusOn(p.player.getMidpoint());})()"

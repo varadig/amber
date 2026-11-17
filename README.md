@@ -1,6 +1,6 @@
-# Amber Ascent
+# Ämber
 
-C64-hangulatú, borostyán-fekete monitoros platformer (HaxeFlixel 6.2.1, HTML5). Gyémántokat gyűjtesz, kulcsot hozol a toronyból, ellenségekre ugrálsz, és eljutsz az ajtóig. 5 generált pálya, MOD-szerű (Amiga / C64) kódból szintetizált zene és hangok, nincsenek kép- vagy hangfájlok.
+C64-hangulatú, borostyán-fekete monitoros platformer (HaxeFlixel 6.2.1, HTML5). Atom-részecskéket gyűjtesz, kulcsot hozol a toronyból, ellenségekre ugrálsz, és eljutsz az ajtóig. 10 hosszú, puzzle-s pálya (alkatrészenként, társ-robotonként haladva), MOD-szerű (Amiga / C64) kódból szintetizált zene és hangok, nincsenek kép- vagy hangfájlok.
 
 ## Irányítás
 | | |

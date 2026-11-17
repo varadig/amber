@@ -24,10 +24,10 @@ try {
     if (($r -join "`n") -notmatch "state: \{") { $fail++ }
     if (($r -join "`n") -notmatch "errors:\s*$") { $fail++ }
 
-    Write-Host "`n[2/11] Mind az 5 pálya" -ForegroundColor Cyan
+    Write-Host "`n[2/11] Mind a 10 pálya" -ForegroundColor Cyan
     $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\tests\levels.ps1" -Base $base -Out $out
     $r | ForEach-Object { Write-Host $_ }
-    if (@($r | Where-Object { $_ -match "^level \d: \{" }).Count -ne 5) { $fail++ }
+    if (@($r | Where-Object { $_ -match "^level \d: \{" }).Count -ne 10) { $fail++ }
     if (($r -join "`n") -notmatch "errors:\s*$") { $fail++ }
 
     Write-Host "`n[3/11] Ugrás-méretek (LEGS-szel)" -ForegroundColor Cyan
@@ -105,7 +105,7 @@ try {
     if ($LASTEXITCODE -ne 0) { $fail++ }
     $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tests/tiledlevels.ps1"
     $r | ForEach-Object { Write-Host $_ }
-    if (@($r | Where-Object { $_ -match '"tiled":true' }).Count -ne 5) { Write-Host "Nem mind az 5 pálya a Tiled-térképből töltődött." -ForegroundColor Yellow; $fail++ }
+    if (@($r | Where-Object { $_ -match '"tiled":true' }).Count -ne 10) { Write-Host "Nem mind a 10 pálya a Tiled-térképből töltődött." -ForegroundColor Yellow; $fail++ }
     $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tests/bunkers.ps1"
     $r | ForEach-Object { Write-Host $_ }
     $txt = ($r -join "`n")
