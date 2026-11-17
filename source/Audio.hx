@@ -100,17 +100,41 @@ class Audio
 		}
 		catch (e:Dynamic) {}
 		#end
-		if (musicWanted && musicSound != null && (FlxG.sound.music == null || !FlxG.sound.music.playing))
-			FlxG.sound.playMusic(musicSound, null, MUSIC_VOLUME * musicVolume, true);
+		ensureMusic();
 	}
 
 	static var musicWanted:Bool = false;
+	/** A játék maga szüneteltette a zenét (szünet-menü): ilyenkor nem indítjuk újra. */
+	static var musicHeld:Bool = false;
+
+	/**
+	 * A zene biztosítása: ha még nem indult, indítjuk; ha létezik (akkor is, ha áll: pl. a böngészőablak fókuszvesztésekor a Flixel megállította), nem indítunk másikat.
+	 * Korábban ilyenkor új példány indult, a régi pedig a fókusz visszatértekor folytatódott: dupla / szellemzene.
+	 */
+	static function ensureMusic():Void
+	{
+		if (!musicWanted || musicSound == null)
+			return;
+		var m = FlxG.sound.music;
+		if (m == null)
+			FlxG.sound.playMusic(musicSound, null, MUSIC_VOLUME * musicVolume, true);
+		// létező, de álló zenét nem indítunk újra: a Flixel a fókusz visszatértekor maga folytatja, a szünetet a PlayState kezeli
+	}
+
+	/** Ugyanaz a hang 60 ms-on belül nem szólal meg kétszer (több forrásból egyszerre kiváltott események: dupla hang). */
+	static var lastPlayed = new Map<String, Float>();
 
 	public static function play(name:String, volume:Float = 1):Void
 	{
 		var s = sounds.get(name);
-		if (s != null && sfxVolume > 0)
-			FlxG.sound.play(s, volume * sfxVolume);
+		if (s == null || sfxVolume <= 0)
+			return;
+		var now = haxe.Timer.stamp();
+		var last = lastPlayed.get(name);
+		if (last != null && now - last < 0.06)
+			return;
+		lastPlayed.set(name, now);
+		FlxG.sound.play(s, volume * sfxVolume);
 	}
 
 	/** A háttérzene indítása (ha már szól, nem indul újra). */
@@ -119,10 +143,6 @@ class Audio
 		if (musicSound == null)
 			return;
 		musicWanted = true;
-		unlock();
-		if (FlxG.sound.music != null && FlxG.sound.music.playing)
-			return;
-		FlxG.sound.playMusic(musicSound, null, MUSIC_VOLUME * musicVolume, true);
 		unlock();
 	}
 
@@ -134,12 +154,14 @@ class Audio
 
 	public static function pauseMusic():Void
 	{
+		musicHeld = true;
 		if (FlxG.sound.music != null)
 			FlxG.sound.music.pause();
 	}
 
 	public static function resumeMusic():Void
 	{
+		musicHeld = false;
 		if (FlxG.sound.music != null)
 			FlxG.sound.music.resume();
 	}

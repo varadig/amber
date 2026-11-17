@@ -610,7 +610,7 @@ class PlayState extends FlxState
 		player = new Player(data.spawn.x, data.spawn.y);
 		player.onJump = () ->
 		{
-			Audio.play("jump", 0.8);
+			Audio.play("jump", player.controlled ? 0.8 : 0.25); // a követő (nem irányított) hős ugrása halkabb
 			player.squash(0.78, 1.25);
 			dust(player.x + 4, player.y + 12, 3);
 		};
@@ -622,7 +622,7 @@ class PlayState extends FlxState
 		};
 		player.onLand = (vy:Float) ->
 		{
-			Audio.play("land", 0.6);
+			Audio.play("land", player.controlled ? 0.6 : 0.2);
 			player.squash(1.3, 0.75);
 			dust(player.x + 4, player.y + 12, 4);
 		};
