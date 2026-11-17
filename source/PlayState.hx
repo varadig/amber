@@ -357,7 +357,7 @@ class PlayState extends FlxState
 		bgColor = 0xFF000000;
 		Parts.restore();
 		Companions.restore();
-		data = LevelData.generate(level);
+		data = LevelLoader.load(level);
 		worldW = data.w * LevelData.T;
 		worldH = LevelData.H * LevelData.T;
 		score = totalScore;

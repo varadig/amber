@@ -1,0 +1,510 @@
+{
+    "automappingRulesFile": "",
+    "commands": [],
+    "compatibilityVersion": 1100,
+    "extensionsPath": "extensions",
+    "folders": [
+        "."
+    ],
+    "properties": [],
+    "propertyTypes": [
+        {
+            "id": 1,
+            "name": "EnemyKind",
+            "storageType": "string",
+            "type": "enum",
+            "values": [
+                "WALKER",
+                "FLYER",
+                "CRAWLER"
+            ],
+            "valuesAsFlags": false
+        },
+        {
+            "id": 2,
+            "name": "Spawn",
+            "type": "class",
+            "color": "#ff40f040",
+            "drawFill": true,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 3,
+            "name": "Door",
+            "type": "class",
+            "color": "#ff40f040",
+            "drawFill": true,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 4,
+            "name": "Checkpoint",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 5,
+            "name": "Gem",
+            "type": "class",
+            "color": "#ff40c0c0",
+            "drawFill": true,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 6,
+            "name": "Heart",
+            "type": "class",
+            "color": "#ffe05080",
+            "drawFill": true,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 7,
+            "name": "Battery",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 8,
+            "name": "Spike",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 9,
+            "name": "Cracked",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 10,
+            "name": "Crumble",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 11,
+            "name": "Mover",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "w",
+                    "type": "int",
+                    "value": 3
+                },
+                {
+                    "name": "axis",
+                    "type": "string",
+                    "value": "x"
+                },
+                {
+                    "name": "range",
+                    "type": "int",
+                    "value": 64
+                },
+                {
+                    "name": "speed",
+                    "type": "int",
+                    "value": 40
+                },
+                {
+                    "name": "id",
+                    "type": "int",
+                    "value": -1
+                },
+                {
+                    "name": "active",
+                    "type": "bool",
+                    "value": true
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 12,
+            "name": "Grate",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 13,
+            "name": "Crate",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 14,
+            "name": "Gate",
+            "type": "class",
+            "color": "#ff909090",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "id",
+                    "type": "int",
+                    "value": 1
+                },
+                {
+                    "name": "lock",
+                    "type": "bool",
+                    "value": false
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 15,
+            "name": "Plate",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "id",
+                    "type": "int",
+                    "value": 1
+                },
+                {
+                    "name": "hold",
+                    "type": "bool",
+                    "value": false
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 16,
+            "name": "Lever",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "id",
+                    "type": "int",
+                    "value": 1
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 17,
+            "name": "Switch",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "id",
+                    "type": "int",
+                    "value": 1
+                },
+                {
+                    "name": "idx",
+                    "type": "int",
+                    "value": 0
+                },
+                {
+                    "name": "label",
+                    "type": "string",
+                    "value": "1"
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 18,
+            "name": "Socket",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "id",
+                    "type": "int",
+                    "value": 1
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 19,
+            "name": "Key",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "id",
+                    "type": "int",
+                    "value": 1
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 20,
+            "name": "PowerCell",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "id",
+                    "type": "int",
+                    "value": 1
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 21,
+            "name": "Bench",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "comp",
+                    "type": "int",
+                    "value": 0
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 22,
+            "name": "Terminal",
+            "type": "class",
+            "color": "#ff40a0f0",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "id",
+                    "type": "int",
+                    "value": 1
+                },
+                {
+                    "name": "game",
+                    "type": "int",
+                    "value": 0
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 23,
+            "name": "BuildingDoor",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "room",
+                    "type": "int",
+                    "value": 1
+                },
+                {
+                    "name": "inside",
+                    "type": "bool",
+                    "value": false
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 24,
+            "name": "Enemy",
+            "type": "class",
+            "color": "#ffd04040",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "kind",
+                    "type": "string",
+                    "propertyType": "EnemyKind",
+                    "value": "WALKER"
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 25,
+            "name": "Cell",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 26,
+            "name": "Part",
+            "type": "class",
+            "color": "#fff0b030",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "icon",
+                    "type": "int",
+                    "value": 0
+                },
+                {
+                    "name": "label",
+                    "type": "string",
+                    "value": "LEGS"
+                },
+                {
+                    "name": "friend",
+                    "type": "int",
+                    "value": -1
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 27,
+            "name": "BuildingRoom",
+            "type": "class",
+            "color": "#ff8060c0",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "id",
+                    "type": "int",
+                    "value": 1
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 28,
+            "name": "Decor",
+            "type": "class",
+            "color": "#ff505050",
+            "drawFill": true,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 29,
+            "name": "Text",
+            "type": "class",
+            "color": "#ffffffff",
+            "drawFill": false,
+            "members": [],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        }
+    ]
+}

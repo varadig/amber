@@ -19,7 +19,7 @@ $bin = Join-Path $root "export\html5\bin"
 $js = @(Get-ChildItem $bin -Filter *.js)
 if ($js.Count -ne 1) { Fail "pontosan egy .js kell az export\html5\bin mappában (most: $($js.Count))." }
 $text = [IO.File]::ReadAllText($js[0].FullName)
-foreach ($forbidden in @("window.__ps", "window.__cam", "CheatSubState")) {
+foreach ($forbidden in @("window.__ps", "window.__cam", "CheatSubState", "LevelExport")) {
     if ($text.Contains($forbidden)) { Fail "a release build tartalmazza a teszt-kódot: '$forbidden' (-Dtest nélkül kell fordítani)." }
 }
 $zip = Join-Path $root "dist\amberascent-html5.zip"

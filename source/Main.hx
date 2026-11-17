@@ -21,6 +21,11 @@ class Main extends Sprite
 	public function new()
 	{
 		super();
+		#if (cheats && js)
+		// ?exportlevels=1: a generált pályák és a Tiled-erőforrások exportja (scripts/generate-levels.ps1)
+		if (js.Browser.location.search.indexOf("exportlevels=1") >= 0)
+			FlxG.signals.postGameStart.addOnce(LevelExport.run);
+		#end
 		// A borostyán-monitor shader az egész játékon (a játék példányon, hogy a pásztázó-vonalak az ablak felbontásán is élesek legyenek)
 		amber = new AmberShader();
 		var filter = new ShaderFilter(amber);

@@ -1,0 +1,57 @@
+{
+	"type": "tileset",
+	"name": "terrain",
+	"version": "1.10",
+	"tiledversion": "1.10.2",
+	"tilewidth": 16,
+	"tileheight": 16,
+	"tilecount": 4,
+	"columns": 4,
+	"image": "tiles.png",
+	"imagewidth": 64,
+	"imageheight": 16,
+	"margin": 0,
+	"spacing": 0,
+	"tiles": [
+		{
+			"id": 0,
+			"properties": [
+				{
+					"name": "kind",
+					"type": "string",
+					"value": "GROUND TOP"
+				}
+			]
+		},
+		{
+			"id": 1,
+			"properties": [
+				{
+					"name": "kind",
+					"type": "string",
+					"value": "GROUND"
+				}
+			]
+		},
+		{
+			"id": 2,
+			"properties": [
+				{
+					"name": "kind",
+					"type": "string",
+					"value": "BRICK"
+				}
+			]
+		},
+		{
+			"id": 3,
+			"properties": [
+				{
+					"name": "kind",
+					"type": "string",
+					"value": "ONE-WAY PLATFORM"
+				}
+			]
+		}
+	]
+}

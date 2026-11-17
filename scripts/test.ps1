@@ -98,6 +98,14 @@ try {
     if ($txt -notmatch "follow default: True") { Write-Host "A követés nem az alapértelmezett." -ForegroundColor Yellow; $fail++ }
     if ($txt -notmatch "spawn mode: 0") { Write-Host "Az új társ nem követ." -ForegroundColor Yellow; $fail++ }
     if ($txt -notmatch "idle acts seen: [1-9]") { Write-Host "A tétlen robot nem tett üresjárati apróságot." -ForegroundColor Yellow; $fail++ }
+
+    Write-Host "`n[+] Tiled-pályák (levels/levelN.tmj): statikus ellenőrzés és betöltés" -ForegroundColor Cyan
+    $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tests/validate-levels.ps1"
+    $r | ForEach-Object { Write-Host $_ }
+    if ($LASTEXITCODE -ne 0) { $fail++ }
+    $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tests/tiledlevels.ps1"
+    $r | ForEach-Object { Write-Host $_ }
+    if (@($r | Where-Object { $_ -match '"tiled":true' }).Count -ne 5) { Write-Host "Nem mind az 5 pálya a Tiled-térképből töltődött." -ForegroundColor Yellow; $fail++ }
 }
 finally {
     Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue

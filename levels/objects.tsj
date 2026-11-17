@@ -1,0 +1,698 @@
+{
+	"type": "tileset",
+	"name": "objects",
+	"version": "1.10",
+	"tiledversion": "1.10.2",
+	"tilewidth": 48,
+	"tileheight": 24,
+	"tilecount": 40,
+	"columns": 0,
+	"margin": 0,
+	"spacing": 0,
+	"objectalignment": "bottomleft",
+	"grid": {
+		"height": 1,
+		"orientation": "orthogonal",
+		"width": 1
+	},
+	"tiles": [
+		{
+			"id": 0,
+			"image": "sprites/spawn.png",
+			"imagewidth": 12,
+			"imageheight": 14,
+			"class": "Spawn",
+			"properties": []
+		},
+		{
+			"id": 1,
+			"image": "sprites/door.png",
+			"imagewidth": 16,
+			"imageheight": 24,
+			"class": "Door",
+			"properties": []
+		},
+		{
+			"id": 2,
+			"image": "sprites/checkpoint.png",
+			"imagewidth": 8,
+			"imageheight": 16,
+			"class": "Checkpoint",
+			"properties": []
+		},
+		{
+			"id": 3,
+			"image": "sprites/gem.png",
+			"imagewidth": 8,
+			"imageheight": 8,
+			"class": "Gem",
+			"properties": []
+		},
+		{
+			"id": 4,
+			"image": "sprites/heart.png",
+			"imagewidth": 8,
+			"imageheight": 8,
+			"class": "Heart",
+			"properties": []
+		},
+		{
+			"id": 5,
+			"image": "sprites/battery.png",
+			"imagewidth": 8,
+			"imageheight": 10,
+			"class": "Battery",
+			"properties": []
+		},
+		{
+			"id": 6,
+			"image": "sprites/spikes.png",
+			"imagewidth": 16,
+			"imageheight": 8,
+			"class": "Spike",
+			"properties": []
+		},
+		{
+			"id": 7,
+			"image": "sprites/cracked.png",
+			"imagewidth": 16,
+			"imageheight": 16,
+			"class": "Cracked",
+			"properties": []
+		},
+		{
+			"id": 8,
+			"image": "sprites/crumble.png",
+			"imagewidth": 48,
+			"imageheight": 10,
+			"class": "Crumble",
+			"properties": []
+		},
+		{
+			"id": 9,
+			"image": "sprites/mover.png",
+			"imagewidth": 48,
+			"imageheight": 8,
+			"class": "Mover",
+			"properties": [
+				{
+					"name": "w",
+					"type": "int",
+					"value": 3
+				},
+				{
+					"name": "axis",
+					"type": "string",
+					"value": "x"
+				},
+				{
+					"name": "range",
+					"type": "int",
+					"value": 64
+				},
+				{
+					"name": "speed",
+					"type": "int",
+					"value": 40
+				},
+				{
+					"name": "id",
+					"type": "int",
+					"value": -1
+				},
+				{
+					"name": "active",
+					"type": "bool",
+					"value": true
+				}
+			]
+		},
+		{
+			"id": 10,
+			"image": "sprites/grate.png",
+			"imagewidth": 16,
+			"imageheight": 16,
+			"class": "Grate",
+			"properties": []
+		},
+		{
+			"id": 11,
+			"image": "sprites/crate.png",
+			"imagewidth": 16,
+			"imageheight": 16,
+			"class": "Crate",
+			"properties": []
+		},
+		{
+			"id": 12,
+			"image": "sprites/gate.png",
+			"imagewidth": 16,
+			"imageheight": 16,
+			"class": "Gate",
+			"properties": [
+				{
+					"name": "id",
+					"type": "int",
+					"value": 1
+				},
+				{
+					"name": "lock",
+					"type": "bool",
+					"value": false
+				}
+			]
+		},
+		{
+			"id": 13,
+			"image": "sprites/lockgate.png",
+			"imagewidth": 16,
+			"imageheight": 16,
+			"class": "Gate",
+			"properties": [
+				{
+					"name": "id",
+					"type": "int",
+					"value": 1
+				},
+				{
+					"name": "lock",
+					"type": "bool",
+					"value": true
+				}
+			]
+		},
+		{
+			"id": 14,
+			"image": "sprites/plate.png",
+			"imagewidth": 16,
+			"imageheight": 6,
+			"class": "Plate",
+			"properties": [
+				{
+					"name": "id",
+					"type": "int",
+					"value": 1
+				},
+				{
+					"name": "hold",
+					"type": "bool",
+					"value": false
+				}
+			]
+		},
+		{
+			"id": 15,
+			"image": "sprites/lever.png",
+			"imagewidth": 16,
+			"imageheight": 10,
+			"class": "Lever",
+			"properties": [
+				{
+					"name": "id",
+					"type": "int",
+					"value": 1
+				}
+			]
+		},
+		{
+			"id": 16,
+			"image": "sprites/switch.png",
+			"imagewidth": 12,
+			"imageheight": 14,
+			"class": "Switch",
+			"properties": [
+				{
+					"name": "id",
+					"type": "int",
+					"value": 1
+				},
+				{
+					"name": "idx",
+					"type": "int",
+					"value": 0
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": "1"
+				}
+			]
+		},
+		{
+			"id": 17,
+			"image": "sprites/socket.png",
+			"imagewidth": 12,
+			"imageheight": 12,
+			"class": "Socket",
+			"properties": [
+				{
+					"name": "id",
+					"type": "int",
+					"value": 1
+				}
+			]
+		},
+		{
+			"id": 18,
+			"image": "sprites/key.png",
+			"imagewidth": 10,
+			"imageheight": 8,
+			"class": "Key",
+			"properties": [
+				{
+					"name": "id",
+					"type": "int",
+					"value": 1
+				}
+			]
+		},
+		{
+			"id": 19,
+			"image": "sprites/powercell.png",
+			"imagewidth": 8,
+			"imageheight": 12,
+			"class": "PowerCell",
+			"properties": [
+				{
+					"name": "id",
+					"type": "int",
+					"value": 1
+				}
+			]
+		},
+		{
+			"id": 20,
+			"image": "sprites/bench.png",
+			"imagewidth": 24,
+			"imageheight": 16,
+			"class": "Bench",
+			"properties": [
+				{
+					"name": "comp",
+					"type": "int",
+					"value": 0
+				}
+			]
+		},
+		{
+			"id": 21,
+			"image": "sprites/terminal.png",
+			"imagewidth": 16,
+			"imageheight": 16,
+			"class": "Terminal",
+			"properties": [
+				{
+					"name": "id",
+					"type": "int",
+					"value": 1
+				},
+				{
+					"name": "game",
+					"type": "int",
+					"value": 0
+				}
+			]
+		},
+		{
+			"id": 22,
+			"image": "sprites/bdoor.png",
+			"imagewidth": 16,
+			"imageheight": 24,
+			"class": "BuildingDoor",
+			"properties": [
+				{
+					"name": "room",
+					"type": "int",
+					"value": 1
+				},
+				{
+					"name": "inside",
+					"type": "bool",
+					"value": false
+				}
+			]
+		},
+		{
+			"id": 23,
+			"image": "sprites/walker.png",
+			"imagewidth": 14,
+			"imageheight": 10,
+			"class": "Enemy",
+			"properties": [
+				{
+					"name": "kind",
+					"type": "string",
+					"value": "WALKER"
+				}
+			]
+		},
+		{
+			"id": 24,
+			"image": "sprites/flyer.png",
+			"imagewidth": 14,
+			"imageheight": 8,
+			"class": "Enemy",
+			"properties": [
+				{
+					"name": "kind",
+					"type": "string",
+					"value": "FLYER"
+				}
+			]
+		},
+		{
+			"id": 25,
+			"image": "sprites/crawler.png",
+			"imagewidth": 14,
+			"imageheight": 10,
+			"class": "Enemy",
+			"properties": [
+				{
+					"name": "kind",
+					"type": "string",
+					"value": "CRAWLER"
+				}
+			]
+		},
+		{
+			"id": 26,
+			"image": "sprites/cell.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Cell",
+			"properties": []
+		},
+		{
+			"id": 27,
+			"image": "sprites/part0.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 0
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": "LEGS"
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
+				}
+			]
+		},
+		{
+			"id": 28,
+			"image": "sprites/part1.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 1
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": "CORE"
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
+				}
+			]
+		},
+		{
+			"id": 29,
+			"image": "sprites/part2.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 2
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": "VISOR"
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
+				}
+			]
+		},
+		{
+			"id": 30,
+			"image": "sprites/part3.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 3
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": "THRUSTER"
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
+				}
+			]
+		},
+		{
+			"id": 31,
+			"image": "sprites/part4.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 4
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": "CLAWS"
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
+				}
+			]
+		},
+		{
+			"id": 32,
+			"image": "sprites/part5.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 5
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": "BLASTER"
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
+				}
+			]
+		},
+		{
+			"id": 33,
+			"image": "sprites/part6.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 6
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": "PROCESSOR"
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
+				}
+			]
+		},
+		{
+			"id": 34,
+			"image": "sprites/part7.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 7
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": "SERVOS"
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
+				}
+			]
+		},
+		{
+			"id": 35,
+			"image": "sprites/part8.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 8
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": "ANTENNA"
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
+				}
+			]
+		},
+		{
+			"id": 36,
+			"image": "sprites/part9.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 9
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": "JET CELL"
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
+				}
+			]
+		},
+		{
+			"id": 37,
+			"image": "sprites/part10.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 10
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": ""
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
+				}
+			]
+		},
+		{
+			"id": 38,
+			"image": "sprites/part11.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 11
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": ""
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
+				}
+			]
+		},
+		{
+			"id": 39,
+			"image": "sprites/part12.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 12
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": ""
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
+				}
+			]
+		}
+	]
+}

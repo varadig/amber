@@ -87,3 +87,8 @@ Minden házban van egy **számítógép** a bejáratnál; a belső terem kaput c
 - Futtatás: `scripts/play.ps1` (szerver a 3220-as porton, a hálózaton is).
 - Tesztek (fejnélküli Edge, `tests/cdp-lib.ps1`): `shot.ps1` (képernyőkép + állapot), `tower.ps1`, `jump.ps1` (ugrásmagasság), `levels.ps1` (mind az 5 pálya betölt), `gl.ps1`.
 - A pálya-generátor (`LevelData.hx`) a hős képességeire méretezett szegmensekből épít (ugrás ~3,8 csempe magas, ~4 csempe széles); a mag a pálya sorszáma.
+
+## Pályák szerkesztése (Tiled)
+
+A pályák a `levels/levelN.tmj` fájlokban vannak, [Tiled](https://www.mapeditor.org)-ben szerkeszthetők (valós sprite-előnézettel). VS Code: *Run Task → Open levels in Tiled*,
+mentés után *Build HTML5*. Részletek, objektumosztályok: [docs/LEVELS.md](docs/LEVELS.md).

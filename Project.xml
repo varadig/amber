@@ -10,6 +10,9 @@
 
 	<source path="source" />
 
+	<!-- A pályák Tiled-térképei (levels/levelN.tmj, szerkesztés: docs/LEVELS.md), beágyazva; hiányzó pályát a generátor készít -->
+	<assets path="levels" rename="assets/levels" include="*.tmj" type="text" embed="true" />
+
 	<!-- Tesztbuild (-Dtest): egyből a játék indul, a PlayState elérhető a window.__ps-en -->
 	<!-- Cheatek (CheatSubState, F9): csak debug és teszt (-Dtest) buildben; a release-ben a kód ki sem fordul. -Dcheats-szel kézzel is bekapcsolható. -->
 	<haxedef name="cheats" if="debug" />

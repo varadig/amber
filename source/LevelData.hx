@@ -227,6 +227,8 @@ class LevelData
 	];
 
 	public var level:Int;
+	/** Tiled-térképből (levels/levelN.tmj) jött-e (különben a generátorból). */
+	public var fromTiled:Bool = false;
 	public var name:String;
 	public var w:Int = 0;
 	/** Oszloponként a talaj teteje (a csempesor); 99 = szakadék. */
@@ -278,7 +280,7 @@ class LevelData
 	var lastCp:Int = -100;
 	var nextId:Int = 1;
 
-	function new(level:Int)
+	public function new(level:Int)
 	{
 		this.level = level;
 		name = NAMES[level % NAMES.length];

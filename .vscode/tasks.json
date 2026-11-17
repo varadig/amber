@@ -10,6 +10,30 @@
 	},
 	"tasks": [
 		{
+			"label": "Open levels in Tiled",
+			"detail": "A pályák (levels/levelN.tmj) szerkesztése Tiled-ben, valós sprite-előnézettel; mentés után: Build",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-Command", "Start-Process 'C:/Program Files/Tiled/tiled.exe' -ArgumentList '\"${workspaceFolder}/levels/amber.tiled-project\"'"],
+			"problemMatcher": []
+		},
+		{
+			"label": "Validate Tiled levels",
+			"detail": "Statikus ellenőrzés a levels/level*.tmj fájlokon",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/tests/validate-levels.ps1"],
+			"problemMatcher": []
+		},
+		{
+			"label": "Regenerate Tiled assets (sprites, tilesets, project)",
+			"detail": "A sprite-ok / csempekészletek / projekt újragenerálása; a meglévő .tmj-ket NEM írja felül (felülírás: scripts/generate-levels.ps1 -Force)",
+			"type": "shell",
+			"command": "powershell",
+			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/generate-levels.ps1"],
+			"problemMatcher": []
+		},
+		{
 			"label": "Install dependencies (haxelib)",
 			"detail": "Telepíti a rögzített verziójú lime, openfl, flixel könyvtárakat",
 			"type": "shell",
