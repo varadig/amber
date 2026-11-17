@@ -1139,7 +1139,7 @@ class PlayState extends FlxState
 			}
 		});
 		// a követő hős lemaradása / elakadása: a kiválasztott robot mellé kerül
-		if (ctrl != player && followAll && !heroExited)
+		if (ctrl != player && followAll && !ctrlFlies() && !heroExited)
 		{
 			var hd = Math.abs(player.x - ctrl.x);
 			if (hd > 100 && player.onFloor && Math.abs(player.velocity.x) < 4)
@@ -1629,14 +1629,20 @@ class PlayState extends FlxState
 	function applyModes():Void
 	{
 		// követés: a nem irányított hős is a kiválasztott robotot követi (Q)
-		player.followTarget = ctrl != player && followAll ? ctrl : null;
+		// repülő (ORB) irányítása közben a földi robotok nem követik: csak leesnének utána (az ORB-ot viszont a többiek követik)
+		var ground = followAll && !ctrlFlies();
+		player.followTarget = ctrl != player && ground ? ctrl : null;
 		companions.forEachAlive(c ->
 		{
 			c.target = ctrl;
 			if (c.mode != 3)
-				c.mode = c == ctrl ? 4 : (followAll ? 0 : 1);
+				c.mode = c == ctrl ? 4 : (followAll && (c.kind == Companions.ORB || !ctrlFlies()) ? 0 : 1);
 		});
 	}
+
+	/** Az irányított robot repül-e (az ORB lebeg, a többi nem tud követni). */
+	function ctrlFlies():Bool
+		return ctrl != player && Std.isOfType(ctrl, Companion) && cast(ctrl, Companion).kind == Companions.ORB;
 
 	function heroExitedAll():Bool
 		return heroExited && companions.countLiving() <= 0;
