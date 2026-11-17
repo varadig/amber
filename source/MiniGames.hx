@@ -1,6 +1,7 @@
 package;
 
 import flixel.FlxG;
+import flixel.input.gamepad.FlxGamepadInputID;
 import flixel.FlxSprite;
 import flixel.FlxSubState;
 import flixel.text.FlxText;
@@ -139,19 +140,18 @@ class MiniGame extends FlxSubState
 
 	function pollNav():Void
 	{
-		var p = FlxG.gamepads.lastActive;
 		var k = FlxG.keys.justPressed;
-		var sx = p != null ? p.analog.value.LEFT_STICK_X : 0.0;
-		var sy = p != null ? p.analog.value.LEFT_STICK_Y : 0.0;
+		var sx = Input.stickX();
+		var sy = Input.stickY();
 		var s = sx < -0.5 ? 1 : (sx > 0.5 ? 2 : (sy < -0.5 ? 3 : (sy > 0.5 ? 4 : 0)));
 		var fresh = s != stickPrev;
 		stickPrev = s;
-		jl = k.LEFT || k.A || (p != null && p.justPressed.DPAD_LEFT) || (fresh && s == 1);
-		jr = k.RIGHT || k.D || (p != null && p.justPressed.DPAD_RIGHT) || (fresh && s == 2);
-		ju = k.UP || k.W || (p != null && p.justPressed.DPAD_UP) || (fresh && s == 3);
-		jd = k.DOWN || k.S || (p != null && p.justPressed.DPAD_DOWN) || (fresh && s == 4);
-		jact = k.SPACE || k.Z || k.ENTER || (p != null && (p.justPressed.A || p.justPressed.X));
-		jback = k.ESCAPE || (p != null && (p.justPressed.B || p.justPressed.BACK));
+		jl = k.LEFT || k.A || Input.just(FlxGamepadInputID.DPAD_LEFT) || (fresh && s == 1);
+		jr = k.RIGHT || k.D || Input.just(FlxGamepadInputID.DPAD_RIGHT) || (fresh && s == 2);
+		ju = k.UP || k.W || Input.just(FlxGamepadInputID.DPAD_UP) || (fresh && s == 3);
+		jd = k.DOWN || k.S || Input.just(FlxGamepadInputID.DPAD_DOWN) || (fresh && s == 4);
+		jact = k.SPACE || k.Z || k.ENTER || (Input.just(FlxGamepadInputID.A) || Input.just(FlxGamepadInputID.X));
+		jback = k.ESCAPE || (Input.just(FlxGamepadInputID.B) || Input.just(FlxGamepadInputID.BACK));
 	}
 
 	override public function update(elapsed:Float):Void

@@ -2124,7 +2124,6 @@ class PlayState extends FlxState
 			pendingMini = -1;
 			openSubState(MiniGames.make(g, level + 1, (won:Bool) -> {}));
 		}
-		var pad = FlxG.gamepads.lastActive;
 		if (subState == null && mode == 0 && (FlxG.keys.justPressed.F9 || Input.r2New))
 			openSubState(new CheatSubState(this));
 	}

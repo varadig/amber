@@ -3,6 +3,7 @@ package;
 #if cheats
 import flixel.FlxG;
 import flixel.FlxSubState;
+import flixel.input.gamepad.FlxGamepadInputID;
 import flixel.text.FlxText;
 
 /** Egy cheat-menüpont: felirat (dinamikus) és a művelet; a művelet true-val zárja be a menüt. */
@@ -286,15 +287,14 @@ class CheatSubState extends FlxSubState
 			buildPage(p);
 			return;
 		}
-		var pad = FlxG.gamepads.lastActive;
 		var k = FlxG.keys.justPressed;
-		var sy = pad != null ? pad.analog.value.LEFT_STICK_Y : 0.0;
+		var sy = Input.stickY();
 		var s = sy < -0.5 ? 1 : (sy > 0.5 ? 2 : 0);
 		var fresh = s != stickPrev;
 		stickPrev = s;
-		var up = k.UP || k.W || (pad != null && pad.justPressed.DPAD_UP) || (fresh && s == 1);
-		var down = k.DOWN || k.S || (pad != null && pad.justPressed.DPAD_DOWN) || (fresh && s == 2);
-		var use = k.ENTER || k.SPACE || k.Z || (pad != null && pad.justPressed.A);
+		var up = k.UP || k.W || Input.just(FlxGamepadInputID.DPAD_UP) || (fresh && s == 1);
+		var down = k.DOWN || k.S || Input.just(FlxGamepadInputID.DPAD_DOWN) || (fresh && s == 2);
+		var use = k.ENTER || k.SPACE || k.Z || Input.just(FlxGamepadInputID.A);
 		age += elapsed;
 		var pd = Input.padDebug();
 		if (pd != "")
@@ -304,7 +304,7 @@ class CheatSubState extends FlxSubState
 		}
 		else if (padInfoT > 0 && (padInfoT -= elapsed) <= 0)
 			padInfo.text = "";
-		var back = age > 0.4 && (k.ESCAPE || k.F9 || Input.r2New || (pad != null && (pad.justPressed.B || pad.justPressed.BACK)));
+		var back = age > 0.4 && (k.ESCAPE || k.F9 || Input.r2New || (Input.just(FlxGamepadInputID.B) || Input.just(FlxGamepadInputID.BACK)));
 		if (back)
 		{
 			goBack();
