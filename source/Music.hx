@@ -40,19 +40,70 @@ class Music
 		"A4 . . . E4 . . ."
 	];
 
-	static final SECTIONS:Array<Section> = [
-		{chords: A_CHORDS, melody: null, layers: "pb"},
-		{chords: A_CHORDS, melody: null, layers: "pbst"},
-		{chords: B_CHORDS, melody: B_MELODY, layers: "pbstm"},
-		{chords: B_CHORDS, melody: B_MELODY2, layers: "pbstm"},
-		{chords: A_CHORDS.concat(A_CHORDS), melody: null, layers: "pb"}
+	// 2. készlet: derűs dúr (C)
+	static final C_A = ["C", "Am", "F", "G"];
+	static final C_B = ["C", "G", "Am", "F", "C", "G", "F", "G"];
+	static final C_M1 = [
+		"E5 . G5 . E5 . D5 C5", "D5 . B4 . D5 . G5 .", "C5 . E5 . A5 . G5 E5", "A4 . C5 . F5 . E5 C5",
+		"G5 . E5 . C5 . D5 E5", "D5 . G5 . B5 . A5 G5", "A5 . F5 . C5 . A4 C5", "B4 . D5 . G5 . . ."
+	];
+	static final C_M2 = [
+		"G5 . E5 . C5 . E5 G5", "B5 . G5 . D5 . B4 .", "A5 . E5 . C5 . E5 A5", "C6 . A5 . F5 . A5 C6",
+		"E5 . G5 . C6 . G5 E5", "D5 . F5 . A5 . G5 F5", "E5 . F5 . A5 . C6 .", "D5 . . . G4 . . ."
+	];
+	// 3. készlet: sötét, fríg hangulatú (e-moll)
+	static final E_A = ["Em", "C", "Am", "B"];
+	static final E_B = ["Em", "G", "D", "Am", "Em", "C", "B", "B"];
+	static final E_M1 = [
+		"B4 . E5 . G5 . F#5 E5", "D5 . B4 . G5 . B5 .", "A4 . D5 . F#5 . A5 F#5", "C5 . E5 . A5 . G5 E5",
+		"E5 . G5 . B5 . A5 G5", "G5 . E5 . C5 . E5 G5", "F#5 . D#5 . B4 . D#5 F#5", "B4 . . . F#4 . . ."
+	];
+	static final E_M2 = [
+		"E5 . G5 . B5 . A5 G5", "G5 . E5 . C5 . E5 G5", "F#5 . D#5 . B4 . D#5 F#5", "B4 . . . F#4 . . .",
+		"B4 . E5 . G5 . F#5 E5", "D5 . B4 . G5 . B5 .", "A4 . D5 . F#5 . A5 F#5", "C5 . E5 . A5 . G5 E5"
 	];
 
-	/** A teljes dal renderelése interleaved sztereó mintákba. */
-	public static function render():Array<Float>
+	/** Pályánként más zene: harmóniakészlet + hangnem + tempó + hangszerelés (a 10 pálya 10 külön hangulat). */
+	static final THEMES:Array<{bpm:Float, set:Int, shift:Int, lead:String, arp:Int, ticks:Bool}> = [
+		{bpm: 76, set: 0, shift: 0, lead: "reed", arp: 0, ticks: true},
+		{bpm: 84, set: 1, shift: 0, lead: "box", arp: 1, ticks: true},
+		{bpm: 70, set: 2, shift: 0, lead: "reed", arp: 2, ticks: true},
+		{bpm: 88, set: 0, shift: 3, lead: "box", arp: 1, ticks: false},
+		{bpm: 66, set: 1, shift: -3, lead: "reed", arp: 2, ticks: true},
+		{bpm: 80, set: 2, shift: 5, lead: "reed", arp: 0, ticks: false},
+		{bpm: 62, set: 0, shift: -5, lead: "reed", arp: 2, ticks: true},
+		{bpm: 92, set: 1, shift: 2, lead: "box", arp: 0, ticks: false},
+		{bpm: 74, set: 2, shift: -2, lead: "reed", arp: 1, ticks: true},
+		{bpm: 96, set: 2, shift: 2, lead: "box", arp: 0, ticks: true}
+	];
+
+	static final ARP_ORDERS = [[0, 1, 2, 3, 2, 1, 2, 1], [0, 2, 1, 3, 1, 2, 3, 2], [0, 1, 2, 1, 3, 2, 1, 2]];
+
+	public static inline var THEME_COUNT:Int = 10;
+
+	static function sections(set:Int):Array<Section>
 	{
+		var a = [A_CHORDS, C_A, E_A][set];
+		var b = [B_CHORDS, C_B, E_B][set];
+		var m1 = [B_MELODY, C_M1, E_M1][set];
+		var m2 = [B_MELODY2, C_M2, E_M2][set];
+		return [
+			{chords: a, melody: null, layers: "pb"},
+			{chords: a, melody: null, layers: "pbst"},
+			{chords: b, melody: m1, layers: "pbstm"},
+			{chords: b, melody: m2, layers: "pbstm"},
+			{chords: a.concat(a), melody: null, layers: "pb"}
+		];
+	}
+
+	/** A teljes dal renderelésének előkészítése: a MusicJob.step() részletekben (képkockánként néhány ms) számolja ki, hogy a játék ne akadjon;  interleaved sztereó mintákba (theme: 0..THEME_COUNT-1). A vége a elejére hajlik vissza: zökkenőmentes hurok. */
+	public static function start(theme:Int = 0):MusicJob
+	{
+		var th = THEMES[((theme % THEME_COUNT) + THEME_COUNT) % THEME_COUNT];
+		var SECTIONS = sections(th.set);
+		var shift = th.shift;
 		var rate = Audio.RATE;
-		var eighth = 60 / BPM / 2 * rate;
+		var eighth = 60 / th.bpm / 2 * rate;
 		var bars = 0;
 		for (s in SECTIONS)
 			bars += s.chords.length;
@@ -77,20 +128,23 @@ class Music
 		var tickSnd = Audio.tone({dur: 0.025, wave: Audio.NOISE, f0: 5200, decay: 2.5, vol: 0.5});
 		var woodSnd = Audio.tone({dur: 0.07, wave: Audio.SINE, f0: 880, f1: 700, decay: 2, vol: 0.4});
 
+		var tasks:Array<Void->Void> = [];
 		var bar = 0;
 		for (si in 0...SECTIONS.length)
 		{
 			var sec = SECTIONS[si];
 			for (b in 0...sec.chords.length)
 			{
-				var chord = parseChord(sec.chords[b]);
+				var chord0 = parseChord(sec.chords[b]);
+				var chord = {root: chord0.root + shift, minor: chord0.minor};
 				var barStart = (bar + b) * SLOTS * eighth;
 				var third = chord.minor ? 3 : 4;
 				var barLen = Std.int(SLOTS * eighth);
 
 				// lebegő pad: a hangok enyhén elhangolt, lassan felfutó fűrészek (alacsony oktáv)
 				if (sec.layers.indexOf("p") >= 0)
-				{
+					tasks.push(() ->
+					{
 					var root = chord.root;
 					while (root > 52)
 						root -= 12;
@@ -98,23 +152,25 @@ class Music
 						root += 12;
 					for (iv in [0, third, 7])
 						put(pad(freq(root + iv), barLen + Std.int(eighth)), Std.int(barStart), 0.13, 0);
-				}
+					});
 				// zenedoboz-arpeggio: nyolcadonként egy akkordhang
 				if (sec.layers.indexOf("b") >= 0)
-				{
+					tasks.push(() ->
+					{
 					var base = chord.root;
 					while (base < 72)
 						base += 12;
 					while (base > 80)
 						base -= 12;
 					var tones = [base, base + third, base + 7, base + 12];
-					var order = [0, 1, 2, 3, 2, 1, 2, 1];
+					var order = ARP_ORDERS[th.arp];
 					for (k in 0...SLOTS)
 						put(box(freq(tones[order[k]]), Std.int(eighth * 3)), Std.int(barStart + k * eighth), 0.16, k % 2 == 0 ? -0.35 : 0.2);
-				}
+					});
 				// pengetett basszus az 1. és 3. negyeden
 				if (sec.layers.indexOf("s") >= 0)
-				{
+					tasks.push(() ->
+					{
 					var bs = chord.root;
 					while (bs > 47)
 						bs -= 12;
@@ -122,17 +178,19 @@ class Music
 						bs += 12;
 					put(bassPluck(freq(bs), Std.int(eighth * 3.5)), Std.int(barStart), 0.38, 0);
 					put(bassPluck(freq(bs + 7), Std.int(eighth * 3)), Std.int(barStart + 4 * eighth), 0.3, 0);
-				}
+					});
 				// óraműszerű kattogás a 2. és 4. negyeden, halk fa-koppanás az 1.-en
-				if (sec.layers.indexOf("t") >= 0)
-				{
+				if (th.ticks && sec.layers.indexOf("t") >= 0)
+					tasks.push(() ->
+					{
 					put(tickSnd, Std.int(barStart + 2 * eighth), 0.22, -0.5);
 					put(tickSnd, Std.int(barStart + 6 * eighth), 0.22, 0.5);
 					put(woodSnd, Std.int(barStart), 0.12, 0.2);
-				}
+					});
 				// dallam: klarinétszerű
 				if (sec.layers.indexOf("m") >= 0 && sec.melody != null)
-				{
+					tasks.push(() ->
+					{
 					var toks = sec.melody[b % sec.melody.length].split(" ");
 					var t = 0;
 					while (t < toks.length)
@@ -146,14 +204,18 @@ class Music
 						var len = 1;
 						while (t + len < toks.length && toks[t + len] == ".")
 							len++;
-						put(reed(freq(noteToMidi(tok)), Std.int(eighth * len * 1.05)), Std.int(barStart + t * eighth), 0.3, 0.25);
+						var nf = freq(noteToMidi(tok) + shift);
+						var nl = Std.int(eighth * len * 1.05);
+						put(th.lead == "box" ? box(nf, nl) : reed(nf, nl), Std.int(barStart + t * eighth), th.lead == "box" ? 0.42 : 0.3, 0.25);
 						t += len;
 					}
-				}
+					});
 			}
 			bar += sec.chords.length;
 		}
 
+		function finish():Array<Float>
+		{
 		// normalizálás + enyhe visszhang (két késleltetett másolat)
 		var delay = Std.int(eighth * 3);
 		for (i in delay...n)
@@ -161,6 +223,14 @@ class Music
 			left[i] += right[i - delay] * 0.22;
 			right[i] += left[i - delay] * 0.22;
 		}
+		// a dal végén túlnyúló hangok / visszhang a hurok elejére hajlanak: nincs csend és nincs "újraindulás" a hurokpontnál
+		var loopLen = Std.int(bars * SLOTS * eighth);
+		for (i in loopLen...n)
+		{
+			left[i - loopLen] += left[i];
+			right[i - loopLen] += right[i];
+		}
+		n = loopLen;
 		var peak = 0.0;
 		for (i in 0...n)
 			peak = Math.max(peak, Math.max(Math.abs(left[i]), Math.abs(right[i])));
@@ -172,6 +242,16 @@ class Music
 			out.push(right[i] * g);
 		}
 		return out;
+		}
+		return new MusicJob(tasks, finish);
+	}
+
+	/** Teljes, egyben renderelés (tesztekhez). */
+	public static function render(theme:Int = 0):Array<Float>
+	{
+		var j = start(theme);
+		while (!j.step(1e9)) {}
+		return j.result;
 	}
 
 	// --- Hangszerek ---
@@ -274,5 +354,39 @@ class Music
 		var minor = s.length > 1 && s.charAt(s.length - 1) == "m";
 		var name = minor ? s.substr(0, s.length - 1) : s;
 		return {root: noteToMidi(name + "3"), minor: minor};
+	}
+}
+
+/** Részletekben (időkeretben) futó zene-renderelés: a feladatok a dal rétegei ütemenként. */
+class MusicJob
+{
+	var tasks:Array<Void->Void>;
+	var finish:Void->Array<Float>;
+	var i:Int = 0;
+
+	public var result:Array<Float>;
+	public var done:Bool = false;
+
+	public function new(tasks:Array<Void->Void>, finish:Void->Array<Float>)
+	{
+		this.tasks = tasks;
+		this.finish = finish;
+	}
+
+	/** Legfeljebb ~ms milliszekundumnyi munkát végez; igazzal tér vissza, ha kész (result). */
+	public function step(ms:Float):Bool
+	{
+		if (done)
+			return true;
+		var t0 = haxe.Timer.stamp();
+		while (i < tasks.length)
+		{
+			tasks[i++]();
+			if ((haxe.Timer.stamp() - t0) * 1000 >= ms)
+				return false;
+		}
+		result = finish();
+		done = true;
+		return true;
 	}
 }

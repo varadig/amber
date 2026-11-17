@@ -5,7 +5,7 @@
 	"tiledversion": "1.10.2",
 	"tilewidth": 48,
 	"tileheight": 24,
-	"tilecount": 40,
+	"tilecount": 41,
 	"columns": 0,
 	"margin": 0,
 	"spacing": 0,
@@ -701,6 +701,35 @@
 					"name": "friend",
 					"type": "int",
 					"value": -1
+				}
+			]
+		},
+		{
+			"id": 40,
+			"image": "sprites/lamp.png",
+			"imagewidth": 8,
+			"imageheight": 8,
+			"class": "Lamp",
+			"properties": [
+				{
+					"name": "radius",
+					"type": "int",
+					"value": 56
+				},
+				{
+					"name": "color",
+					"type": "string",
+					"value": "#ffcf70"
+				},
+				{
+					"name": "intensity",
+					"type": "float",
+					"value": 1
+				},
+				{
+					"name": "flicker",
+					"type": "bool",
+					"value": true
 				}
 			]
 		}

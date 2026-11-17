@@ -174,6 +174,12 @@ class Art
 		});
 	}
 
+	/** Lámpa 8x8 (a fény-shader forrása a LampShader; ez csak a lámpatest). */
+	public static function lamp():BitmapData
+	{
+		return cached("lamp", () -> strip([["...22...", "...22...", "..2222..", ".233332.", "23344332", ".234432.", "..3443..", "...44..."]]));
+	}
+
 	/** Alkatrész-ikonok 10x10: LEGS, CORE, VISOR, THRUSTER, CLAWS, BLASTER, CHIP, GEAR, ANTENNA, JET CELL. */
 	public static function partIcons():BitmapData
 	{
@@ -747,14 +753,7 @@ class Art
 			bd.fillRect(new openfl.geom.Rectangle(0, y, w, 1), 0xFF222222);
 			y += 16;
 		}
-		var lx = 40;
-		while (lx < w - 20)
-		{
-			// mennyezeti lámpák
-			bd.fillRect(new openfl.geom.Rectangle(lx, 0, 2, 8), 0xFF444444);
-			bd.fillRect(new openfl.geom.Rectangle(lx - 4, 8, 10, 4), 0xFF999999);
-			lx += 90;
-		}
+		// a mennyezeti lámpák már nincsenek a falpapírra festve: Lamp objektumok (Tiled-ben is látszanak és mozgathatók)
 		return bd;
 	}
 

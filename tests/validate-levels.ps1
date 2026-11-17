@@ -3,7 +3,7 @@
 # Ellenőrzi: JSON, 16 px-es csempe, 56 sor, solid + platforms réteg, Spawn és Door, ismert objektumosztályok, a Part-ok száma, az épületek ajtópárjai, a kapuk azonosítói.
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
-$known = "Spawn", "Door", "Checkpoint", "Gem", "Heart", "Battery", "Spike", "Cracked", "Crumble", "Grate", "Crate", "Cell", "Gate", "Plate", "Lever", "Switch", "Socket", "Key", "PowerCell", "Bench", "Terminal", "Mover", "Enemy", "Part", "Text", "BuildingRoom", "BuildingDoor", "Decor"
+$known = "Spawn", "Door", "Checkpoint", "Gem", "Heart", "Battery", "Spike", "Cracked", "Crumble", "Grate", "Crate", "Cell", "Gate", "Plate", "Lever", "Switch", "Socket", "Key", "PowerCell", "Bench", "Terminal", "Mover", "Enemy", "Part", "Text", "BuildingRoom", "BuildingDoor", "Decor", "Lamp"
 $errors = 0; $warnings = 0
 function Err($f, $m) { Write-Host "ERROR  $f : $m" -ForegroundColor Red; $script:errors++ }
 function Warn($f, $m) { Write-Host "WARN   $f : $m" -ForegroundColor Yellow; $script:warnings++ }

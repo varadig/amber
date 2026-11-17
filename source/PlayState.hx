@@ -304,7 +304,10 @@ class PlayState extends FlxState
 	var infoBorder:FlxSprite;
 	var infoFill:FlxSprite;
 	var infoText:FlxText;
-	var worldTexts:Array<{x:Float, y:Float, s:String}> = [];
+	var worldTexts:Array<{x:Float, y:Float, s:String, solved:Bool}> = [];
+	var switchLabels:Array<{t:FlxText, gid:Int}> = [];
+	var lampShaders:Array<LampShader> = [];
+	var lampClock:Float = 0;
 	var hint:FlxText;
 	var overlay:FlxText;
 	var toast:FlxText;
@@ -358,7 +361,7 @@ class PlayState extends FlxState
 	{
 		super.create();
 		Audio.init();
-		Audio.playMusic();
+		Audio.playMusic(level);
 		bgColor = 0xFF000000;
 		Parts.restore();
 		Companions.restore();
@@ -393,6 +396,7 @@ class PlayState extends FlxState
 		platMap.loadMapFromArray(data.plats, data.w, LevelData.H, Art.tiles(), 16, 16, FlxTilemapAutoTiling.OFF, 0, 1, 1);
 		platMap.setTileProperties(4, FlxDirectionFlags.UP);
 		add(platMap);
+		addLamps();
 
 		spikes = new FlxTypedGroup();
 		for (s in data.spikes)
@@ -447,6 +451,7 @@ class PlayState extends FlxState
 			var lb = new FlxText(s.x - 2, s.y - 11, 16, s.label, 8);
 			lb.setFormat(null, 8, 0xFFFFFFFF, CENTER);
 			add(lb);
+			switchLabels.push({t: lb, gid: s.id});
 		}
 		add(switches);
 		crates = new FlxTypedGroup();
@@ -500,7 +505,7 @@ class PlayState extends FlxState
 		add(terminals);
 		for (tx in data.texts)
 		{
-			worldTexts.push({x: tx.x, y: tx.y, s: tx.text});
+			worldTexts.push({x: tx.x, y: tx.y, s: tx.text, solved: false});
 		}
 		crumbles = new FlxTypedGroup();
 		for (c in data.crumbles)
@@ -731,6 +736,30 @@ class PlayState extends FlxState
 		#if test
 		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}; window.__LevelLoader = {5}; window.__Audio = {6}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery, LevelLoader, Audio);
 		#end
+	}
+
+	/** Lámpák (Tiled: Lamp): lámpatest + additív fényfolt a LampShaderrel; a fény a falakra és a hősre is rávetül. */
+	function addLamps():Void
+	{
+		var seed = 0;
+		for (l in data.lamps)
+		{
+			var body = new FlxSprite(l.x - 4, l.y - 4);
+			body.loadGraphic(Art.lamp(), false, 8, 8, false, "lamp");
+			add(body);
+			var r = Std.int(Math.max(8, l.radius));
+			var glow = new FlxSprite(l.x - r, l.y - r);
+			glow.makeGraphic(r * 2, r * 2, 0xFFFFFFFF, false, "lampglow" + r);
+			var sh = new LampShader();
+			sh.uColor.value = [((l.color >> 16) & 0xFF) / 255, ((l.color >> 8) & 0xFF) / 255, (l.color & 0xFF) / 255];
+			sh.uIntensity.value = [l.intensity];
+			sh.uFlicker.value = [l.flicker ? 1.0 : 0.0];
+			sh.uSeed.value = [seed++ * 1.7];
+			glow.shader = sh;
+			glow.blend = openfl.display.BlendMode.ADD;
+			add(glow);
+			lampShaders.push(sh);
+		}
 	}
 
 	function addBackdrop(bmp:openfl.display.BitmapData, fx:Float, fy:Float, y:Float):Void
@@ -1016,7 +1045,7 @@ class PlayState extends FlxState
 			lines.push(hint.text);
 		else if (ctrl != null && bannerT <= 0)
 			for (w in worldTexts)
-				if (Math.abs(ctrl.x - (w.x + 100)) < 150 && Math.abs(ctrl.y - w.y) < 90)
+				if (!w.solved && Math.abs(ctrl.x - (w.x + 100)) < 150 && Math.abs(ctrl.y - w.y) < 90)
 				{
 					lines.push(w.s);
 					break;
@@ -1089,6 +1118,10 @@ class PlayState extends FlxState
 
 	override public function update(elapsed:Float):Void
 	{
+		Audio.guard();
+		lampClock += elapsed;
+		for (sh in lampShaders)
+			sh.uTime.value = [lampClock];
 		composeInfo(elapsed);
 		// látás: VISOR nélkül homályos kép (a shader uSight értéke); a LENS (II. szint) kicsit fényesít
 		Main.sightTarget = Parts.has(Parts.VISOR) ? (Parts.tier(Parts.VISOR) >= 2 ? 1.2 : 1.0) : 0.4;
@@ -1106,12 +1139,17 @@ class PlayState extends FlxState
 				Audio.pauseMusic();
 			else
 				Audio.resumeMusic();
-			overlay.text = "PAUSED\n\nESC / P / START: RESUME\nR / SQUARE / SHARE: RESPAWN AT CHECKPOINT";
+			overlay.text = "PAUSED\n\nESC / P / START: RESUME\nR / SQUARE / SHARE: RESPAWN AT CHECKPOINT\nO / TRIANGLE: SETTINGS (MUSIC, SFX VOLUME)";
 			overlay.visible = paused;
 		}
 		if (paused)
 		{
 			Audio.keepHeld();
+			if (FlxG.keys.justPressed.O || Input.just(flixel.input.gamepad.FlxGamepadInputID.Y))
+			{
+				openSubState(new SettingsSubState());
+				return;
+			}
 			if (Input.respawnPausedPressed())
 			{
 				paused = false;
@@ -1532,6 +1570,36 @@ class PlayState extends FlxState
 	function nearTo(a:FlxSprite, b:FlxSprite, dx:Float, dy:Float):Bool
 		return Math.abs((a.x + a.width / 2) - (b.x + b.width / 2)) < dx && Math.abs((a.y + a.height / 2) - (b.y + b.height / 2)) < dy;
 
+	/** Megoldott rejtvény: a megoldást sejtető feliratok (pl. "ORDER: ...") és a kapcsoló-betűk eltűnnek. */
+	function hideSolvedHints(id:Int):Void
+	{
+		var pts:Array<{x:Float, y:Float}> = [];
+		for (s in switches)
+			if (s.gid == id)
+				pts.push({x: s.x, y: s.y});
+		for (l in levers)
+			if (l.gid == id)
+				pts.push({x: l.x, y: l.y});
+		for (p in plates)
+			if (p.gid == id)
+				pts.push({x: p.x, y: p.y});
+		for (s in sockets)
+			if (s.gid == id)
+				pts.push({x: s.x, y: s.y});
+		gates.forEach(g ->
+		{
+			if (g.gid == id)
+				pts.push({x: g.x, y: g.y});
+		});
+		for (w in worldTexts)
+			for (q in pts)
+				if (Math.abs(w.x + 100 - q.x) < 220 && Math.abs(w.y - q.y) < 100)
+					w.solved = true;
+		for (sl in switchLabels)
+			if (sl.gid == id)
+				sl.t.visible = false;
+	}
+
 	function setGate(id:Int, open:Bool):Void
 	{
 		var changed = false;
@@ -1545,6 +1613,8 @@ class PlayState extends FlxState
 					burst(g.x + 8, g.y + 8, 3, 0xFFBBBBBB, 40);
 			}
 		});
+		if (changed && open)
+			hideSolvedHints(id);
 		if (changed)
 		{
 			Audio.play(open ? "plate" : "crumble", 0.9);

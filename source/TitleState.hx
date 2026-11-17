@@ -69,6 +69,9 @@ class TitleState extends FlxState
 		prompt = new FlxText(0, 168, 480, "PRESS JUMP TO START", 8);
 		prompt.setFormat(null, 8, 0xFFFFFFFF, CENTER);
 		add(prompt);
+		var setHint = new FlxText(0, 186, 480, "O / TRIANGLE: SETTINGS (VOLUME)", 8);
+		setHint.setFormat(null, 8, 0xFF777777, CENTER);
+		add(setHint);
 		var help = new FlxText(0, 254, 480, "ARROWS/WASD MOVE   Z/SPACE JUMP   X/SHIFT DASH   V/J FIRE   UP/E USE   TAB SWITCH   P PAUSE   F FULLSCREEN", 8);
 		help.setFormat(null, 8, 0xFF777777, CENTER);
 		add(help);
@@ -78,6 +81,14 @@ class TitleState extends FlxState
 	{
 		super.update(elapsed);
 		t += elapsed;
+		Audio.guard();
+		if (subState != null)
+			return;
+		if (FlxG.keys.justPressed.O || Input.just(flixel.input.gamepad.FlxGamepadInputID.Y))
+		{
+			openSubState(new SettingsSubState());
+			return;
+		}
 		prompt.visible = Std.int(t * 2) % 2 == 0;
 		hero.x += 70 * elapsed;
 		if (hero.x > 500)

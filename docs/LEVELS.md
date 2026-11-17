@@ -106,3 +106,8 @@ Az alkatrészek szétszórva jönnek (pályánként 1-3), a három társ robot k
 A HUD mindig kiírja a következő célt (`NEXT <név> >> <távolság>`): a sorrendben legközelebbi hiányzó alkatrész, aztán a szerelőasztal, végül a kijárat. Épületben lévő célnál (vagy ha a hős épületben van) a megfelelő épület-ajtóra mutat.
 A térkép-sáv (minimap, alul) mindig látszik, a következő cél villog rajta; az ANTENNA az összes alkatrészt, a II. szintje az ellenségeket és akkukat is mutatja. Ha a cél nem látszik a képernyőn, a szélén nyíl jelzi az irányt és a távolságot. Alkatrész felvételekor a következő cél is kiíródik.
 A gyémántok helyett **atom-részecskéket** kell gyűjteni (a Tiled-ben az objektum osztálya a régi `Gem` maradt).
+
+## Lámpa (Lamp) és alkatrész-felirat
+- `Lamp` objektum (az `objects` készlet utolsó csempéje): bárhová letehető; tulajdonságai `radius` (fénysugár px), `color` (`#rrggbb`), `intensity`, `flicker`. A játék a lámpatestet és egy additív `LampShader` fényfoltot rajzol. A generátor az épületek mennyezetére tesz (a régi, falpapírra festett lámpák helyére); a meglévő pályákhoz `node scripts/add-lamps.js`.
+- Alkatrész (`Part`): ha az objektumnak nincs saját `icon` tulajdonsága, a `label` ("VISOR", "LEGS", ...) dönt a képességről; a saját `icon` felülírja.
+- Megoldott rejtvény (kapu kinyílt): a közelében lévő `Text` feliratok és a kapcsoló-betűk eltűnnek.

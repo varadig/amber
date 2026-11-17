@@ -77,6 +77,7 @@ class LevelExport
 			case "walker": {b: Art.walker(), w: 14, h: 10, f: 0};
 			case "flyer": {b: Art.flyer(), w: 14, h: 8, f: 0};
 			case "crawler": {b: Art.crawler(), w: 14, h: 10, f: 0};
+			case "lamp": {b: Art.lamp(), w: 8, h: 8, f: 0};
 			case "cell": {b: Art.partIcons(), w: 10, h: 10, f: Parts.JET};
 			default: {b: Art.atom(), w: 8, h: 8, f: 0};
 		}
@@ -233,6 +234,8 @@ class LevelExport
 			tile("items", "cell", p.x, p.y);
 		for (p in d.parts)
 			tile("items", "part" + (p.icon >= 0 && p.icon < LevelFormat.PART_FRAMES ? p.icon : 0), p.x, p.y, {icon: p.icon, label: p.label, friend: p.friend != null ? p.friend : -1});
+		for (l in d.lamps)
+			tile("items", "lamp", l.x - 4, l.y - 4, {radius: l.radius, color: "#" + StringTools.hex(l.color, 6).toLowerCase(), intensity: l.intensity, flicker: l.flicker});
 		for (p in d.keys)
 			tile("items", "key", p.x, p.y, {id: p.id});
 		for (p in d.powerCells)

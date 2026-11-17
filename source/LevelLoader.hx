@@ -156,7 +156,39 @@ class LevelLoader
 					var ps:PartSpawn = {icon: Std.int(num(p.icon, 0)), label: p.label != null ? Std.string(p.label) : "", x: x, y: y};
 					if (p.friend != null && Std.int(p.friend) >= 0)
 						ps.friend = Std.int(p.friend);
+					// Tiled-ben kézzel letett / átnevezett alkatrész: ha az objektumnak nincs saját "icon" tulajdonsága (csak a csempe alapértéke),
+					// a felirat (label) dönt: "VISOR" feliratú objektum VISOR-t ad, bármelyik alkatrész-csempéről is jött
+					var explicitIcon = false;
+					if (o.properties != null)
+						for (q in (o.properties : Array<Dynamic>))
+							if (q.name == "icon")
+								explicitIcon = true;
+					if (ps.friend == null && !explicitIcon)
+					{
+						var li = Parts.NAMES.indexOf(StringTools.trim(ps.label).toUpperCase());
+						if (li >= 0)
+							ps.icon = li;
+					}
 					d.parts.push(ps);
+				case "Lamp":
+					var col = 0xFFCF70;
+					if (p.color != null)
+					{
+						var cs = StringTools.replace(Std.string(p.color), "#", "");
+						if (cs.length == 8)
+							cs = cs.substr(2); // Tiled: #AARRGGBB
+						var pc = Std.parseInt("0x" + cs);
+						if (pc != null)
+							col = pc & 0xFFFFFF;
+					}
+					d.lamps.push({
+						x: x + num(o.width, 8) / 2,
+						y: y + num(o.height, 8) / 2,
+						radius: Math.max(8, num(p.radius, 56)),
+						color: col,
+						intensity: num(p.intensity, 1.0),
+						flicker: p.flicker != false
+					});
 				case "Text":
 					var t:Dynamic = o.text;
 					d.texts.push({x: x, y: y, text: t != null ? Std.string(t.text) : ""});

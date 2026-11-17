@@ -62,6 +62,8 @@ class LevelFormat
 		];
 		for (i in 0...PART_FRAMES)
 			l.push({name: "part" + i, cls: "Part", def: {icon: i, label: i < Parts.COUNT ? Parts.NAMES[i] : "", friend: -1}});
+		// a lámpa a lista végén: az eddigi csempe-azonosítók (gid) nem tolódnak el
+		l.push({name: "lamp", cls: "Lamp", def: {radius: 56, color: "#ffcf70", intensity: 1.0, flicker: true}});
 		return l;
 	}
 

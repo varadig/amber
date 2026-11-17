@@ -45,16 +45,59 @@ class Audio
 
 	static inline var MUSIC_VOLUME:Float = 0.5;
 	static var sounds = new Map<String, Sound>();
-	static var musicSound:Sound;
+	static var musicSounds = new Map<Int, Sound>();
+	/** A kért / a most szóló téma (pályánként más zene). */
+	static var musicTheme:Int = 0;
+	static var playingTheme:Int = -1;
 	static var initialized = false;
 	public static var sfxVolume:Float = 1;
 	public static var musicVolume:Float = 1;
+
+	/** A hangerők mentése / betöltése (böngésző-tárhely). */
+	public static function loadVolumes():Void
+	{
+		try
+		{
+			var s = new flixel.util.FlxSave();
+			if (s.bind("amber-ascent-audio"))
+			{
+				if (s.data.music != null)
+					musicVolume = Math.max(0, Math.min(1, s.data.music));
+				if (s.data.sfx != null)
+					sfxVolume = Math.max(0, Math.min(1, s.data.sfx));
+			}
+		}
+		catch (e:Dynamic) {}
+	}
+
+	public static function saveVolumes():Void
+	{
+		try
+		{
+			var s = new flixel.util.FlxSave();
+			if (s.bind("amber-ascent-audio"))
+			{
+				s.data.music = musicVolume;
+				s.data.sfx = sfxVolume;
+				s.flush();
+			}
+		}
+		catch (e:Dynamic) {}
+	}
+
+	/** A zene hangerejének élő alkalmazása. */
+	public static function applyMusicVolume():Void
+	{
+		if (FlxG.sound.music != null)
+			FlxG.sound.music.volume = MUSIC_VOLUME * musicVolume;
+	}
 
 	public static function init():Void
 	{
 		if (initialized)
 			return;
 		initialized = true;
+		loadVolumes();
 		add("jump", [{dur: 0.14, wave: SQUARE, duty: 0.5, f0: 260, f1: 720, decay: 1.2, vol: 0.28, crush: 2}]);
 		add("walljump", [{dur: 0.16, wave: SQUARE, duty: 0.25, f0: 330, f1: 900, decay: 1.1, vol: 0.28, crush: 2}, {dur: 0.05, wave: NOISE, f0: 2500, f1: 800, vol: 0.2}]);
 		add("land", [{dur: 0.06, wave: NOISE, f0: 1400, f1: 300, decay: 1.5, vol: 0.22}]);
@@ -74,7 +117,6 @@ class Audio
 		add("plate", [{dur: 0.25, wave: SQUARE, duty: 0.5, f0: 220, f1: 440, decay: 1, vol: 0.3, crush: 2}, {dur: 0.3, wave: NOISE, f0: 800, f1: 200, attack: 0.05, decay: 1, vol: 0.3}]);
 		add("crumble", [{dur: 0.35, wave: NOISE, f0: 1200, f1: 300, decay: 0.8, vol: 0.3, crush: 4}]);
 		add("fall", [{dur: 0.5, wave: SAW, f0: 600, f1: 60, decay: 0.8, vol: 0.4, crush: 2}]);
-		musicSound = toSound(Music.render(), 2, 0.8);
 	}
 
 	static function add(name:String, layers:Array<Tone>):Void
@@ -113,12 +155,76 @@ class Audio
 	 */
 	static function ensureMusic():Void
 	{
-		if (!musicWanted || musicSound == null)
+		if (!musicWanted)
 			return;
+		var snd = musicSounds.get(musicTheme);
+		if (snd == null)
+			return; // a téma még készül (tick): addig a régi zene szól tovább / csend
 		var m = FlxG.sound.music;
+		if (m != null && playingTheme != musicTheme)
+		{
+			// témaváltás (új pálya): a régi zene teljesen megszűnik, mielőtt az új elindul
+			m.stop();
+			m.destroy();
+			FlxG.sound.music = null;
+			m = null;
+		}
 		if (m == null)
-			FlxG.sound.playMusic(musicSound, null, MUSIC_VOLUME * musicVolume, true);
+		{
+			playingTheme = musicTheme;
+			FlxG.sound.playMusic(snd, null, MUSIC_VOLUME * musicVolume, true);
+			if (musicHeld && FlxG.sound.music != null)
+				FlxG.sound.music.pause();
+		}
 		// létező, de álló zenét nem indítunk újra: a Flixel a fókusz visszatértekor maga folytatja, a szünetet a PlayState kezeli
+	}
+
+	static var job:Music.MusicJob;
+	static var jobTheme:Int = -1;
+
+	/** A következő renderelendő téma: előbb a kért, aztán a következő pálya témája (előre elkészül, így a pályaváltás nem akad). */
+	static function themeToRender():Int
+	{
+		if (!musicSounds.exists(musicTheme))
+			return musicTheme;
+		var nx = (musicTheme + 1) % Music.THEME_COUNT;
+		return musicSounds.exists(nx) ? -1 : nx;
+	}
+
+	/** A zene háttérben, képkockánként ~5 ms-nyi munkával készül (a játék nem akad); képkockánként hívandó. */
+	public static function tick():Void
+	{
+		if (!initialized)
+			return;
+		if (job != null && jobTheme != musicTheme && !musicSounds.exists(musicTheme))
+			job = null; // közben másik téma lett sürgős
+		if (job == null)
+		{
+			var t = themeToRender();
+			if (t < 0)
+				return;
+			job = Music.start(t);
+			jobTheme = t;
+		}
+		if (job.step(5))
+		{
+			musicSounds.set(jobTheme, toSound(job.result, 2, 0.8));
+			job = null;
+			ensureMusic();
+		}
+	}
+
+	/** Védőháló: a zene-példányon kívül semmilyen hosszú (>15 s) hang nem szólhat (szellemzene / dupla indítás ellen); képkockánként hívva. */
+	public static function guard():Void
+	{
+		tick();
+		var m = FlxG.sound.music;
+		for (s in FlxG.sound.list.members)
+			if (s != null && s != m && s.exists && s.playing && s.length > 15000)
+			{
+				s.stop();
+				s.kill();
+			}
 	}
 
 	/** Ugyanaz a hang 60 ms-on belül nem szólal meg kétszer (több forrásból egyszerre kiváltott események: dupla hang). */
@@ -174,10 +280,9 @@ class Audio
 	}
 
 	/** A háttérzene indítása (ha már szól, nem indul újra). */
-	public static function playMusic():Void
+	public static function playMusic(theme:Int = 0):Void
 	{
-		if (musicSound == null)
-			return;
+		musicTheme = ((theme % Music.THEME_COUNT) + Music.THEME_COUNT) % Music.THEME_COUNT;
 		musicWanted = true;
 		unlock();
 	}
@@ -186,6 +291,46 @@ class Audio
 	{
 		if (FlxG.sound.music != null)
 			FlxG.sound.music.stop();
+	}
+
+	static var previewHad:Bool = false;
+	static var previewHeld:Bool = false;
+	static var previewWanted:Bool = false;
+
+	/** A beállítás-menü alatt a zene szól (hogy hallható legyen a hangerő); bezáráskor visszaáll az előző állapot (szünet / nincs zene). */
+	public static function previewOn():Void
+	{
+		previewHad = FlxG.sound.music != null;
+		previewHeld = musicHeld;
+		previewWanted = musicWanted;
+		musicWanted = true;
+		musicHeld = false;
+		ensureMusic();
+		if (FlxG.sound.music != null)
+		{
+			FlxG.sound.music.volume = MUSIC_VOLUME * musicVolume;
+			if (!FlxG.sound.music.playing)
+				FlxG.sound.music.resume();
+		}
+	}
+
+	public static function previewOff():Void
+	{
+		musicWanted = previewWanted;
+		if (!previewHad)
+		{
+			var m = FlxG.sound.music;
+			if (m != null)
+			{
+				m.stop();
+				m.destroy();
+				FlxG.sound.music = null;
+			}
+			playingTheme = -1;
+			musicHeld = false;
+		}
+		else if (previewHeld)
+			pauseMusic();
 	}
 
 	public static function pauseMusic():Void

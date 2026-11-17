@@ -13,6 +13,17 @@ typedef EnemySpawn =
 	y:Float
 }
 
+/** Lámpa (Tiled: Lamp objektum): a fény sugara (px), színe, erőssége és vibrálása. */
+typedef LampDef =
+{
+	x:Float,
+	y:Float,
+	radius:Float,
+	color:Int,
+	intensity:Float,
+	flicker:Bool
+}
+
 typedef PartSpawn =
 {
 	/** Társ-alkatrész esetén a társ azonosítója (Companions.*), különben -1 / hiányzik. */
@@ -282,6 +293,7 @@ class LevelData
 	public var spikes:Array<Pt> = [];
 	public var checkpoints:Array<Pt> = [];
 	public var parts:Array<PartSpawn> = [];
+	public var lamps:Array<LampDef> = [];
 	public var cells:Array<Pt> = [];
 	public var crackeds:Array<Pt> = [];
 	public var gates:Array<GateDef> = [];
@@ -712,6 +724,13 @@ class LevelData
 		var yBot = H - 4;
 		var y0 = yBot - 10;
 		decor.push({x: c0 + 8, y: cur - 7, w: 9, h: 7});
+		// a belső terem lámpái (mennyezet): a Tiled-ben a Lamp objektummal bárhová tehetők
+		var lampX = 40;
+		while (lampX < wI * T - 20)
+		{
+			lamps.push({x: x0 * T + lampX + 1, y: y0 * T + 8, radius: 76, color: 0xFFCF70, intensity: 1.0, flicker: true});
+			lampX += 90;
+		}
 		buildings.push({sx: (c0 + 12) * T, sy: cur * T - 24, ix: (x0 + 1) * T, iy: yBot * T - 24, x0: x0, y0: y0, w: wI, h: 10});
 		// a terminál (mini-játék) nyitja a belső terem kapuját: mögötte a polcok, az alkatrész, az őrök és a jutalom
 		var tid = nextId++;
