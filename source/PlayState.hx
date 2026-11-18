@@ -1834,10 +1834,11 @@ class PlayState extends FlxState
 					continue;
 				var sx = s.x + s.width / 2;
 				var sy = s.y + s.height / 2;
-				if (Math.abs(sx - hx) > 170 || Math.abs(sy - hy) > 130)
+				// csak a hős közelében segít (nem rohangál össze-vissza): az ORB ~80 x 64 px-en belül, a földi társ ~56 px-en belül
+				if (Math.abs(sx - hx) > (flies ? 80 : 56) || Math.abs(sy - hy) > (flies ? 64 : 40))
 					continue;
 				// a földi társ a vele egy szinten lévőt, vagy a fölötte ugrással elérhetőt (legfeljebb ~48 px) veszi fel
-				if (!flies && (Math.abs(sx - cx) > 90 || sy - cy > 22 || cy - sy > 48))
+				if (!flies && (Math.abs(sx - cx) > 56 || sy - cy > 22 || cy - sy > 48))
 					continue;
 				// előbb gondolkodik: csak akkor indul érte, ha az út végig szilárd talajon vezet (nincs szakadék / gödör közte), és a tárgy alatt van talaj
 				if (!flies && !lootSafe(c, sx, sy))
@@ -2948,6 +2949,13 @@ NEXT: " + navTarget().label + " >>";
 	{
 		player.reset(player.x, player.y - 40);
 		player.velocity.set(0, 0);
+	}
+
+	public function cheatAtoms(n:Int):Void
+	{
+		Parts.atoms += n;
+		Parts.commit();
+		showToast("CHEAT: +" + n + " ATOMS (BANK " + Parts.atoms + ")", 1.6);
 	}
 
 	public function cheatPart(id:Int):Void

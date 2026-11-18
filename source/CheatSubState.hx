@@ -2,6 +2,7 @@ package;
 
 #if cheats
 import flixel.FlxG;
+import flixel.FlxSprite;
 import flixel.FlxSubState;
 import flixel.input.gamepad.FlxGamepadInputID;
 import flixel.text.FlxText;
@@ -11,7 +12,9 @@ import MiniGames.MiniGame;
 typedef CheatItem =
 {
 	label:Void->String,
-	run:Void->Bool
+	run:Void->Bool,
+	/** Ikon a sor előtt: 0..9 = alkatrész, ICON_ATOM, ICON_BATT; -1 / hiányzó = nincs. */
+	?icon:Int
 }
 
 /**
@@ -23,6 +26,12 @@ typedef CheatItem =
 class CheatSubState extends FlxSubState
 {
 	static inline var ROWS:Int = 12;
+	static inline var ICON_ATOM:Int = 100;
+	static inline var ICON_BATT:Int = 101;
+	/** Soronként három ikon-sprite (alkatrész / atom / akku): a megfelelő látszik a sor szövege előtt. */
+	var partIc:Array<FlxSprite> = [];
+	var atomIc:Array<FlxSprite> = [];
+	var battIc:Array<FlxSprite> = [];
 
 	var game:PlayState;
 	/** Ha mini-játékból nyílt: az a mini-játék (a lista szűkebb, és megoldható). */
@@ -64,6 +73,23 @@ class CheatSubState extends FlxSubState
 			t.scrollFactor.set(0, 0);
 			add(t);
 			rows.push(t);
+			var p = new FlxSprite(0, t.y - 1);
+			p.loadGraphic(Art.partIcons(), true, 10, 10, false, "parts");
+			var a = new FlxSprite(0, t.y);
+			a.loadGraphic(Art.atom(), true, 8, 8, false, "atom");
+			a.animation.add("spin", [0, 1, 2, 3], 6);
+			a.animation.play("spin");
+			var b = new FlxSprite(0, t.y - 1);
+			b.loadGraphic(Art.battery(), true, 8, 10, false, "battery");
+			for (s in [p, a, b])
+			{
+				s.scrollFactor.set(0, 0);
+				s.visible = false;
+				add(s);
+			}
+			partIc.push(p);
+			atomIc.push(a);
+			battIc.push(b);
 		}
 		more = new FlxText(0, 218, FlxG.width, "", 8);
 		more.alignment = CENTER;
@@ -92,6 +118,13 @@ class CheatSubState extends FlxSubState
 
 	function dyn(label:Void->String, run:Void->Bool):CheatItem
 		return {label: label, run: run};
+
+	/** Ikont ad a menüponthoz. */
+	function ico(it:CheatItem, icon:Int):CheatItem
+	{
+		it.icon = icon;
+		return it;
+	}
 
 	function sub(label:String, p:String):CheatItem
 		return item(label + " >", () ->
@@ -133,22 +166,23 @@ class CheatSubState extends FlxSubState
 			case "parts":
 				var l:Array<CheatItem> = [];
 				for (i in 0...Parts.COUNT)
-					l.push(dyn(() -> "GIVE " + Parts.NAMES[i] + (Parts.has(i) ? "  (TIER " + Parts.tier(i) + ")" : ""), () ->
+					l.push(ico(dyn(() -> "GIVE " + Parts.NAMES[i] + (Parts.has(i) ? "  (TIER " + Parts.tier(i) + ")" : ""), () ->
 					{
 						g.cheatPart(i);
 						return false;
-					}));
+					}), i));
+				l.push(ico(keep("GIVE 100 ATOMS", () -> g.cheatAtoms(100)), ICON_ATOM));
 				l.push(act("ALL PARTS", g.cheatAllParts));
 				l.push(act("PARTS OF PREVIOUS LEVELS", g.cheatPartsOfEarlierLevels));
 				l.push(act("STRIP ALL PARTS (NAKED ROBOT)", g.cheatStripParts));
 				return l;
 			case "screen":
 				return [
-					keep("BATTERY 100%", () -> g.cheatBattery(100)),
-					keep("BATTERY 50%", () -> g.cheatBattery(50)),
-					keep("BATTERY 20% (TIRED)", () -> g.cheatBattery(20)),
-					keep("BATTERY 5%", () -> g.cheatBattery(5)),
-					act("BATTERY EMPTY (POWER DOWN)", g.cheatPowerDown),
+					ico(keep("BATTERY 100%", () -> g.cheatBattery(100)), ICON_BATT),
+					ico(keep("BATTERY 50%", () -> g.cheatBattery(50)), ICON_BATT),
+					ico(keep("BATTERY 20% (TIRED)", () -> g.cheatBattery(20)), ICON_BATT),
+					ico(keep("BATTERY 5%", () -> g.cheatBattery(5)), ICON_BATT),
+					ico(act("BATTERY EMPTY (POWER DOWN)", g.cheatPowerDown), ICON_BATT),
 					keep("ELECTRIC SHOCK FLASH", g.cheatShock),
 					dyn(() -> "TIRED SCREEN FX: " + g.cheatTiredName(), () ->
 					{
@@ -285,10 +319,21 @@ class CheatSubState extends FlxSubState
 		{
 			var idx = top + i;
 			var t = rows[i];
+			partIc[i].visible = atomIc[i].visible = battIc[i].visible = false;
 			if (idx < items.length)
 			{
 				t.text = (idx == sel ? "> " : "  ") + items[idx].label();
 				t.color = idx == sel ? 0xFFFFFFFF : 0xFF8A8A8A;
+				var ic = items[idx].icon;
+				if (ic != null && ic >= 0)
+				{
+					var s = ic == ICON_ATOM ? atomIc[i] : (ic == ICON_BATT ? battIc[i] : partIc[i]);
+					if (s == partIc[i])
+						s.animation.frameIndex = ic;
+					s.x = Std.int(FlxG.width / 2 - t.textField.textWidth / 2 - 14);
+					s.visible = true;
+					s.alpha = idx == sel ? 1 : 0.55;
+				}
 			}
 			else
 				t.text = "";

@@ -772,13 +772,34 @@ class Workshop extends MiniGame
 				rows.push(i);
 		rows.push(-1); // CONTINUE
 		for (i in 0...rows.length)
-			lines.push(txt("", 70, 74 + i * 14, 344, 8, 0xFFBBBBBB));
+		{
+			lines.push(txt("", 74, 74 + i * 14, 340, 8, 0xFFBBBBBB));
+			if (rows[i] >= 0)
+			{
+				// az alkatrész ikonja a sor előtt
+				var ic = new FlxSprite(60, 73 + i * 14);
+				ic.loadGraphic(Art.partIcons(), true, 10, 10, false, "parts");
+				ic.animation.frameIndex = rows[i];
+				ic.scrollFactor.set(0, 0);
+				add(ic);
+			}
+		}
+		// az atom-bank mellett az atom ikonja
+		atomIcon = new FlxSprite(0, 52);
+		atomIcon.loadGraphic(Art.atom(), true, 8, 8, false, "atom");
+		atomIcon.animation.add("spin", [0, 1, 2, 3], 6);
+		atomIcon.animation.play("spin");
+		atomIcon.scrollFactor.set(0, 0);
+		add(atomIcon);
 		refresh();
 	}
+
+	var atomIcon:FlxSprite;
 
 	function refresh():Void
 	{
 		head.text = "ATOMS " + Parts.atoms;
+		atomIcon.x = Std.int(head.x + head.fieldWidth / 2 - head.textField.textWidth / 2 - 12);
 		for (i in 0...rows.length)
 		{
 			var id = rows[i];

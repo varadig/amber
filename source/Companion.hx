@@ -628,10 +628,12 @@ class Companion extends FlxSprite
 		if (loot != null)
 		{
 			lootT += elapsed;
-			if (lootT > 4)
+			// a hős eltávolodott (vagy nem érte el 3 mp alatt): feladja, és a hős mellé tér vissza
+			var far = Math.abs(loot.x + loot.width / 2 - (target.x + target.width / 2)) > 100;
+			if (lootT > 3 || far)
 			{
 				skip = loot;
-				skipT = 25;
+				skipT = far ? 6 : 25;
 				loot = null;
 			}
 		}
