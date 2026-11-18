@@ -40,9 +40,31 @@ class Parts
 		"FIRE WITH V / J", "CONTROLS RESPOND FASTER", "AIR CONTROL + STRONGER BOUNCE", "RADAR ONLINE", "FLIGHT: HOLD JUMP"
 	];
 	public static final INFO2 = [
-		"HIGHER JUMP, FASTER RUN", "+1 HEART", "LENS: SECRET ATOMS GLOW (+3 EACH)", "BOOSTER: TWO DASHES PER JUMP", "", "RAPID FIRE",
-		"SNAPPIER STILL", "EVEN BETTER AIR CONTROL", "RADAR SHOWS ENEMIES TOO", ""
+		"HIGHER JUMP, FASTER RUN", "+1 HEART", "LENS: SECRET ATOMS GLOW (+3 EACH)", "BOOSTER: TWO DASHES PER JUMP", "GRIP: SLOWER WALL SLIDE", "RAPID FIRE",
+		"SNAPPIER STILL", "EVEN BETTER AIR CONTROL", "RADAR SHOWS ENEMIES TOO", "LONGER FLIGHT"
 	];
+
+	/** A II. szint utáni fejlesztések (III-tól): részenként a következő szintek hatása; a hossza adja a legnagyobb szintet. */
+	static final UP = [
+		["TURBO LEGS: HIGHER, FASTER", "RACING LEGS: HIGHER, FASTER", "PEAK LEGS: HIGHER, FASTER"],
+		["+1 HEART", "LONGER PROTECTION AFTER A HIT", "LONGEST PROTECTION, QUICK RECOVERY"],
+		["SECRET ATOMS WORTH +4", "SECRET ATOMS WORTH +5", "SECRET ATOMS WORTH +6"],
+		["THREE DASHES PER JUMP", "FASTER DASH RECHARGE", "FOUR DASHES PER JUMP"],
+		["HIGHER WALL JUMP", "IRON GRIP: BARELY SLIDES", "MASTER CLIMBER: WALL JUMP++"],
+		["FASTER FIRE", "FASTER STILL", "MAXIMUM FIRE RATE"],
+		["SHARPER GROUND CONTROL", "RAZOR REFLEXES", "PERFECT REFLEXES"],
+		["AIR CONTROL +, BOUNCIER", "AIR CONTROL ++, BOUNCIER", "AIR MASTER"],
+		["RADAR SHOWS SECRET ATOMS", "RADAR SHOWS ALL ATOMS"],
+		["FLIGHT +50%", "FLIGHT +100%"]
+	];
+
+	/** A legnagyobb elérhető szint (I-től). */
+	public static function maxTier(id:Int):Int
+		return 2 + UP[id].length;
+
+	/** A `t`. szintre (2-től) fejlesztés hatásának szövege. */
+	public static function upInfo(id:Int, t:Int):String
+		return t <= 1 ? INFO[id] : (t == 2 ? INFO2[id] : (t - 3 < UP[id].length ? UP[id][t - 3] : "MAXED OUT"));
 
 	/** Az akku töltöttsége (0..100): az idővel és a műveletekkel fogy, az akkupakkok töltik; a pálya elején mentett érték köztes szintje marad. */
 	public static var battery:Float = 100;
@@ -64,7 +86,7 @@ class Parts
 
 	public static function add(id:Int):Int
 	{
-		var t = tier(id) + 1;
+		var t = Std.int(Math.min(tier(id) + 1, maxTier(id)));
 		owned[id] = true;
 		tiers[id] = t;
 		return t;

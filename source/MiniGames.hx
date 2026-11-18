@@ -751,7 +751,12 @@ class TankGame extends MiniGame
 /** Műhely: a pálya végén az összegyűjtött atomokból II. szintre fejleszthetők az alkatrészek (a MiniGame keretét használja). */
 class Workshop extends MiniGame
 {
-	public static inline var COST = 30;
+	/** A következő szintre fejlesztés ára: 30 × a mostani szint (II: 30, III: 60, IV: 90, V: 120). */
+	public static function costOf(id:Int):Int
+		return 30 * Std.int(Math.max(1, Parts.tier(id)));
+
+	static function roman(t:Int):String
+		return ["", "I", "II", "III", "IV", "V"][Std.int(Math.min(5, t))];
 
 	var rows:Array<Int> = [];
 	var lines:Array<FlxText> = [];
@@ -763,7 +768,7 @@ class Workshop extends MiniGame
 	{
 		head = txt("", 62, 52, 356, 8, 0xFFFFFFFF, "center");
 		for (i in 0...Parts.COUNT)
-			if (Parts.has(i) && Parts.INFO2[i] != "")
+			if (Parts.has(i))
 				rows.push(i);
 		rows.push(-1); // CONTINUE
 		for (i in 0...rows.length)
@@ -773,7 +778,7 @@ class Workshop extends MiniGame
 
 	function refresh():Void
 	{
-		head.text = "ATOMS " + Parts.atoms + "     UPGRADE COST " + COST;
+		head.text = "ATOMS " + Parts.atoms;
 		for (i in 0...rows.length)
 		{
 			var id = rows[i];
@@ -781,11 +786,11 @@ class Workshop extends MiniGame
 			var cur = i == sel ? "> " : "  ";
 			if (id < 0)
 				t.text = cur + "CONTINUE";
-			else if (Parts.tier(id) >= 2)
-				t.text = cur + Parts.NAMES[id] + "  II  (MAX)";
+			else if (Parts.tier(id) >= Parts.maxTier(id))
+				t.text = cur + Parts.NAMES[id] + "  " + roman(Parts.tier(id)) + "  (MAX)";
 			else
-				t.text = cur + Parts.NAMES[id] + "  I -> II   " + Parts.INFO2[id];
-			t.color = i == sel ? 0xFFFFFFFF : (id >= 0 && (Parts.tier(id) >= 2 || Parts.atoms < COST) ? 0xFF555555 : 0xFFBBBBBB);
+				t.text = cur + Parts.NAMES[id] + " " + roman(Parts.tier(id)) + ">" + roman(Parts.tier(id) + 1) + " [" + costOf(id) + "] " + Parts.upInfo(id, Parts.tier(id) + 1);
+			t.color = i == sel ? 0xFFFFFFFF : (id >= 0 && (Parts.tier(id) >= Parts.maxTier(id) || Parts.atoms < costOf(id)) ? 0xFF555555 : 0xFFBBBBBB);
 		}
 	}
 
@@ -806,16 +811,16 @@ class Workshop extends MiniGame
 				leave(true);
 				return;
 			}
-			if (Parts.tier(id) >= 2)
+			if (Parts.tier(id) >= Parts.maxTier(id))
 				msg.text = "ALREADY AT MAX LEVEL";
-			else if (Parts.atoms < COST)
+			else if (Parts.atoms < costOf(id))
 				msg.text = "NOT ENOUGH ATOMS";
 			else
 			{
-				Parts.atoms -= COST;
+				Parts.atoms -= costOf(id);
 				Parts.add(id);
 				Audio.play("key", 1);
-				msg.text = "UPGRADED: " + Parts.INFO2[id];
+				msg.text = "UPGRADED: " + Parts.upInfo(id, Parts.tier(id));
 			}
 		}
 		refresh();

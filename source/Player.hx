@@ -98,7 +98,14 @@ class Player extends FlxSprite
 	}
 
 	function maxDashes():Int
-		return Parts.tier(Parts.THRUSTER) >= 2 ? 2 : 1;
+	{
+		var t = Parts.tier(Parts.THRUSTER);
+		return t >= 5 ? 4 : (t >= 3 ? 3 : (t >= 2 ? 2 : 1));
+	}
+
+	/** Az `i`. szint-érték a [I, II, III, ...] táblából (a hiányzó szint a legutolsó értéket kapja). */
+	static function byTier(id:Int, vals:Array<Float>):Float
+		return vals[Std.int(Math.max(0, Math.min(vals.length, Parts.tier(id)) - 1))];
 
 	/** A megjelenés az aktuálisan birtokolt alkatrészekhez igazítva (csupasz alváz -> felszerelt robot). */
 	public function refreshLook():Void
@@ -184,11 +191,11 @@ class Player extends FlxSprite
 
 	/** Futósebesség: csupaszon lassú. */
 	function runSpeed():Float
-		return Parts.has(Parts.LEGS) ? (Parts.tier(Parts.LEGS) >= 2 ? 130.0 : 118.0) : 78.0;
+		return Parts.has(Parts.LEGS) ? byTier(Parts.LEGS, [118.0, 130.0, 140.0, 150.0, 160.0]) : 78.0;
 
 	/** Ugrás-erő: csupaszon csak egy kis szökkenés. */
 	function jumpPower():Float
-		return Parts.has(Parts.LEGS) ? (Parts.tier(Parts.LEGS) >= 2 ? 365.0 : 332.0) : 215.0;
+		return Parts.has(Parts.LEGS) ? byTier(Parts.LEGS, [332.0, 365.0, 382.0, 398.0, 412.0]) : 215.0;
 
 	/** A teljes ugrás magassága pixelben (a gödörből kijutás ellenőrzéséhez). */
 	public function jumpReach():Float
@@ -316,10 +323,11 @@ class Player extends FlxSprite
 			// vízszintes mozgás: gyorsulás / lassulás (a talajon fürgébb)
 			var target = dirF * runSpeed();
 			// a szervók (GEAR) nélkül a levegőben alig irányítható
-			var air = Parts.has(Parts.GEAR) ? (Parts.tier(Parts.GEAR) >= 2 ? 1000.0 : 820.0) : 380.0;
-			var accel = onFloor ? (chip == 0 ? 650.0 : 1250.0) : air;
+			var air = Parts.has(Parts.GEAR) ? byTier(Parts.GEAR, [820.0, 1000.0, 1150.0, 1300.0, 1450.0]) : 380.0;
+			var chipBonus = chip >= 3 ? (chip - 2) * 300.0 : 0.0; // a III. szinttől élesebb a talajon való irányítás
+			var accel = onFloor ? (chip == 0 ? 650.0 : 1250.0 + chipBonus) : air;
 			if (dir == 0)
-				accel = onFloor ? (chip == 0 ? 700.0 : 1500.0) : 260.0;
+				accel = onFloor ? (chip == 0 ? 700.0 : 1500.0 + chipBonus) : 260.0;
 			if (stun > 0)
 				accel = 120;
 			velocity.x = approach(velocity.x, target, accel * elapsed);
@@ -332,7 +340,7 @@ class Player extends FlxSprite
 
 			if (clinging)
 			{
-				velocity.y = Math.min(velocity.y, 42);
+				velocity.y = Math.min(velocity.y, byTier(Parts.CLAWS, [42.0, 30.0, 26.0, 16.0, 10.0]));
 				slideT -= elapsed;
 				if (slideT <= 0 && onSlide != null)
 				{
@@ -356,8 +364,8 @@ class Player extends FlxSprite
 				else if (wallCoyote > 0 && wallDir != lastWallJump)
 				{
 					// fal-ugrás: ugyanarról az oldalról nem ismételhető (a földet érésig), így egy fallal nem lehet végtelenül felmászni
-					velocity.y = -jumpPower() * 0.95;
-					velocity.x = -wallDir * 150;
+					velocity.y = -jumpPower() * byTier(Parts.CLAWS, [0.95, 0.95, 1.0, 1.0, 1.05]);
+					velocity.x = -wallDir * byTier(Parts.CLAWS, [150.0, 150.0, 150.0, 170.0, 185.0]);
 					face = -wallDir;
 					lastWallJump = wallDir;
 					wallCoyote = 0;
@@ -392,7 +400,7 @@ class Player extends FlxSprite
 			{
 				dashing = true;
 				dashT = DASH_TIME;
-				dashCd = 0.28;
+				dashCd = Parts.tier(Parts.THRUSTER) >= 4 ? 0.16 : 0.28;
 				dashesLeft--;
 				velocity.x = face * DASH_SPEED;
 				velocity.y = 0;
@@ -402,7 +410,7 @@ class Player extends FlxSprite
 			// lövés (BLASTER)
 			if (ctl && Parts.has(Parts.BLASTER) && Input.shootPressed() && shootCd <= 0 && stun <= 0)
 			{
-				shootCd = Parts.tier(Parts.BLASTER) >= 2 ? 0.13 : 0.26;
+				shootCd = byTier(Parts.BLASTER, [0.26, 0.13, 0.105, 0.09, 0.075]);
 				if (onShoot != null)
 					onShoot(x + width / 2 + face * 6, y + 5, face);
 			}
@@ -449,7 +457,7 @@ class Player extends FlxSprite
 	/** Ellenségre ugrás utáni pattanás (a gomb nyomva tartásával magasabbra). */
 	public function bounce():Void
 	{
-		var gearF = Parts.has(Parts.GEAR) ? (Parts.tier(Parts.GEAR) >= 2 ? 1.15 : 1.0) : 0.8;
+		var gearF = Parts.has(Parts.GEAR) ? byTier(Parts.GEAR, [1.0, 1.15, 1.2, 1.25, 1.3]) : 0.8;
 		velocity.y = (Input.jumpHeld() ? -jumpPower() * 0.92 : -jumpPower() * 0.62) * gearF;
 		dashesLeft = maxDashes();
 		coyote = 0;
@@ -463,8 +471,9 @@ class Player extends FlxSprite
 		if (invuln > 0 || dashing)
 			return false;
 		hearts--;
-		invuln = 1.5;
-		stun = 0.28;
+		var core = Parts.tier(Parts.CORE);
+		invuln = core >= 5 ? 2.4 : (core >= 4 ? 2.0 : 1.5); // a CORE IV-V. szintje: hosszabb védelem sérülés után
+		stun = core >= 5 ? 0.18 : 0.28;
 		dashing = false;
 		velocity.x = (x + width / 2 < fromX ? -1 : 1) * 150;
 		velocity.y = -200;

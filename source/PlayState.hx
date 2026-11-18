@@ -1122,6 +1122,12 @@ class PlayState extends FlxState
 			for (b in batts)
 				if (b.alive)
 					bd.fillRect(new openfl.geom.Rectangle(mx(b.x), 1, 1, 2), 0xFFBBBBBB);
+		// ANTENNA III+: a titkos (III), majd az összes (IV) atom is látszik a radaron
+		var at = Parts.tier(Parts.ANTENNA);
+		if (at >= 3)
+			for (g in gems)
+				if (g.alive && (at >= 4 || g.secret))
+					bd.fillRect(new openfl.geom.Rectangle(mx(g.x), 5, 1, 1), 0xFF999999);
 		bd.fillRect(new openfl.geom.Rectangle(mx(door.x), 1, 2, 5), 0xFFBBBBBB);
 		if (Std.int(time * 4) % 2 == 0)
 		{
@@ -2430,11 +2436,12 @@ class PlayState extends FlxState
 		g.kill();
 		if (g.secret)
 		{
-			Parts.atoms += 3;
+			var sv = 3 + Std.int(Math.max(0, Parts.tier(Parts.VISOR) - 2)); // a VISOR III+ szintje többet ér
+			Parts.atoms += sv;
 			score += 50;
 			Audio.play("key", 0.8);
 			burst(g.x + 4, g.y + 4, 14, 0xFFFFFFFF, 90);
-			popText("SECRET ATOM +3", g.x + 4, g.y - 6);
+			popText("SECRET ATOM +" + sv, g.x + 4, g.y - 6);
 		}
 		else
 		{
@@ -2497,7 +2504,7 @@ class PlayState extends FlxState
 		partFx(it);
 		if (it.friend < 0)
 			startShowcase(it.icon, tier);
-		var info = it.friend >= 0 ? "A PART FOR YOUR FRIEND " + Companions.NAMES[it.friend] : (tier <= 1 ? Parts.INFO[it.icon] : (Parts.INFO2[it.icon] != "" ? Parts.INFO2[it.icon] : "INSTALLED"));
+		var info = it.friend >= 0 ? "A PART FOR YOUR FRIEND " + Companions.NAMES[it.friend] : Parts.upInfo(it.icon, tier);
 		var msg = "FOUND: " + it.label + "\n" + info;
 		if (partsFound >= data.parts.length)
 		{
@@ -2536,7 +2543,7 @@ NEXT: " + navTarget().label + " >>";
 	function onCell(p:Player, c:Pickup):Void
 	{
 		c.kill();
-		p.flightT = Player.FLIGHT_TIME;
+		p.flightT = Player.FLIGHT_TIME * [1.0, 1.25, 1.5, 2.0][Std.int(Math.max(0, Math.min(3, Parts.tier(Parts.JET) - 1)))];
 		Audio.play("heal", 0.9);
 		burst(c.x + 5, c.y + 5, 10, 0xFFFFFFFF, 70);
 		showToast("JET CELL: HOLD JUMP IN THE AIR TO FLY", 3.2);
@@ -2696,10 +2703,8 @@ NEXT: " + navTarget().label + " >>";
 	/** Van-e olyan birtokolt alkatrész, amit az atom-bankból fejleszteni lehet (és elég az atom)? */
 	function canUpgrade():Bool
 	{
-		if (Parts.atoms < Workshop.COST)
-			return false;
 		for (i in 0...Parts.COUNT)
-			if (Parts.has(i) && Parts.INFO2[i] != "" && Parts.tier(i) < 2)
+			if (Parts.has(i) && Parts.tier(i) < Parts.maxTier(i) && Parts.atoms >= Workshop.costOf(i))
 				return true;
 		return false;
 	}
