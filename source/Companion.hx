@@ -215,7 +215,10 @@ class Companion extends FlxSprite
 						stuckT += elapsed;
 					else
 						stuckT = 0;
-					if (stuckT > 1.5 || Math.abs(dx) > 300 || ty < y - 130 || y > (level.killRow + 3) * LevelData.T && ty < (level.killRow + 2) * LevelData.T)
+					var far = stuckT > 1.5 || Math.abs(dx) > 300 || ty < y - 130;
+					var fell = y > (level.killRow + 3) * LevelData.T && ty < (level.killRow + 2) * LevelData.T;
+					// ha a hős olyan gödörben van, ahonnan mi nem jönnénk ki, nem teleportálunk mellé (a peremen várunk)
+					if (fell || (far && !trapAtFloor(Std.int(tx / LevelData.T), Std.int((target.y + target.height + 2) / LevelData.T))))
 					{
 						stuckT = 0;
 						reset(tx - face * 18 - 4, ty - (kind == Companions.TALL ? 24 : 10));
@@ -457,7 +460,12 @@ class Companion extends FlxSprite
 					break;
 				}
 			if (below && wantDown)
-				return; // lelép
+			{
+				// olyan gödörbe nem megyünk le, ahonnan a falak miatt nem tudnánk kijönni: a peremen várunk
+				if (trapBelow(colAhead, footRow))
+					velocity.x = 0;
+				return; // különben lelép
+			}
 			// a legközelebbi túlsó talaj (mozgó platform is): a szakadék szélessége és a magasságkülönbség szerint számolt ugrás (nem ugrik túl)
 			var landCol = -999;
 			var landRow = 0;
@@ -577,13 +585,59 @@ class Companion extends FlxSprite
 					continue;
 				if (!stand(c, footRow))
 				{
+					var found = false;
 					for (j in 1...16)
 						if (stand(c, footRow + j))
-							return d;
-					blocked[s] = true; // ezen az oldalon szakadék van lent talaj nélkül: nem lépünk le
+						{
+							found = true;
+							break;
+						}
+					if (found && !trapBelow(c, footRow))
+						return d;
+					blocked[s] = true; // ezen az oldalon szakadék van lent talaj nélkül, vagy gödör, amiből nem jönnénk ki: nem lépünk le
 				}
 			}
 		return 0;
+	}
+
+	/** A (col) oszlopban lent (a fromRow alatti első talajon) olyan gödör van-e, ahonnan ugrással nem tudnánk kijönni? */
+	function trapBelow(col:Int, fromRow:Int):Bool
+	{
+		for (j in 1...16)
+			if (stand(col, fromRow + j))
+				return trapAtFloor(col, fromRow + j);
+		return false;
+	}
+
+	/**
+	 * A `land` sorban lévő talajon a `col` oszlopban gödör (csapda) van-e: mindkét oldalon (legfeljebb 6 csempén belül) fal áll,
+	 * aminek a teteje magasabb, mint a saját ugrásmagasságunk. Nyitott oldal vagy mászható fal esetén nem csapda.
+	 */
+	function trapAtFloor(col:Int, land:Int):Bool
+	{
+		var T = LevelData.T;
+		var jv = kind == Companions.TALL ? 320.0 : 335.0;
+		var reach = jv * jv / (2 * 900.0);
+		var s = -1;
+		while (s <= 1)
+		{
+			var c = col;
+			var n = 0;
+			while (n < 6 && !level.isSolid(c, land - 1))
+			{
+				c += s;
+				n++;
+			}
+			if (!level.isSolid(c, land - 1))
+				return false; // nyitott oldal: simán kisétál
+			var r = land - 1;
+			while (r > land - 15 && level.isSolid(c, r - 1))
+				r--;
+			if ((land - r) * T <= reach - 6)
+				return false; // ezen az oldalon ki tud ugrani
+			s += 2;
+		}
+		return true;
 	}
 
 	/** A magas társ álló helyzetben platform (a feje): a hős rá tud állni. */
