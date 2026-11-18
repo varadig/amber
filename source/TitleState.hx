@@ -72,7 +72,7 @@ class TitleState extends FlxState
 		var setHint = new FlxText(0, 186, 480, "O / TRIANGLE: SETTINGS (VOLUME)", 8);
 		setHint.setFormat(null, 8, 0xFF777777, CENTER);
 		add(setHint);
-		var help = new FlxText(0, 254, 480, "ARROWS/WASD MOVE   Z/SPACE JUMP   X/SHIFT DASH   V/J FIRE   UP/E USE   TAB SWITCH   P PAUSE   F FULLSCREEN", 8);
+		var help = new FlxText(0, 254, 480, "ARROWS/WASD MOVE   Z/SPACE/L-CLICK JUMP   X/SHIFT DASH   V/J/R-CLICK FIRE   UP/E USE   TAB SWITCH   P PAUSE", 8);
 		help.setFormat(null, 8, 0xFF777777, CENTER);
 		add(help);
 	}

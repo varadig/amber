@@ -770,7 +770,7 @@ class PlayState extends FlxState
 		#end
 		mark("create end");
 		#if test
-		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}; window.__LevelLoader = {5}; window.__Audio = {6}; window.__Parts = {7}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery, LevelLoader, Audio, Parts);
+		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}; window.__LevelLoader = {5}; window.__Audio = {6}; window.__Parts = {7}; window.__Looks = {8}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery, LevelLoader, Audio, Parts, Looks);
 		#end
 	}
 
@@ -1699,7 +1699,6 @@ class PlayState extends FlxState
 		FlxTween.tween(big.scale, {x: 1, y: 1}, 0.6, {startDelay: 1.4, ease: FlxEase.cubeIn, onComplete: _ ->
 		{
 			big.kill();
-			FlxG.camera.flash(0xFFFFFFFF, 0.12);
 		}});
 	}
 
@@ -2562,7 +2561,7 @@ class PlayState extends FlxState
 		score += 250;
 		Audio.play("key", 1);
 		burst(it.x + 5, it.y + 5, 16, 0xFFFFFFFF, 100);
-		FlxG.camera.flash(0xFFFFFFFF, 0.35);
+		// (nincs képernyő-villanás: zavaró volt; a látványt a partFx gyűrűi és a bemutató adja)
 		partFx(it);
 		if (it.friend < 0)
 			startShowcase(it.icon, tier);
@@ -2840,6 +2839,11 @@ class PlayState extends FlxState
 				cheatStep(-1);
 			else if (FlxG.keys.justPressed.F8)
 				cheatGoto((level + 1) % LevelData.COUNT);
+			else if (FlxG.keys.justPressed.F6)
+			{
+				Looks.next(); // hangulat (shader) váltása, megjegyzi a játék
+				showToast("LOOK: " + Looks.LIST[Looks.current].name, 1.6);
+			}
 			else if (FlxG.keys.justPressed.F7)
 				cheatGoto((level + LevelData.COUNT - 1) % LevelData.COUNT);
 		}

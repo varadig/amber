@@ -64,23 +64,23 @@ class Input
 
 	public static function jumpPressed():Bool
 	{
-		return FlxG.keys.anyJustPressed([UP, W, Z, SPACE, C]) || (just(FlxGamepadInputID.A));
+		return FlxG.keys.anyJustPressed([UP, W, Z, SPACE, C]) || (just(FlxGamepadInputID.A)) || FlxG.mouse.justPressed;
 	}
 
 	public static function jumpHeld():Bool
 	{
-		return FlxG.keys.anyPressed([UP, W, Z, SPACE, C]) || (held(FlxGamepadInputID.A));
+		return FlxG.keys.anyPressed([UP, W, Z, SPACE, C]) || (held(FlxGamepadInputID.A)) || FlxG.mouse.pressed;
 	}
 
-	/** Ugrás a FEL gomb nélkül (a TALL-nál a FEL a nyújtózkodás): Z / Space / C / A. */
+	/** Ugrás a FEL gomb nélkül (a TALL-nál a FEL a nyújtózkodás): Z / Space / C / A / bal egérgomb. */
 	public static function jumpPressedNoUp():Bool
 	{
-		return FlxG.keys.anyJustPressed([Z, SPACE, C]) || (just(FlxGamepadInputID.A));
+		return FlxG.keys.anyJustPressed([Z, SPACE, C]) || (just(FlxGamepadInputID.A)) || FlxG.mouse.justPressed;
 	}
 
 	public static function jumpHeldNoUp():Bool
 	{
-		return FlxG.keys.anyPressed([Z, SPACE, C]) || (held(FlxGamepadInputID.A));
+		return FlxG.keys.anyPressed([Z, SPACE, C]) || (held(FlxGamepadInputID.A)) || FlxG.mouse.pressed;
 	}
 
 	public static function dashPressed():Bool
@@ -90,7 +90,7 @@ class Input
 
 	public static function shootPressed():Bool
 	{
-		return FlxG.keys.anyJustPressed([V, J, CONTROL]) || (just(FlxGamepadInputID.Y));
+		return FlxG.keys.anyJustPressed([V, J, CONTROL]) || (just(FlxGamepadInputID.Y)) || FlxG.mouse.justPressedRight;
 	}
 
 	/** Ajtón belépés / kilépés: Fel, W, E, Enter (kontroller: D-pad fel). */

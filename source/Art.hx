@@ -394,6 +394,23 @@ class Art
 		});
 	}
 
+	/** A TALL megnyújtott képe (csak a lábak nyúlnak): a 27. sor (láb) `ext` példányban ismétlődik a láb-talp előtt; 2 kép, 10 x (30 + ext). */
+	public static function tallStretch(ext:Int):BitmapData
+	{
+		return cached("tallx" + ext, () ->
+		{
+			var src = companion(1);
+			var w = src.width;
+			var bd = new BitmapData(w, 30 + ext, true, 0x00000000);
+			for (y in 0...30 + ext)
+			{
+				var sy = y < 27 ? y : (y < 27 + ext ? 26 : y - ext);
+				bd.copyPixels(src, new openfl.geom.Rectangle(0, sy, w, 1), new openfl.geom.Point(0, y));
+			}
+			return bd;
+		});
+	}
+
 	/** Repedezett blokk 16x16 (blaszterrel kilőhető). */
 	public static function cracked():BitmapData
 	{

@@ -68,7 +68,6 @@ class Companion extends FlxSprite
 				width = 8;
 				height = 30;
 				offset.set(1, 0);
-				origin.set(5, 30); // a nyújtózkodás lefelé rögzített (lásd updateStretch)
 			case Companions.ORB:
 				loadGraphic(Art.companion(kind), true, 10, 10, false, "comp" + kind);
 				width = 8;
@@ -1175,7 +1174,9 @@ class Companion extends FlxSprite
 
 	function updateStretch(elapsed:Float, onFloor:Bool):Void
 	{
-		var want = mode == 4 ? (Input.up() && onFloor ? MAX_EXT : 0.0) : (mode == 1 ? ext : 0.0);
+		// (rövid "lábon áll" türelmi idő: a nyújtózkodás pillanatnyi emelkedése ne szakítsa meg)
+		floorGrace = onFloor ? 0.15 : floorGrace - elapsed;
+		var want = mode == 4 ? (Input.up() && floorGrace > 0 ? MAX_EXT : 0.0) : (mode == 1 ? ext : 0.0);
 		var d = want - ext;
 		var step = (d > 0 ? 80.0 : 120.0) * elapsed;
 		d = Math.max(-step, Math.min(step, d));
@@ -1192,9 +1193,24 @@ class Companion extends FlxSprite
 		y -= d;
 		height += d;
 		ext += d;
-		offset.y = 30 - height;
-		scale.y = height / 30;
+		// csak a lábak nyúlnak meg: a kép a láb-sorok ismétlésével épül (Art.tallStretch), a törzs és a fej változatlan
+		var e = Std.int(Math.round(ext));
+		if (e != gfxExt)
+		{
+			gfxExt = e;
+			loadGraphic(Art.tallStretch(e), true, 10, 30 + e, false, "tallx" + e);
+			animation.add("a", [0, 1], 6);
+			animation.play("a");
+		}
+		// (a loadGraphic átírja a hitboxot: vissza a talp pozícióját megtartó méretre)
+		width = 8;
+		height = 30 + ext;
+		offset.x = 1;
+		offset.y = (30 + e) - height;
 	}
+
+	var gfxExt:Int = 0;
+	var floorGrace:Float = 0;
 
 	/** A magas társ álló helyzetben platform (a feje): a hős rá tud állni. */
 	function setSolidRole(stand:Bool):Void

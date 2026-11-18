@@ -195,6 +195,16 @@ class CheatSubState extends FlxSubState
 						return false;
 					})
 				];
+			case "look":
+				// a választás azonnal látszik, és megmarad a következő betöltéskor (a menü nyitva marad: lehet válogatni)
+				var l:Array<CheatItem> = [];
+				for (i in 0...Looks.LIST.length)
+					l.push(dyn(() -> (Looks.current == i ? "* " : "  ") + Looks.LIST[i].name, () ->
+					{
+						Looks.set(i);
+						return false;
+					}));
+				return l;
 			case "robots":
 				return [
 					act("ADD WHEELIE", () -> g.cheatCompanion(Companions.WHEELIE)),
@@ -274,6 +284,7 @@ class CheatSubState extends FlxSubState
 					sub("HERO", "hero"),
 					sub("PARTS", "parts"),
 					sub("BATTERY & SCREEN EFFECTS", "screen"),
+					sub("LOOK (SHADER STYLES)", "look"),
 					sub("ROBOTS (FRIENDS)", "robots"),
 					sub("TELEPORT IN THIS LEVEL", "teleport"),
 					sub("WORLD & LEVELS", "world"),
@@ -297,6 +308,7 @@ class CheatSubState extends FlxSubState
 			case "parts": "PARTS";
 			case "screen": "BATTERY & SCREEN";
 			case "robots": "ROBOTS";
+			case "look": "LOOK (SAVED)";
 			case "world": "WORLD";
 			case "levels": "JUMP TO LEVEL";
 			case "teleport": "TELEPORT";

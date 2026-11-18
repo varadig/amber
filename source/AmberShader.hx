@@ -20,6 +20,11 @@ class AmberShader extends FlxShader
 		uniform float uClear;
 		uniform float uClearNew;
 		uniform vec2 uFocusPos;
+		uniform vec3 uDark;
+		uniform vec3 uMid;
+		uniform vec3 uLight;
+		uniform vec3 uHi;
+		uniform vec4 uLook;
 
 		void main()
 		{
@@ -33,7 +38,7 @@ class AmberShader extends FlxShader
 			float fh = fract(sin(floor(uTime * 22.0) * 91.7) * 437.58);
 			// a képernyő domborúsága; sérüléskor erősebben kidagad (elektromos kisülés)
 			float gl = uHit * uHit;
-			c *= 1.0 + (0.028 + 0.075 * uHit) * dot(c, c);
+			c *= 1.0 + (uLook.y + 0.075 * uHit) * dot(c, c);
 			vec2 q = c * 0.5 + 0.5;
 			if (foc && fp < 0.3)
 			{
@@ -100,27 +105,31 @@ class AmberShader extends FlxShader
 			v *= 1.0 - 0.6 * tired;
 			v *= 0.62 + 0.38 * sight;
 			v *= flk;
+			// kevés színű (poszterizált) hangulat, pl. kézi konzol
+			if (uLook.w > 0.5)
+				v = floor(v * uLook.w + 0.5) / uLook.w;
 
 			// pásztázó-vonalak (belső pixelsoronként)
-			float sl = 0.86 + 0.14 * sin(q.y * 270.0 * 6.2831853);
+			float sl = 1.0 - uLook.x + uLook.x * sin(q.y * 270.0 * 6.2831853);
 			// halk vibrálás
-			float fl = 0.985 + 0.015 * sin(uTime * 47.0) + 0.006 * sin(uTime * 3.1);
-			vec3 amber = vec3(1.0, 0.60, 0.04);
-			vec3 col = amber * v * sl * fl;
-			// a legfényesebb részek a sárgásfehér felé tolódnak (foszfor-izzás)
-			col += vec3(1.0, 0.80, 0.40) * pow(max(v - 0.78, 0.0) * 4.5, 2.0) * 0.10;
+			float fl = 1.0 - uLook.z + uLook.z * sin(uTime * 47.0) + 0.006 * sin(uTime * 3.1);
+			// színátmenet-leképezés: a fényességből a hangulat (Looks) három színű rámpája (sötét - közép - világos)
+			vec3 ramp = v < 0.5 ? mix(uDark, uMid, v * 2.0) : mix(uMid, uLight, (v - 0.5) * 2.0);
+			vec3 col = ramp * sl * fl;
+			// a legfényesebb részek a kiemelő szín felé tolódnak (foszfor-izzás)
+			col += uHi * pow(max(v - 0.78, 0.0) * 4.5, 2.0) * 0.10;
 			// perem-sötétítés
 			float vig = 1.0 - (0.42 + 0.3 * tired) * dot(c * 0.78, c * 0.78);
 			// kisülés: fényes függőleges ívek és felvillanás
 			float arc = step(0.982 - 0.05 * gl, fract(sin(floor(q.x * 480.0) * 7.13 + floor(uTime * 25.0) * 3.7) * 437.58)) * gl;
-			col += vec3(1.0, 0.85, 0.5) * arc * 0.7;
+			col += uHi * arc * 0.7;
 			col *= 1.0 + gl * 0.5;
 			// élesítő fénysáv és a végi felvillanás
-			col += vec3(1.0, 0.82, 0.45) * sweep * 0.9;
+			col += uHi * sweep * 0.9;
 			col *= 1.0 + (foc ? 0.7 : 0.0) * smoothstep(0.88, 0.93, fp) * (1.0 - smoothstep(0.93, 1.0, fp));
 			col *= vig;
 			// a fekete sem teljesen fekete (csőizzás)
-			col += vec3(0.020, 0.009, 0.0) * vig;
+			col += uMid * 0.04 * vig;
 			gl_FragColor = vec4(col, 1.0);
 		}
 	')
@@ -135,5 +144,6 @@ class AmberShader extends FlxShader
 		uClear.value = [700.0];
 		uClearNew.value = [700.0];
 		uFocusPos.value = [240.0, 135.0];
+		Looks.apply(this);
 	}
 }

@@ -26,6 +26,13 @@ class Main extends Sprite
 	static var focusT:Float = 0;
 	static inline var FOCUS_TIME = 2.8;
 
+	/** A képernyő-shader hangulatának (Looks) újra-beállítása. */
+	public static function applyLook():Void
+	{
+		if (amber != null)
+			Looks.apply(amber);
+	}
+
 	/** A VISOR felvételekor: a kép villódzik, majd egy fénysáv élesíti fentről lefelé. */
 	public static function startFocus():Void
 		focusT = 1;
@@ -39,6 +46,7 @@ class Main extends Sprite
 			FlxG.signals.postGameStart.addOnce(LevelExport.run);
 		#end
 		// A borostyán-monitor shader az egész játékon (a játék példányon, hogy a pásztázó-vonalak az ablak felbontásán is élesek legyenek)
+		Looks.load();
 		amber = new AmberShader();
 		var filter = new ShaderFilter(amber);
 		// a kamera szűrője állapotváltáskor elvész (új kamera), ezért minden váltás után újra beállítjuk
