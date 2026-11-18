@@ -166,8 +166,9 @@ class Companion extends FlxSprite
 						onSpecial(this);
 					}
 				case 0:
-					var gx = tx - targetFace() * 16 - 4;
-					var gy = ty - 22 + Math.sin(bobT * 3) * 3;
+					// az ORB a hős mögött és fölött lebeg, tisztes távolban (ne takarja a többi robotot)
+					var gx = tx - targetFace() * 38 - 4;
+					var gy = ty - 44 + Math.sin(bobT * 3) * 3;
 					if (idleAct == 2) // keringés a hős körül
 					{
 						gx += Math.cos(bobT * 8) * 16;
@@ -371,7 +372,7 @@ class Companion extends FlxSprite
 		var dx = gx - cx;
 		var spd = kind == Companions.TALL ? 84.0 : 100.0;
 		if (hurry > 0)
-			spd *= 1.5; // leszakadó platformon sietünk, hogy ne zuhanjunk vele együtt
+			spd *= kind == Companions.TALL ? 2.2 : 1.5; // leszakadó platformon sietünk (a lassú TALL jobban), hogy ne zuhanjunk vele együtt
 		var jumpV = kind == Companions.TALL ? 320.0 : 335.0; // a hőssel azonos ugrómagasság (kb. 57 px)
 		var maxGap = kind == Companions.TALL ? 3 : 4;
 		// a cél lent van, és vízszintesen közel (a "közel" körül ingadozás ellen a lelépéshez tágabb sáv kell, és az irányt megtartjuk)
@@ -414,6 +415,14 @@ class Companion extends FlxSprite
 		var bodyRow = Std.int((y + height - 5) / T);
 		velocity.x = dir * spd;
 		var g = 900.0;
+		// tüske vagy nem ráléphető ellenség közvetlenül előttünk: átugorjuk
+		if (hazardAhead != null && hazardAhead(this, dir))
+		{
+			velocity.y = -285;
+			velocity.x = dir * spd * 1.1;
+			hopDir = dir;
+			return;
+		}
 		// magasabb felületre (egyirányú, mozgó vagy leszakadó platform) ugrás, ha a cél följebb van
 		if (wantUp && tryHopUp(dir, g, jumpV, spd))
 			return;
@@ -500,6 +509,8 @@ class Companion extends FlxSprite
 	var wantUp:Bool = false;
 	/** Falra / platformra ugrás iránya a levegőben (0 = nincs): a csúcson is a perem felé nyomjuk. */
 	var hopDir:Int = 0;
+	/** Veszély (tüske, nem ráléphető ellenség) a társ előtt a megadott irányban? A PlayState állítja be; igaz esetén a társ átugorja. */
+	public var hazardAhead:Companion->Int->Bool = null;
 	/** A lelépés megválasztott iránya (a peremhez), amíg a cél alattunk van: nem ingadozik a két perem között. */
 	var descendDir:Int = 0;
 	/** Leszakadó platformon áll: sietős mozgás (másodpercek); a PlayState állítja. */

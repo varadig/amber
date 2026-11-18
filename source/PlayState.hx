@@ -131,12 +131,13 @@ class Crumble extends FlxSprite
 	public function crackingLeft():Float
 		return state == 1 ? timer : -1;
 
-	public function trigger():Void
+	/** `extra`: a társ lépésére hosszabb a hullás előtti idő (a lassúbbak is átérhessenek). */
+	public function trigger(extra:Float = 0):Void
 	{
 		if (state == 0)
 		{
 			state = 1;
-			timer = 0.55;
+			timer = 0.55 + extra;
 			if (onCrack != null)
 				onCrack();
 		}
@@ -1693,7 +1694,7 @@ class PlayState extends FlxState
 		{
 			if (c.isTouching(FlxDirectionFlags.FLOOR))
 			{
-				cr.trigger();
+				cr.trigger(0.4);
 				// repedezik a talpa alatt: siet át, hogy ne zuhanjon vele
 				if (cr.crackingLeft() >= 0)
 					c.hurry = 0.3;
@@ -1736,11 +1737,34 @@ class PlayState extends FlxState
 	}
 
 	/** Egy társ létrehozása a megadott helyen. */
+	/** Tüske vagy nem rálépható (tüskés hátú) ellenség közvetlenül a társ előtt (kb. 6-20 px): a társ átugorja. */
+	function hazardAhead(c:Companion, dir:Int):Bool
+	{
+		var cx = c.x + c.width / 2;
+		var x0 = dir > 0 ? cx + 6 : cx - 20;
+		var x1 = x0 + 14;
+		var feet = c.y + c.height;
+		for (i in 0...spikes.length)
+		{
+			var s = spikes.members[i];
+			if (s != null && s.alive && s.exists && s.x < x1 && s.x + s.width > x0 && s.y < feet && s.y + s.height > feet - 10)
+				return true;
+		}
+		for (i in 0...enemies.length)
+		{
+			var e = enemies.members[i];
+			if (e != null && e.alive && e.exists && e.dying < 0 && !e.stompable && e.x < x1 && e.x + e.width > x0 && e.y < feet && e.y + e.height > c.y)
+				return true;
+		}
+		return false;
+	}
+
 	function spawnCompanion(kind:Int, x:Float, y:Float):Companion
 	{
 		var c = new Companion(kind, x, y, data, ctrl != null ? ctrl : player);
 		c.mode = followAll ? 0 : 1;
 		c.onSpecial = doSpecial;
+		c.hazardAhead = hazardAhead;
 		// a mozgó platformok a követő számára: hova ugorhat (és milyen sebességgel megy a platform)
 		c.movingStand = (tx:Int, ty:Int) ->
 		{
@@ -2422,9 +2446,10 @@ NEXT: " + navTarget().label + " >>";
 
 	function onSpike(p:FlxSprite, s:FlxSprite):Void
 	{
+		// a tüske is csak az irányított robotot sebzi
 		if (p == player)
 		{
-			if (player.takeHit(s.x + 6))
+			if (p == ctrl && player.takeHit(s.x + 6))
 			{
 				player.velocity.y = -230;
 				damaged();
@@ -2433,7 +2458,7 @@ NEXT: " + navTarget().label + " >>";
 		else
 		{
 			var c = cast(p, Companion);
-			if (c.takeHit(s.x + 6))
+			if (c == ctrl && c.takeHit(s.x + 6))
 			{
 				c.velocity.y = -230;
 				damagedCompanion(c);
