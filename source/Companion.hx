@@ -322,7 +322,7 @@ class Companion extends FlxSprite
 		}
 		var dir = (Input.right() ? 1 : 0) - (Input.left() ? 1 : 0);
 		var spd = kind == Companions.TALL ? 88.0 : 112.0;
-		var jumpV = kind == Companions.TALL ? 300.0 : 320.0;
+		var jumpV = kind == Companions.TALL ? 320.0 : 335.0;
 		var target = dir * spd;
 		var acc = (onFloor ? 1500.0 : 900.0) * elapsed;
 		if (velocity.x < target)
@@ -368,7 +368,7 @@ class Companion extends FlxSprite
 		var cx = x + width / 2;
 		var dx = gx - cx;
 		var spd = kind == Companions.TALL ? 84.0 : 100.0;
-		var jumpV = kind == Companions.TALL ? 300.0 : 320.0; // a hőssel azonos ugrómagasság (kb. 57 px)
+		var jumpV = kind == Companions.TALL ? 320.0 : 335.0; // a hőssel azonos ugrómagasság (kb. 57 px)
 		var maxGap = kind == Companions.TALL ? 3 : 4;
 		if (Math.abs(dx) <= near)
 		{
@@ -388,7 +388,16 @@ class Companion extends FlxSprite
 		var dir = dx > 0 ? 1 : -1;
 		face = dir;
 		if (!onFloor)
-			return; // a levegőben megmarad a lendület
+		{
+			// falra / platformra ugrás közben a levegőben is nyomjuk a fal felé, különben a csúcson a fal mellett lecsúszik, és sosem kerül át a peremen
+			if (hopDir != 0)
+			{
+				velocity.x = hopDir * spd * 0.7;
+				face = hopDir;
+			}
+			return; // különben megmarad a lendület
+		}
+		hopDir = 0;
 		var T = LevelData.T;
 		var colAhead = Std.int((cx + dir * (width / 2 + 5)) / T);
 		var footRow = Std.int((y + height + 2) / T);
@@ -406,12 +415,13 @@ class Companion extends FlxSprite
 				h++;
 			if (h <= 3 && !level.isSolid(colAhead, bodyRow - h - 1))
 			{
-				var rise = (y + height) - (bodyRow - h + 1) * T + 5;
+				var rise = (y + height) - (bodyRow - h + 1) * T + 9; // a peremnél a test szélessége miatt pár pixellel magasabbra kell
 				var v = Math.sqrt(2 * g * rise);
 				if (v <= jumpV)
 				{
 					velocity.y = -v;
 					velocity.x = dir * spd * 0.75;
+					hopDir = dir;
 					return;
 				}
 			}
@@ -478,6 +488,8 @@ class Companion extends FlxSprite
 
 	/** A követés célja magasabban van (legalább egy csempével): az update számolja a mód 0 hívása előtt. */
 	var wantUp:Bool = false;
+	/** Falra / platformra ugrás iránya a levegőben (0 = nincs): a csúcson is a perem felé nyomjuk. */
+	var hopDir:Int = 0;
 
 	/**
 	 * Felugrás egy magasabb felületre (egyirányú / mozgó / leszakadó platform, legfeljebb a saját ugrásmagasságig): ha a közelben (a saját oszlopunkban
@@ -504,7 +516,7 @@ class Companion extends FlxSprite
 						free = false;
 				if (!free)
 					continue;
-				var rise = h * T + 5;
+				var rise = h * T + 9;
 				var v = Math.sqrt(2 * g * rise);
 				if (v > jumpV)
 					continue;
@@ -513,6 +525,7 @@ class Companion extends FlxSprite
 					continue;
 				velocity.y = -v;
 				velocity.x = k > 0 ? dir * spd * 0.8 : 0;
+				hopDir = k > 0 ? dir : 0;
 				return true;
 			}
 		}
