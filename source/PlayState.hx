@@ -127,6 +127,10 @@ class Crumble extends FlxSprite
 		offset.y = 0;
 	}
 
+	/** Repedezik-e (a lehullás előtti másodperc): a hátralévő idő, különben -1. */
+	public function crackingLeft():Float
+		return state == 1 ? timer : -1;
+
 	public function trigger():Void
 	{
 		if (state == 0)
@@ -1688,7 +1692,12 @@ class PlayState extends FlxState
 		FlxG.collide(companions, crumbles, (c:Companion, cr:Crumble) ->
 		{
 			if (c.isTouching(FlxDirectionFlags.FLOOR))
+			{
 				cr.trigger();
+				// repedezik a talpa alatt: siet át, hogy ne zuhanjon vele
+				if (cr.crackingLeft() >= 0)
+					c.hurry = 0.3;
+			}
 		});
 		FlxG.collide(companions, crates);
 		FlxG.collide(companions, movers);

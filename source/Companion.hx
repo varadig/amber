@@ -132,6 +132,8 @@ class Companion extends FlxSprite
 		}
 		else
 			visible = true;
+		if (hurry > 0)
+			hurry -= elapsed;
 		if (specialCd > 0)
 			specialCd -= elapsed;
 		var t = touching;
@@ -368,22 +370,30 @@ class Companion extends FlxSprite
 		var cx = x + width / 2;
 		var dx = gx - cx;
 		var spd = kind == Companions.TALL ? 84.0 : 100.0;
+		if (hurry > 0)
+			spd *= 1.5; // leszakadó platformon sietünk, hogy ne zuhanjunk vele együtt
 		var jumpV = kind == Companions.TALL ? 320.0 : 335.0; // a hőssel azonos ugrómagasság (kb. 57 px)
 		var maxGap = kind == Companions.TALL ? 3 : 4;
-		if (Math.abs(dx) <= near)
+		// a cél lent van, és vízszintesen közel (a "közel" körül ingadozás ellen a lelépéshez tágabb sáv kell, és az irányt megtartjuk)
+		var ed = wantDown && onFloor && Math.abs(dx) <= near + 30 ? edgeDir() : 0;
+		if (ed != 0)
 		{
-			// a cél fölöttünk van egy magasabb felületen (egyirányú platform): fölé ugrunk
-			if (wantUp && onFloor && tryHopUp(face, 900.0, jumpV, spd))
-				return;
-			// a cél közvetlenül alattunk van (lent áll): a legközelebbi peremhez megyünk, és lelépünk, különben örökre fent maradnánk
-			var ed = wantDown && onFloor ? edgeDir() : 0;
-			if (ed == 0)
+			if (descendDir == 0)
+				descendDir = ed;
+			dx = descendDir * 100;
+		}
+		else
+		{
+			descendDir = 0;
+			if (Math.abs(dx) <= near)
 			{
+				// a cél fölöttünk van egy magasabb felületen (egyirányú platform): fölé ugrunk
+				if (wantUp && onFloor && tryHopUp(face, 900.0, jumpV, spd))
+					return;
 				if (onFloor)
 					velocity.x = 0;
 				return;
 			}
-			dx = ed * 100;
 		}
 		var dir = dx > 0 ? 1 : -1;
 		face = dir;
@@ -431,7 +441,7 @@ class Companion extends FlxSprite
 		if (!stand(colAhead, footRow))
 		{
 			var below = false;
-			for (k in 1...7)
+			for (k in 1...16)
 				if (stand(colAhead, footRow + k))
 				{
 					below = true;
@@ -490,6 +500,10 @@ class Companion extends FlxSprite
 	var wantUp:Bool = false;
 	/** Falra / platformra ugrás iránya a levegőben (0 = nincs): a csúcson is a perem felé nyomjuk. */
 	var hopDir:Int = 0;
+	/** A lelépés megválasztott iránya (a peremhez), amíg a cél alattunk van: nem ingadozik a két perem között. */
+	var descendDir:Int = 0;
+	/** Leszakadó platformon áll: sietős mozgás (másodpercek); a PlayState állítja. */
+	public var hurry:Float = 0;
 
 	/**
 	 * Felugrás egy magasabb felületre (egyirányú / mozgó / leszakadó platform, legfeljebb a saját ugrásmagasságig): ha a közelben (a saját oszlopunkban
@@ -552,7 +566,7 @@ class Companion extends FlxSprite
 					continue;
 				if (!stand(c, footRow))
 				{
-					for (j in 1...7)
+					for (j in 1...16)
 						if (stand(c, footRow + j))
 							return d;
 					blocked[s] = true; // ezen az oldalon szakadék van lent talaj nélkül: nem lépünk le
