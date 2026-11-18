@@ -201,6 +201,7 @@ class Companion extends FlxSprite
 					control(elapsed, onFloor);
 					setSolidRole(false);
 				case 0:
+					wantUp = target.y + target.height < y + height - 12;
 					if (!idling)
 						// lefelé: ha a cél talpa legalább egy csempével lejjebb van, lelépünk (a középpont-összehasonlítás ezt két csempére tolta)
 						walkToward(tx, kind == Companions.TALL ? 30 : 22, onFloor, hitWall, target.y + target.height > y + height + 12);
@@ -321,7 +322,7 @@ class Companion extends FlxSprite
 		}
 		var dir = (Input.right() ? 1 : 0) - (Input.left() ? 1 : 0);
 		var spd = kind == Companions.TALL ? 88.0 : 112.0;
-		var jumpV = kind == Companions.TALL ? 290.0 : 275.0;
+		var jumpV = kind == Companions.TALL ? 300.0 : 320.0;
 		var target = dir * spd;
 		var acc = (onFloor ? 1500.0 : 900.0) * elapsed;
 		if (velocity.x < target)
@@ -367,10 +368,13 @@ class Companion extends FlxSprite
 		var cx = x + width / 2;
 		var dx = gx - cx;
 		var spd = kind == Companions.TALL ? 84.0 : 100.0;
-		var jumpV = kind == Companions.TALL ? 285.0 : 275.0;
+		var jumpV = kind == Companions.TALL ? 300.0 : 320.0; // a hőssel azonos ugrómagasság (kb. 57 px)
 		var maxGap = kind == Companions.TALL ? 3 : 4;
 		if (Math.abs(dx) <= near)
 		{
+			// a cél fölöttünk van egy magasabb felületen (egyirányú platform): fölé ugrunk
+			if (wantUp && onFloor && tryHopUp(face, 900.0, jumpV, spd))
+				return;
 			// a cél közvetlenül alattunk van (lent áll): a legközelebbi peremhez megyünk, és lelépünk, különben örökre fent maradnánk
 			var ed = wantDown && onFloor ? edgeDir() : 0;
 			if (ed == 0)
@@ -391,6 +395,9 @@ class Companion extends FlxSprite
 		var bodyRow = Std.int((y + height - 5) / T);
 		velocity.x = dir * spd;
 		var g = 900.0;
+		// magasabb felületre (egyirányú, mozgó vagy leszakadó platform) ugrás, ha a cél följebb van
+		if (wantUp && tryHopUp(dir, g, jumpV, spd))
+			return;
 		if (level.isSolid(colAhead, bodyRow))
 		{
 			// fal / lépcső: a tetejére ugrik, ha legfeljebb 3 csempe magas és fölötte szabad; csak akkorát, amekkora kell
@@ -467,6 +474,49 @@ class Companion extends FlxSprite
 			if (!jumpOk)
 				velocity.x = 0;
 		}
+	}
+
+	/** A követés célja magasabban van (legalább egy csempével): az update számolja a mód 0 hívása előtt. */
+	var wantUp:Bool = false;
+
+	/**
+	 * Felugrás egy magasabb felületre (egyirányú / mozgó / leszakadó platform, legfeljebb a saját ugrásmagasságig): ha a közelben (a saját oszlopunkban
+	 * vagy legfeljebb két oszloppal előrébb) van fölöttünk szabad tetejű felület, akkora ugrással, amekkora kell.
+	 */
+	function tryHopUp(dir:Int, g:Float, jumpV:Float, spd:Float):Bool
+	{
+		var T = LevelData.T;
+		var cx = x + width / 2;
+		var col = Std.int(cx / T);
+		var footRow = Std.int((y + height + 2) / T);
+		var headRows = kind == Companions.TALL ? 2 : 1;
+		for (k in 0...3)
+		{
+			var c = col + dir * k;
+			for (h in 1...5)
+			{
+				var row = footRow - h;
+				if (!stand(c, row) || level.isSolid(c, row))
+					continue;
+				var free = true;
+				for (j in 1...headRows + 1)
+					if (level.isSolid(c, row - j))
+						free = false;
+				if (!free)
+					continue;
+				var rise = h * T + 5;
+				var v = Math.sqrt(2 * g * rise);
+				if (v > jumpV)
+					continue;
+				// előrébb lévő felületnél csak közelről ugrunk (különben elrepülnénk mellette)
+				if (k > 0 && Math.abs(c * T + T / 2 - cx) > T * 1.7)
+					continue;
+				velocity.y = -v;
+				velocity.x = k > 0 ? dir * spd * 0.8 : 0;
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** Szilárd / egyirányú csempe vagy mozgó platform a (tx, ty) csempén. */

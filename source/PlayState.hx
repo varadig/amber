@@ -1684,7 +1684,12 @@ class PlayState extends FlxState
 		FlxG.collide(companions, solidMap);
 		FlxG.collide(companions, platMap);
 		FlxG.collide(companions, gates);
-		FlxG.collide(companions, crumbles);
+		// a leszakadó platform a társ alatt is elindul (ezért gyorsan át kell kelniük rajta)
+		FlxG.collide(companions, crumbles, (c:Companion, cr:Crumble) ->
+		{
+			if (c.isTouching(FlxDirectionFlags.FLOOR))
+				cr.trigger();
+		});
 		FlxG.collide(companions, crates);
 		FlxG.collide(companions, movers);
 		// a mozgó platform viszi a rajta álló társat (a talp a platform tetején, vízszintesen átfedik egymást); az ütközés-callback erre nem volt megbízható
@@ -1736,6 +1741,13 @@ class PlayState extends FlxState
 				var m = movers.members[i];
 				if (m != null && m.alive && m.exists && m.x < tx * T + T && m.x + m.width > tx * T && Math.abs(m.y - ty * T) < 9)
 					return m.vx;
+			}
+			// leszakadó platform (amíg ép): a társ ráugorhat és átkelhet rajta
+			for (i in 0...crumbles.length)
+			{
+				var cr = crumbles.members[i];
+				if (cr != null && cr.alive && cr.exists && cr.allowCollisions != FlxDirectionFlags.NONE && cr.x < tx * T + T && cr.x + cr.width > tx * T && Math.abs(cr.y - ty * T) < 9)
+					return 0.0;
 			}
 			return null;
 		};
@@ -2111,7 +2123,8 @@ class PlayState extends FlxState
 			hitstop = 0.05;
 			return;
 		}
-		if (c.takeHit(e.x + e.width / 2))
+		// az ellenség csak azt a robotot sebzi, akit éppen irányítunk
+		if (c == ctrl && c.takeHit(e.x + e.width / 2))
 			damagedCompanion(c);
 	}
 
@@ -2235,7 +2248,8 @@ class PlayState extends FlxState
 			hitstop = 0.05;
 			return;
 		}
-		if (p.takeHit(e.x + e.width / 2))
+		// az ellenség csak azt a robotot sebzi, akit éppen irányítunk (a többi átmegy rajta)
+		if (p == ctrl && p.takeHit(e.x + e.width / 2))
 			damaged();
 	}
 
