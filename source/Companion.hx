@@ -5,6 +5,9 @@ import flixel.tweens.FlxTween;
 import flixel.util.FlxDirectionFlags;
 import Puzzle;
 
+/** Egy útvonal-csempe: oszlop, sor (a talp sora), és az ide vezető él fajtája (0 járás, 1 lelépés, 2 ugrás). */
+typedef RouteNode = {c:Int, r:Int, k:Int};
+
 /**
  * Egy társ-robot (a Lost Vikings mintájára: a három robot között váltani lehet, mindegyiket el kell juttatni az ajtóhoz).
  * Módok: 0 követ (a kiválasztott robotot követi), 1 vár (a helyén marad; a TALL ilyenkor platform), 3 az ajtóhoz megy és belép,
@@ -214,9 +217,39 @@ class Companion extends FlxSprite
 					wantUp = target.y + target.height < y + height - 12;
 					// segítség: a vele egy szinten, közel fekvő atomot / akkut útközben összeszedi
 					updateLoot(elapsed);
-					if (!idling)
+					var routing = false;
+					if (!idling && route != null)
+						routing = followRoute(onFloor, elapsed, kind == Companions.TALL ? 84.0 : 100.0, kind == Companions.TALL ? 320.0 : 335.0);
+					if (!idling && !routing)
+					{
 						// lefelé: ha a cél talpa legalább egy csempével lejjebb van, lelépünk (a középpont-összehasonlítás ezt két csempére tolta)
 						walkToward(loot != null ? loot.x + loot.width / 2 : tx, loot != null ? 4 : (kind == Companions.TALL ? 30 : 22), onFloor, hitWall, target.y + target.height > y + height + 12);
+						// útkereső: ha mozogni akarna, de ~2 mp-ig nem halad (alagútba / kamrába szorult), kiutat keres a hőshöz
+						if (planCool > 0)
+							planCool -= elapsed;
+						var wantMove = loot == null && Math.abs(tx - cx) > 30;
+						if (wantMove && Math.abs(x - progX) < 1.5)
+							progT += elapsed;
+						else
+						{
+							progX = x;
+							progT = 0;
+						}
+						if (progT > 2.0 && planCool <= 0)
+						{
+							progT = 0;
+							planCool = 3;
+							var gn = goalNode(tx);
+							if (gn != null && !trapAtFloor(gn[0], gn[1] + 1))
+							{
+								route = planRoute(gn[0], gn[1]);
+								routeI = 0;
+								routeT = 0;
+								routeX = x;
+								routeStall = 0;
+							}
+						}
+					}
 					// a gyűjtendő tárgy közvetlenül fölöttünk van: ugrunk érte
 					if (loot != null && onFloor && !idling && Math.abs(loot.x + loot.width / 2 - cx) < 12 && loot.y + loot.height / 2 < y + height - 6)
 						velocity.y = -310;
@@ -227,7 +260,8 @@ class Companion extends FlxSprite
 						stuckT += elapsed;
 					else
 						stuckT = 0;
-					var far = stuckT > 1.5 || Math.abs(dx) > 300 || ty < y - 130;
+					// (az útkereső ~1 mp után indul: a teleport csak utána, ha az sem segít)
+					var far = stuckT > 3.5 || Math.abs(dx) > 300 || ty < y - 130;
 					var fell = y > (level.killRow + 3) * LevelData.T && ty < (level.killRow + 2) * LevelData.T;
 					// ha a hős olyan gödörben van, ahonnan mi nem jönnénk ki, nem teleportálunk mellé (a peremen várunk)
 					if (fell || (far && !trapAtFloor(Std.int(tx / LevelData.T), Std.int((target.y + target.height + 2) / LevelData.T))))
@@ -654,6 +688,356 @@ class Companion extends FlxSprite
 				}
 			}
 		return 0;
+	}
+
+	// --- Útkereső (A*): ha a követés elakad (pl. alagútba / kamrába szorult), a rács-gráfon keres kiutat a hőshöz ---
+
+	/** Statikus és dinamikus akadály (repedezett fal, zárt kapu, a TALL-nak a rács) a (c, r) csempén? A PlayState adja a dinamikus részt. */
+	public var blockedExtra:Int->Int->Bool = null;
+	var route:Array<RouteNode> = null;
+	var routeI:Int = 0;
+	var routeT:Float = 0;
+	var routeX:Float = 0;
+	var routeStall:Float = 0;
+	/** Felfelé ugrás közben a cél felület magassága (px), amíg a talpunk nem ér fölé: addig csak függőlegesen emelkedünk. */
+	var jumpTop:Float = -1;
+	var planCool:Float = 0;
+	var progX:Float = 0;
+	var progT:Float = 0;
+
+	function solidAt(c:Int, r:Int):Bool
+	{
+		if (c < 0 || c >= level.w || r >= LevelData.H)
+			return true;
+		if (r < 0)
+			return false;
+		return level.isSolid(c, r) || (blockedExtra != null && blockedExtra(c, r));
+	}
+
+	function groundAt(c:Int, r:Int):Bool
+	{
+		if (c < 0 || c >= level.w || r >= LevelData.H)
+			return false;
+		return level.isStandable(c, r) || (blockedExtra != null && blockedExtra(c, r)) || (movingStand != null && movingStand(c, r) != null);
+	}
+
+	/** A test (a TALL-nál két csempe) szabadon elfér a (c, r) csempén (r = a talp sora)? */
+	function bodyFree(c:Int, r:Int):Bool
+		return !solidAt(c, r) && (kind != Companions.TALL || !solidAt(c, r - 1));
+
+	/** Álló csempe: szabad test + alatta talaj. */
+	function validNode(c:Int, r:Int):Bool
+		return bodyFree(c, r) && groundAt(c, r + 1);
+
+	/**
+	 * A*: a saját csempénkről a (gc, gr) célcsempére vezető út (járás, lelépés, ugrás felfelé / szakadék fölött), vagy null.
+	 * Élek: 0 járás, 1 lelépés (esés), 2 ugrás. Az akadályok: tömör csempék + `blockedExtra`.
+	 */
+	function planRoute(gc:Int, gr:Int):Array<RouteNode>
+	{
+		var T = LevelData.T;
+		var W = level.w;
+		var H = LevelData.H;
+		var sc = Std.int((x + width / 2) / T);
+		var sr = Std.int((y + height - 1) / T);
+		// légben (pl. ugrálás közben) a lent lévő első álló csempéről indulunk
+		var fixR = -1;
+		for (k in 0...4)
+			if (validNode(sc, sr + k))
+			{
+				fixR = sr + k;
+				break;
+			}
+		if (fixR < 0)
+			return null;
+		sr = fixR;
+		var N = W * H;
+		var g = new haxe.ds.Vector<Float>(N);
+		var par = new haxe.ds.Vector<Int>(N);
+		var knd = new haxe.ds.Vector<Int>(N);
+		for (i in 0...N)
+		{
+			g[i] = 1e9;
+			par[i] = -1;
+		}
+		var hid:Array<Int> = [];
+		var hf:Array<Float> = [];
+		function push(id:Int, f:Float):Void
+		{
+			hid.push(id);
+			hf.push(f);
+			var i = hid.length - 1;
+			while (i > 0)
+			{
+				var p = (i - 1) >> 1;
+				if (hf[p] <= hf[i])
+					break;
+				var ti = hid[p];
+				hid[p] = hid[i];
+				hid[i] = ti;
+				var tf = hf[p];
+				hf[p] = hf[i];
+				hf[i] = tf;
+				i = p;
+			}
+		}
+		function pop():Int
+		{
+			var top = hid[0];
+			var lastId = hid.pop();
+			var lastF = hf.pop();
+			if (hid.length > 0)
+			{
+				hid[0] = lastId;
+				hf[0] = lastF;
+				var i = 0;
+				while (true)
+				{
+					var l = 2 * i + 1;
+					var r = l + 1;
+					var m = i;
+					if (l < hid.length && hf[l] < hf[m])
+						m = l;
+					if (r < hid.length && hf[r] < hf[m])
+						m = r;
+					if (m == i)
+						break;
+					var ti = hid[m];
+					hid[m] = hid[i];
+					hid[i] = ti;
+					var tf = hf[m];
+					hf[m] = hf[i];
+					hf[i] = tf;
+					i = m;
+				}
+			}
+			return top;
+		}
+		function relax(from:Int, c2:Int, r2:Int, cost:Float, k:Int):Void
+		{
+			var id = r2 * W + c2;
+			var ng = g[from] + cost;
+			if (ng < g[id])
+			{
+				g[id] = ng;
+				par[id] = from;
+				knd[id] = k;
+				push(id, ng + Math.abs(c2 - gc) + Math.abs(r2 - gr));
+			}
+		}
+		var maxGap = kind == Companions.TALL ? 3 : 4;
+		var tall = kind == Companions.TALL;
+		var sid = sr * W + sc;
+		g[sid] = 0;
+		push(sid, Math.abs(sc - gc) + Math.abs(sr - gr));
+		var goalId = -1;
+		var iter = 0;
+		while (hid.length > 0 && iter++ < 30000)
+		{
+			var id = pop();
+			var c = id % W;
+			var r = Std.int(id / W);
+			if (c == gc && r == gr)
+			{
+				goalId = id;
+				break;
+			}
+			if (Math.abs(c - sc) > 110)
+				continue;
+			var d = -1;
+			while (d <= 1)
+			{
+				var nc = c + d;
+				if (bodyFree(nc, r))
+				{
+					if (groundAt(nc, r + 1))
+						relax(id, nc, r, 1, 0);
+					else
+					{
+						// lelépés: esés az első talajig (legfeljebb 15 csempe)
+						var rr = r + 1;
+						while (rr < r + 16 && rr < H - 1 && bodyFree(nc, rr))
+						{
+							if (validNode(nc, rr))
+							{
+								relax(id, nc, rr, 1 + 0.3 * (rr - r), 1);
+								break;
+							}
+							rr++;
+						}
+					}
+				}
+				// ugrás: felfelé (legfeljebb 3 csempe), szakadék fölött, vagy lejjebb
+				for (k in 1...maxGap + 2)
+					for (hh in -3...4)
+					{
+						var h = -hh; // h > 0: felfelé
+						if (h == 0 && k == 1)
+							continue;
+						var maxK = h <= 1 ? maxGap + 1 : (h == 2 ? 3 : 2);
+						if (h < 0)
+							maxK = maxGap + 1;
+						if (k > maxK)
+							continue;
+						var tc = c + d * k;
+						var tr = r - h;
+						if (!validNode(tc, tr))
+							continue;
+						var top = (tr < r ? tr : r) - 1;
+						var clear = true;
+						var rr = top;
+						while (rr < r)
+						{
+							if (solidAt(c, rr) || (tall && solidAt(c, rr - 1)))
+								clear = false;
+							rr++;
+						}
+						var j = 1;
+						while (clear && j <= k)
+						{
+							if (solidAt(c + d * j, top) || (tall && solidAt(c + d * j, top - 1)))
+								clear = false;
+							j++;
+						}
+						if (clear && tr > r)
+						{
+							rr = r;
+							while (rr <= tr)
+							{
+								if (solidAt(tc, rr))
+									clear = false;
+								rr++;
+							}
+						}
+						if (clear)
+							relax(id, tc, tr, 2 + k + (h < 0 ? -h : h), 2);
+					}
+				d += 2;
+			}
+		}
+		if (goalId < 0)
+			return null;
+		var out:Array<RouteNode> = [];
+		var cur = goalId;
+		while (par[cur] >= 0)
+		{
+			out.push({c: cur % W, r: Std.int(cur / W), k: knd[cur]});
+			cur = par[cur];
+		}
+		out.reverse();
+		if (out.length > 30)
+			return null; // túl hosszú kerülő: a normál követés / teleport marad
+		return out;
+	}
+
+	/** Az útvonal követése; hamis, ha elfogyott / megszakadt (ilyenkor a normál követés megy tovább). */
+	function followRoute(onFloor:Bool, elapsed:Float, spd:Float, jumpV:Float):Bool
+	{
+		var T = LevelData.T;
+		var cx = x + width / 2;
+		var cc = Std.int(cx / T);
+		var cr = Std.int((y + height - 1) / T);
+		while (routeI < route.length && onFloor && route[routeI].c == cc && route[routeI].r == cr)
+			routeI++;
+		if (routeI >= route.length)
+		{
+			route = null;
+			return false;
+		}
+		routeT += elapsed;
+		if (routeT > 10)
+		{
+			route = null;
+			planCool = 1;
+			return false;
+		}
+		var n = route[routeI];
+		var dist = n.c * T + T / 2 - cx;
+		var dir = dist >= 0 ? 1 : -1;
+		face = dir;
+		if (!onFloor)
+		{
+			// levegőben a cél oszlop felé kormányozunk (a fal pereme fölött is átviszi); felfelé ugrásnál előbb függőlegesen emelkedünk,
+			// amíg a talpunk a cél felülete fölé nem ér (különben a tető / a fal alá ütköznénk)
+			if (jumpTop >= 0 && y + height > jumpTop + 0.5)
+				velocity.x = 0;
+			else
+				velocity.x = clamp(dist * 6, spd * 1.2);
+			routeX = x;
+			routeStall = 0;
+			return true;
+		}
+		jumpTop = -1;
+		if (n.k == 2)
+		{
+			var up = cr - n.r;
+			// felfelé ugrás előtt a saját csempénk közepére állunk (a fal / tető pereme mellé ne lógjunk)
+			var ownCx = cc * T + T / 2;
+			if (up > 0 && Math.abs(cx - ownCx) > 2.5)
+			{
+				velocity.x = (ownCx > cx ? 1 : -1) * Math.min(spd, Math.abs(ownCx - cx) * 8 + 20);
+				return true;
+			}
+			var dyl = (n.r + 1) * T - (y + height);
+			var g = 900.0;
+			var v = Math.max(150.0, Math.sqrt(2 * g * Math.max(0.0, -dyl + 9)));
+			var ok = false;
+			var dd = Math.abs(dist);
+			while (v <= jumpV)
+			{
+				var tt = (v + Math.sqrt(v * v + 2 * g * dyl)) / g;
+				if (dd / tt <= spd * 1.35)
+				{
+					velocity.y = -v;
+					velocity.x = dir * Math.max(40.0, dd / tt);
+					ok = true;
+					break;
+				}
+				v += 8;
+			}
+			if (!ok)
+			{
+				velocity.y = -jumpV;
+				velocity.x = dir * spd;
+			}
+			hopDir = 0;
+			if (up > 0)
+			{
+				velocity.x = 0; // először egyenesen fel
+				jumpTop = (n.r + 1) * T;
+			}
+		}
+		else
+			velocity.x = dir * spd;
+		// elakadás: ha 1,2 mp-ig nem mozdul, feladjuk (újratervezés később)
+		if (Math.abs(x - routeX) < 0.8)
+		{
+			routeStall += elapsed;
+			if (routeStall > 1.2)
+			{
+				route = null;
+				planCool = 0.8;
+				return false;
+			}
+		}
+		else
+		{
+			routeX = x;
+			routeStall = 0;
+		}
+		return true;
+	}
+
+	/** A cél (hős) csempéje: a lába alatti első talajig lejjebb keresve. Visszaadja a [oszlop, sor] párt, vagy null. */
+	function goalNode(tx:Float):Array<Int>
+	{
+		var T = LevelData.T;
+		var gc = Std.int(tx / T);
+		var gr = Std.int((target.y + target.height - 1) / T);
+		for (k in 0...16)
+			if (validNode(gc, gr + k))
+				return [gc, gr + k];
+		return null;
 	}
 
 	/** A (col) oszlopban lent (a fromRow alatti első talajon) olyan gödör van-e, ahonnan ugrással nem tudnánk kijönni? */

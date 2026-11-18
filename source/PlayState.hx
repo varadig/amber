@@ -1802,6 +1802,33 @@ class PlayState extends FlxState
 		c.onSpecial = doSpecial;
 		c.hazardAhead = hazardAhead;
 		c.findLoot = findLoot;
+		// az útkereső dinamikus akadályai: repedezett falak, zárt kapuk (és a TALL-nak a rács)
+		c.blockedExtra = (tx:Int, ty:Int) ->
+		{
+			var T = LevelData.T;
+			var px = tx * T;
+			var py = ty * T;
+			for (i in 0...cracked.length)
+			{
+				var b = cracked.members[i];
+				if (b != null && b.alive && b.exists && b.x < px + T && b.x + b.width > px && b.y < py + T && b.y + b.height > py)
+					return true;
+			}
+			for (i in 0...gates.length)
+			{
+				var gt = gates.members[i];
+				if (gt != null && gt.alive && gt.exists && !gt.isOpen && gt.x < px + T && gt.x + gt.width > px && gt.y < py + T && gt.y + gt.height > py)
+					return true;
+			}
+			if (c.kind == Companions.TALL)
+				for (i in 0...grates.length)
+				{
+					var gr = grates.members[i];
+					if (gr != null && gr.alive && gr.exists && gr.x < px + T && gr.x + gr.width > px && gr.y < py + T && gr.y + gr.height > py)
+						return true;
+				}
+			return false;
+		};
 		// a mozgó platformok a követő számára: hova ugorhat (és milyen sebességgel megy a platform)
 		c.movingStand = (tx:Int, ty:Int) ->
 		{
