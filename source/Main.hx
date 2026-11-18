@@ -47,6 +47,7 @@ class Main extends Sprite
 		#end
 		// A borostyán-monitor shader az egész játékon (a játék példányon, hogy a pásztázó-vonalak az ablak felbontásán is élesek legyenek)
 		Looks.load();
+		DevReload.init(); // dev build: élő újratöltés új dev build esetén
 		amber = new AmberShader();
 		var filter = new ShaderFilter(amber);
 		// a kamera szűrője állapotváltáskor elvész (új kamera), ezért minden váltás után újra beállítjuk

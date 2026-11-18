@@ -1,6 +1,13 @@
-// Cadence fejlesztői szerver: statikus kiszolgálás a megadott mappából, 0.0.0.0-n (így telefonról is elérhető), gyorsítótár nélkül.
+// Amber fejlesztői szerver: statikus kiszolgálás a megadott mappából, 0.0.0.0-n (így telefonról is elérhető), gyorsítótár nélkül,
+// + élő újratöltés a megnyitott DEV játék-példányoknak, ha új DEV build készül.
 //   node scripts/devserver.js <mappa> [port]
 // A scripts/play.ps1 indítja (a Node-ot a PATH-ból, vagy a lime csomagolt példányából veszi).
+//
+// Élő újratöltés (szándékosan szigorú, hogy következetes legyen):
+//   - a böngészőben futó DEV játék (cheat-build, nem teszt) az `EventSource('/__reload?kind=dev')` végponthoz kapcsolódik (DevReload.hx);
+//   - a build végén a scripts/build.ps1 (scripts/reload.ps1) `POST /__built?kind=<dev|test|release>`-t küld;
+//   - a szerver CSAK az azonos fajtájú (kind) kapcsolatokat értesíti: dev build -> dev példányok újratöltenek; release / teszt build nem érinti őket.
+//   GET /__clients: a csatlakozott példányok száma fajtánként (JSON).
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -12,8 +19,46 @@ const types = {
   '.ico': 'image/x-icon', '.svg': 'image/svg+xml', '.map': 'application/json', '.wav': 'audio/wav', '.mp3': 'audio/mpeg',
 };
 
+/** Élő újratöltésre feliratkozott böngésző-példányok: {res, kind}. */
+const clients = new Set();
+
+function countByKind() {
+  const r = {};
+  for (const c of clients) r[c.kind] = (r[c.kind] || 0) + 1;
+  return r;
+}
+
 const server = http.createServer((req, res) => {
-  const url = decodeURIComponent((req.url || '/').split('?')[0]);
+  const u = new URL(req.url || '/', 'http://localhost');
+  const url = decodeURIComponent(u.pathname);
+
+  // --- élő újratöltés ---
+  if (url === '/__reload') {
+    const kind = u.searchParams.get('kind') || 'dev';
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', 'Connection': 'keep-alive', 'Access-Control-Allow-Origin': '*' });
+    res.write('retry: 1000\n\n');
+    const c = { res, kind };
+    clients.add(c);
+    console.log('[reload] +1 ' + kind + ' példány (' + JSON.stringify(countByKind()) + ')');
+    req.on('close', () => { clients.delete(c); console.log('[reload] -1 ' + kind + ' példány (' + JSON.stringify(countByKind()) + ')'); });
+    return;
+  }
+  if (url === '/__built' && req.method === 'POST') {
+    const kind = u.searchParams.get('kind') || 'release';
+    let n = 0;
+    for (const c of clients) if (c.kind === kind) { c.res.write('event: reload\ndata: ' + kind + '\n\n'); n++; }
+    console.log('[reload] ' + kind + ' build kész: ' + n + ' példány újratölt (összes: ' + JSON.stringify(countByKind()) + ')');
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ kind, reloaded: n }));
+    return;
+  }
+  if (url === '/__clients') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(countByKind()));
+    return;
+  }
+
+  // --- statikus kiszolgálás ---
   const file = path.normalize(path.join(root, url === '/' ? '/index.html' : url));
   if (!file.startsWith(root)) { res.writeHead(403); res.end(); return; }
   fs.readFile(file, (err, data) => {
@@ -25,6 +70,9 @@ const server = http.createServer((req, res) => {
     res.end(data);
   });
 });
+
+// a proxyk / böngészők ne zárják le a csendes kapcsolatot
+setInterval(() => { for (const c of clients) c.res.write(': ping\n\n'); }, 20000);
 
 server.on('error', (e) => {
   console.error('A szerver nem indult el (' + e.code + '): ' + e.message);

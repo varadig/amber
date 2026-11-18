@@ -12,3 +12,7 @@ $out = & haxelib run lime build html5 @extra 2>&1
 $errs = $out | Select-String -Pattern "\.hx:[0-9]+"
 if ($errs) { $errs | ForEach-Object { Write-Host $_ -ForegroundColor Red }; exit 1 }
 Write-Host "Kész: export\html5\bin" -ForegroundColor Green
+# Élő újratöltés: a build fajtája szerint értesíti a megnyitott böngésző-példányokat (csak az azonos fajtájúak töltenek újra):
+#   -Cheats / -Debug (teszt nélkül) = dev, -Test = test, különben release. Ha nem fut a fejlesztői szerver, csendben kimarad.
+$kind = if ($Test) { "test" } elseif ($Debug -or $Cheats) { "dev" } else { "release" }
+& (Join-Path $PSScriptRoot "reload.ps1") -Kind $kind
