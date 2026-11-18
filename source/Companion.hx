@@ -24,9 +24,7 @@ class Companion extends FlxSprite
 	public var target:FlxSprite;
 	public var face:Int = 1;
 	public var exited:Bool = false;
-	/** Mindegyik társnak saját élete van, és ugyanúgy sérül, mint a hős. */
-	public var hearts:Int = 3;
-	public var maxHearts:Int = 3;
+	/** A társ sérülése a közös akkut meríti (mint a hősé); itt csak a sérthetetlenség van. */
 	public var invuln:Float = 0;
 	/** WHEELIE: turbó-gurulás hátralévő ideje (áttöri a repedezett falat, kiüti az ellenséget). */
 	public var turboT:Float = 0;
@@ -86,7 +84,7 @@ class Companion extends FlxSprite
 		allowCollisions = FlxDirectionFlags.ANY;
 		if (kind != Companions.ORB)
 			acceleration.y = 900;
-		maxVelocity.set(190, 360);
+		maxVelocity.set(300, 480); // a LEGS-szinttel nő a társak futása / ugrása
 	}
 
 	/** Sérülés: elveszít egy szívet, rövid sérthetetlenség, hátralökődés. */
@@ -94,8 +92,8 @@ class Companion extends FlxSprite
 	{
 		if (invuln > 0 || turboT > 0 || mode == 3 || fading)
 			return false;
-		hearts--;
-		invuln = 1.4;
+		var core = Parts.tier(Parts.CORE);
+		invuln = core >= 5 ? 2.2 : (core >= 4 ? 1.9 : 1.4);
 		velocity.x = (x + width / 2 < fromX ? -1 : 1) * 130;
 		if (kind != Companions.ORB)
 			velocity.y = -180;
@@ -165,7 +163,7 @@ class Companion extends FlxSprite
 						face = dx;
 					if (specialCd <= 0 && onSpecial != null && (Input.dashPressed() || Input.shootPressed()))
 					{
-						specialCd = 0.35;
+						specialCd = 0.35 / skillBoost();
 						onSpecial(this);
 					}
 				case 0:
@@ -219,7 +217,7 @@ class Companion extends FlxSprite
 					updateLoot(elapsed);
 					var routing = false;
 					if (!idling && route != null)
-						routing = followRoute(onFloor, elapsed, kind == Companions.TALL ? 84.0 : 100.0, kind == Companions.TALL ? 320.0 : 335.0);
+						routing = followRoute(onFloor, elapsed, (kind == Companions.TALL ? 84.0 : 100.0) * Parts.runBoost(), (kind == Companions.TALL ? 320.0 : 335.0) * Parts.jumpBoost());
 					if (!idling && !routing)
 					{
 						// lefelé: ha a cél talpa legalább egy csempével lejjebb van, lelépünk (a középpont-összehasonlítás ezt két csempére tolta)
@@ -383,24 +381,34 @@ class Companion extends FlxSprite
 		}
 	}
 
+	/**
+	 * A társ különleges képességének gyorsasága: a hős alkatrész-szintjei fejlesztik
+	 * (WHEELIE: THRUSTER, TALL: GEAR, ORB: BLASTER); szintenként +20%.
+	 */
+	public function skillBoost():Float
+	{
+		var id = kind == Companions.WHEELIE ? Parts.THRUSTER : (kind == Companions.TALL ? Parts.GEAR : Parts.BLASTER);
+		return 1 + 0.2 * Math.max(0, Parts.tier(id) - 1);
+	}
+
 	/** Irányított mozgás (a földön járó társak): gyorsulás, ugrás (coyote idő, bufferelt gomb, változó magasság). */
 	function control(elapsed:Float, onFloor:Bool):Void
 	{
 		if (specialCd <= 0 && onSpecial != null && (Input.dashPressed() || Input.shootPressed()))
 		{
-			specialCd = kind == Companions.WHEELIE ? 0.9 : 0.4;
+			specialCd = (kind == Companions.WHEELIE ? 0.9 : 0.4) / skillBoost();
 			onSpecial(this);
 		}
 		if (turboT > 0)
 		{
 			turboT -= elapsed;
-			velocity.x = face * 240;
+			velocity.x = face * 240 * Parts.runBoost();
 			acceleration.y = 900;
 			return;
 		}
 		var dir = (Input.right() ? 1 : 0) - (Input.left() ? 1 : 0);
-		var spd = kind == Companions.TALL ? 88.0 : 112.0;
-		var jumpV = kind == Companions.TALL ? 320.0 : 335.0;
+		var spd = (kind == Companions.TALL ? 88.0 : 112.0) * Parts.runBoost();
+		var jumpV = (kind == Companions.TALL ? 320.0 : 335.0) * Parts.jumpBoost();
 		var target = dir * spd;
 		var acc = (onFloor ? 1500.0 : 900.0) * elapsed;
 		if (velocity.x < target)
@@ -445,10 +453,10 @@ class Companion extends FlxSprite
 	{
 		var cx = x + width / 2;
 		var dx = gx - cx;
-		var spd = kind == Companions.TALL ? 84.0 : 100.0;
+		var spd = (kind == Companions.TALL ? 84.0 : 100.0) * Parts.runBoost();
 		if (hurry > 0)
 			spd *= kind == Companions.TALL ? 2.2 : 1.5; // leszakadó platformon sietünk (a lassú TALL jobban), hogy ne zuhanjunk vele együtt
-		var jumpV = kind == Companions.TALL ? 320.0 : 335.0; // a hőssel azonos ugrómagasság (kb. 57 px)
+		var jumpV = (kind == Companions.TALL ? 320.0 : 335.0) * Parts.jumpBoost(); // a hőssel azonos ugrómagasság (kb. 57 px I. szinten, LEGS-szinttel nő)
 		var maxGap = kind == Companions.TALL ? 3 : 4;
 		// a cél lent van, és vízszintesen közel (a "közel" körül ingadozás ellen a lelépéshez tágabb sáv kell, és az irányt megtartjuk)
 		var ed = wantDown && onFloor && Math.abs(dx) <= near + 30 ? edgeDir() : 0;

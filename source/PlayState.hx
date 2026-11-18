@@ -248,7 +248,6 @@ class PlayState extends FlxState
 	var enemies:FlxTypedGroup<Enemy>;
 	var grounded:FlxGroup;
 	var gems:FlxTypedGroup<Pickup>;
-	var hearts:FlxTypedGroup<Pickup>;
 	var partItems:FlxTypedGroup<Pickup>;
 	var cells:FlxTypedGroup<Pickup>;
 	var checkpoints:FlxTypedGroup<Pickup>;
@@ -296,7 +295,8 @@ class PlayState extends FlxState
 	var particles:FlxTypedGroup<Particle>;
 	var ghosts:FlxTypedGroup<FlxSprite>;
 
-	var hudHearts:Array<FlxSprite> = [];
+	var hudLives:FlxText;
+	var gameOverNow:Bool = false;
 	var hudParts:Array<FlxSprite> = [];
 	var hudGems:FlxText;
 	var hudScore:FlxText;
@@ -620,10 +620,6 @@ class PlayState extends FlxState
 		}
 		add(gems);
 
-		hearts = new FlxTypedGroup();
-		for (h in data.hearts)
-			hearts.add(makePickup(h.x, h.y, Art.heart(), 8, 8, "heart"));
-		add(hearts);
 
 		// alkatrészek (a küldetés) és repülő-cellák
 		partItems = new FlxTypedGroup();
@@ -650,7 +646,8 @@ class PlayState extends FlxState
 		add(cells);
 
 		batts = new FlxTypedGroup();
-		for (b in data.batteries)
+		// a régi szív-tárgyak helyén is akkupakk van (nincs szív: az akku az életerő)
+		for (b in data.batteries.concat(data.hearts))
 		{
 			var it = makePickup(b.x, b.y, Art.battery(), 8, 10, "battery");
 			it.animation.add("glow", [0, 1], 3);
@@ -898,14 +895,9 @@ class PlayState extends FlxState
 	function buildHud():Void
 	{
 		hudAdding = true;
-		for (i in 0...5)
-		{
-			var h = new FlxSprite(6 + i * 10, 6);
-			h.loadGraphic(Art.heart(), false, 8, 8, false, "heart");
-			h.scrollFactor.set(0, 0);
-			add(h);
-			hudHearts.push(h);
-		}
+		hudLives = new FlxText(6, 6, 160, "", 8);
+		hudLives.scrollFactor.set(0, 0);
+		add(hudLives);
 		hudGems = new FlxText(6, 17, 160, "", 8);
 		hudGems.scrollFactor.set(0, 0);
 		add(hudGems);
@@ -1082,10 +1074,7 @@ class PlayState extends FlxState
 
 	function refreshHud():Void
 	{
-		for (i in 0...hudHearts.length)
-			hudHearts[i].visible = i < maxHeartsOf(ctrl);
-		for (i in 0...hudHearts.length)
-			hudHearts[i].loadGraphic(i < heartsOf(ctrl) ? Art.heart() : Art.heartEmpty(), false, 8, 8, false, i < heartsOf(ctrl) ? "heart" : "heartEmpty");
+		hudLives.text = "LIVES " + StringTools.rpad("", "#", Parts.lives);
 		for (i in 0...hudParts.length)
 			hudParts[i].alpha = found[i] ? 1 : 0.25;
 		hudGems.text = "ATOMS " + gemsGot + "/" + gemsTotal + "  BANK " + Parts.atoms;
@@ -1300,8 +1289,20 @@ class PlayState extends FlxState
 		{
 			modeT += elapsed;
 			super.update(elapsed);
-			if (modeT > 1.2)
-				FlxG.resetState();
+			if (modeT > (gameOverNow ? 2.6 : 1.8))
+			{
+				if (gameOverNow)
+				{
+					// vége: minden elvész, újra az 1. pályáról
+					level = 0;
+					totalScore = 0;
+					Parts.reset();
+					Companions.reset();
+					FlxG.switchState(() -> new PlayState());
+				}
+				else
+					FlxG.resetState();
+			}
 			return;
 		}
 		if (mode == 3)
@@ -1375,7 +1376,6 @@ class PlayState extends FlxState
 		{
 			FlxG.overlap(r, enemies, onEnemy);
 			FlxG.overlap(r, gems, onGem);
-			FlxG.overlap(r, hearts, onHeart);
 			FlxG.overlap(r, partItems, onPart);
 			FlxG.overlap(r, batts, onBatt);
 			FlxG.overlap(r, spikes, onSpike);
@@ -1606,15 +1606,13 @@ class PlayState extends FlxState
 		var drain = 0.7;
 		if (player.flightT > 0 && Input.jumpHeld())
 			drain += 2.5;
-		Parts.battery -= drain * dt;
+		Parts.battery -= drain * Parts.drainMul() * dt;
 		if (Parts.battery <= 0)
 		{
+			// kimerült az akku: elvész a jel (egy élet fogy)
 			Parts.battery = 0;
-			player.powerDown = 4.2;
-			wasDown = true;
-			Audio.play("fall", 0.9);
-			showToast("BATTERY EMPTY: REBOOTING...", 4.0);
 			FlxG.camera.shake(0.01, 0.25);
+			die();
 		}
 		else if (Parts.battery < 20)
 		{
@@ -2271,20 +2269,17 @@ class PlayState extends FlxState
 		Audio.play("hurt", 0.8);
 		FlxG.camera.shake(0.008, 0.15);
 		burst(c.x + 4, c.y + 4, 8, 0xFFFFFFFF, 80);
-		if (c.hearts <= 0)
-		{
-			c.hearts = c.maxHearts;
-			c.reset(respawn.x - 4, respawn.y);
-			c.velocity.set(0, 0);
-			showToast(Companions.NAMES[c.kind] + " WAS DEFEATED: BACK AT THE CHECKPOINT", 2.6);
-		}
+		hitBattery();
 	}
 
-	function heartsOf(s:FlxSprite):Int
-		return s == player ? player.hearts : cast(s, Companion).hearts;
-
-	function maxHeartsOf(s:FlxSprite):Int
-		return s == player ? player.maxHearts : cast(s, Companion).maxHearts;
+	/** Találat: a közös akku fogy (a CORE szintje csökkenti); ha kimerül, a jel elvész (elvész egy élet). */
+	function hitBattery():Void
+	{
+		Parts.battery = Math.max(0, Parts.battery - Parts.hitCost());
+		popText("-" + Std.int(Parts.hitCost()) + "%", ctrl.x, ctrl.y - 8);
+		if (Parts.battery <= 0.001)
+			die();
+	}
 
 	/** A társak különleges képességei: WHEELIE turbó-gurulás (áttöri a repedezett falat), TALL láda-emelés, ORB szikra (kart billent, ellenséget üt); a szállított láda követi a társat. */
 	function updateFriendSkills():Void
@@ -2326,7 +2321,7 @@ class PlayState extends FlxState
 		switch (c.kind)
 		{
 			case Companions.WHEELIE:
-				c.turboT = 0.45;
+				c.turboT = 0.45 * c.skillBoost();
 				Audio.play("dash", 0.9);
 				FlxG.camera.shake(0.004, 0.08);
 			case Companions.TALL:
@@ -2340,7 +2335,7 @@ class PlayState extends FlxState
 				else
 				{
 					var best:Crate = null;
-					var bd = 40.0;
+					var bd = 40.0 * c.skillBoost(); // GEAR-szinttel nő a TALL tartása / emelési hatósugara
 					for (cr in crates)
 					{
 						if (cr.carried)
@@ -2427,8 +2422,7 @@ class PlayState extends FlxState
 		FlxG.camera.shake(0.012, 0.2);
 		FlxG.camera.flash(0xFFFFFFFF, 0.12);
 		burst(player.x + 4, player.y + 6, 8, 0xFFFFFFFF, 90);
-		if (player.hearts <= 0)
-			die();
+		hitBattery();
 	}
 
 	function onGem(p:FlxSprite, g:Pickup):Void
@@ -2453,33 +2447,6 @@ class PlayState extends FlxState
 		}
 	}
 
-	function onHeart(p:FlxSprite, h:Pickup):Void
-	{
-		h.kill();
-		var healed = false;
-		if (p == player)
-		{
-			if (player.hearts < player.maxHearts)
-			{
-				player.hearts++;
-				healed = true;
-			}
-		}
-		else
-		{
-			var c = cast(p, Companion);
-			if (c.hearts < c.maxHearts)
-			{
-				c.hearts++;
-				healed = true;
-			}
-		}
-		if (!healed)
-			score += 50;
-		Audio.play("heal", 0.9);
-		burst(h.x + 4, h.y + 4, 8, 0xFFFFFFFF, 60);
-	}
-
 	/** Alkatrész felvétele: a küldetés előrehalad, a képesség (ha új) visszatér, a robot megjelenése is változik. */
 	function onPart(p:FlxSprite, it:Pickup):Void
 	{
@@ -2494,8 +2461,6 @@ class PlayState extends FlxState
 			tier = Parts.add(it.icon);
 			player.refreshLook();
 			player.applyParts();
-			if (it.icon == Parts.CORE && player.hearts < player.maxHearts)
-				player.hearts++;
 		}
 		score += 250;
 		Audio.play("key", 1);
@@ -2601,8 +2566,9 @@ NEXT: " + navTarget().label + " >>";
 	function fall():Void
 	{
 		Audio.play("fall", 0.9);
-		player.hearts--;
-		if (player.hearts <= 0)
+		// a szakadékba esés: az akku fogy (mint egy találatnál, de nagyobb), és vissza a mentési pontra
+		Parts.battery = Math.max(0, Parts.battery - Parts.hitCost() * 1.2);
+		if (Parts.battery <= 0.001)
 		{
 			die();
 			return;
@@ -2628,14 +2594,19 @@ NEXT: " + navTarget().label + " >>";
 		refreshHud();
 	}
 
+	/** Elvész a jel: egy élet fogy; ha elfogy mind, vége a játéknak (újra az 1. pályáról, minden elvész). */
 	function die():Void
 	{
+		if (mode == 2)
+			return;
 		mode = 2;
 		modeT = 0;
+		Parts.lives--;
+		gameOverNow = Parts.lives <= 0;
 		Audio.play("hurt", 1);
 		player.visible = false;
 		burst(player.x + 4, player.y + 6, 20, 0xFFFFFFFF, 120);
-		overlay.text = "SIGNAL LOST";
+		overlay.text = gameOverNow ? "GAME OVER\n\nALL BACKUPS LOST: BACK TO THE START" : "SIGNAL LOST\n\nBACKUPS LEFT: " + Parts.lives;
 		overlay.visible = true;
 		FlxG.camera.shake(0.015, 0.3);
 	}
@@ -2728,6 +2699,8 @@ NEXT: " + navTarget().label + " >>";
 		totalScore = score;
 		Parts.commit();
 		Companions.commit();
+		// a pálya teljesítéséért egy tartalék-élet jár (legfeljebb MAX_LIVES)
+		Parts.lives = Std.int(Math.min(Parts.MAX_LIVES, Parts.lives + 1));
 		level++;
 		if (level >= LevelData.COUNT)
 			FlxG.switchState(() -> new EndState());
@@ -2752,10 +2725,9 @@ NEXT: " + navTarget().label + " >>";
 			Main.tiredTarget = cheatTired;
 		if (cheatGod && player != null)
 		{
-			player.hearts = player.maxHearts;
 			player.invuln = Math.max(player.invuln, 0.1);
 			for (c in companions)
-				c.hearts = c.maxHearts;
+				c.invuln = Math.max(c.invuln, 0.1);
 		}
 		if (cheatInfBatt)
 			Parts.battery = 100;
@@ -2783,22 +2755,18 @@ NEXT: " + navTarget().label + " >>";
 
 	public function cheatHeal():Void
 	{
-		player.hearts = player.maxHearts;
-		for (c in companions)
-			c.hearts = c.maxHearts;
+		Parts.battery = 100;
 		showToast("CHEAT: HEALED", 1.4);
 	}
 
 	public function cheatDamage():Void
 	{
-		player.hearts = Std.int(Math.max(0, player.hearts - 1));
 		player.invuln = 0;
 		damaged();
 	}
 
 	public function cheatKill():Void
 	{
-		player.hearts = 0;
 		die();
 	}
 

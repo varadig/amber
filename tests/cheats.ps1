@@ -1,4 +1,4 @@
-# Teszt: az F9 cheat-menü megnyílik; alkatrészek, robotok, akku-effekt, minijáték és szintváltás cheatekkel; a menü bezárul.
+﻿# Teszt: az F9 cheat-menü megnyílik; alkatrészek, robotok, akku-effekt, minijáték és szintváltás cheatekkel; a menü bezárul.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 function Tap($key, $code, $vk) { Key "keyDown" $key $code $vk; Start-Sleep -Milliseconds 250; Key "keyUp" $key $code $vk; Start-Sleep -Milliseconds 300 }
@@ -30,7 +30,7 @@ try {
     Shot "cheat_shock.png"
     Js "(function(){var p=window.__ps; p.cheatGod=true; p.cheatDamage(); })()" | Out-Null
     Start-Sleep -Seconds 1
-    "god hearts full: " + (Js "window.__ps.player.hearts == window.__ps.player.maxHearts")
+    "god invulnerable: " + (Js "window.__ps.player.invuln > 0")
     Js "window.__ps.cheatMini(2)" | Out-Null
     Start-Sleep -Seconds 2
     "mini open: " + (Js "window.__ps.subState != null && window.__ps.subState.titleS === 'MEMORY BANK'")
@@ -41,3 +41,5 @@ try {
     "goto level: " + (Js "window.__ps !== window.__old")
     "errors: " + ((Js "window.__errors") -join '; ')
 } finally { Stop-Cdp }
+
+

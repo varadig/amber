@@ -1,9 +1,9 @@
-package;
+﻿package;
 
 /**
  * A robot alkatrészei. A hős csupaszon indul; minden alkatrésznek hatása van a játékra, hiányuk pedig hátrány:
  *  - LEGS: teljes ugrás és gyors futás (nélküle csak szökdécsel, lassú)
- *  - CORE: szívek (nélküle csak 2, alkatrészenként +1, legfeljebb 5)
+ *  - CORE: az akku lassabban fogy és a találat kevesebbet vesz el (nincs szív: az akku az életerő; kimerülve elvész egy élet)
  *  - VISOR: látás (nélküle homályos, sötét, zajos a kép; a LENS = II. szint: a titkos atomok világítanak, és 3-at érnek)
  *  - THRUSTER: szökellés (dash); II. szint: két szökellés leszállás előtt
  *  - CLAWS: fal-kapaszkodás és fal-ugrás
@@ -36,18 +36,18 @@ class Parts
 
 	/** Az első felvételkor kiírt hatás-leírás (a játék szövege angolul), és a magasabb szintekre. */
 	public static final INFO = [
-		"FULL JUMP + FAST RUN", "POWER ONLINE: +1 HEART", "VISION CLEARS UP", "DASH: X / SHIFT", "CLING TO WALLS + WALL JUMP",
+		"FULL JUMP + FAST RUN", "POWER ONLINE: BATTERY DRAINS SLOWER", "VISION CLEARS UP", "DASH: X / SHIFT", "CLING TO WALLS + WALL JUMP",
 		"FIRE WITH V / J", "CONTROLS RESPOND FASTER", "AIR CONTROL + STRONGER BOUNCE", "RADAR ONLINE", "FLIGHT: HOLD JUMP"
 	];
 	public static final INFO2 = [
-		"HIGHER JUMP, FASTER RUN", "+1 HEART", "LENS: SECRET ATOMS GLOW (+3 EACH)", "BOOSTER: TWO DASHES PER JUMP", "GRIP: SLOWER WALL SLIDE", "RAPID FIRE",
+		"HIGHER JUMP, FASTER RUN", "BATTERY DRAINS EVEN SLOWER", "LENS: SECRET ATOMS GLOW (+3 EACH)", "BOOSTER: TWO DASHES PER JUMP", "GRIP: SLOWER WALL SLIDE", "RAPID FIRE",
 		"SNAPPIER STILL", "EVEN BETTER AIR CONTROL", "RADAR SHOWS ENEMIES TOO", "LONGER FLIGHT"
 	];
 
 	/** A II. szint utáni fejlesztések (III-tól): részenként a következő szintek hatása; a hossza adja a legnagyobb szintet. */
 	static final UP = [
 		["TURBO LEGS: HIGHER, FASTER", "RACING LEGS: HIGHER, FASTER", "PEAK LEGS: HIGHER, FASTER"],
-		["+1 HEART", "LONGER PROTECTION AFTER A HIT", "LONGEST PROTECTION, QUICK RECOVERY"],
+		["HITS DRAIN LESS BATTERY", "LONGER PROTECTION AFTER A HIT", "TOUGHEST: LEAST DAMAGE, QUICK RECOVERY"],
 		["SECRET ATOMS WORTH +4", "SECRET ATOMS WORTH +5", "SECRET ATOMS WORTH +6"],
 		["THREE DASHES PER JUMP", "FASTER DASH RECHARGE", "FOUR DASHES PER JUMP"],
 		["HIGHER WALL JUMP", "IRON GRIP: BARELY SLIDES", "MASTER CLIMBER: WALL JUMP++"],
@@ -59,6 +59,29 @@ class Parts
 	];
 
 	/** A legnagyobb elérhető szint (I-től). */
+	/** Hátralévő életek (a játékmenet egészére; halálkor fogy, pályánként +1 jár; 0 = vége a játéknak). Nem része a mentett állapotnak. */
+	public static inline var START_LIVES = 3;
+	public static inline var MAX_LIVES = 5;
+	public static var lives:Int = START_LIVES;
+
+	static inline function at(v:Array<Float>, id:Int):Float
+		return v[Std.int(Math.max(0, Math.min(v.length, tier(id)) - 1))];
+
+	/** A társak a hős LEGS-szintjéből kapnak futás- és ugrásbónuszt (a hőssel azonos arány), hogy tarthassák a tempót. */
+	public static function runBoost():Float
+		return at([1.0, 1.10, 1.19, 1.27, 1.36], LEGS);
+
+	public static function jumpBoost():Float
+		return at([1.0, 1.10, 1.15, 1.20, 1.24], LEGS);
+
+	/** Mennyi akkut vesz el egy találat (a CORE szintje csökkenti). */
+	public static function hitCost():Float
+		return has(CORE) ? at([24.0, 22.0, 19.0, 19.0, 16.0], CORE) : 26.0;
+
+	/** Az akku fogyásának szorzója (a CORE szintje csökkenti). */
+	public static function drainMul():Float
+		return has(CORE) ? at([0.85, 0.7, 0.6, 0.6, 0.55], CORE) : 1.0;
+
 	public static function maxTier(id:Int):Int
 		return 2 + UP[id].length;
 
@@ -98,6 +121,7 @@ class Parts
 		tiers = [for (_ in 0...COUNT) 0];
 		battery = 100;
 		atoms = 0;
+		lives = START_LIVES;
 		commit();
 	}
 
@@ -128,3 +152,4 @@ class Parts
 		return m;
 	}
 }
+

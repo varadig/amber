@@ -19,8 +19,6 @@ class Player extends FlxSprite
 	static inline var DASH_TIME = 0.16;
 	public static inline var FLIGHT_TIME = 5.0;
 
-	public var hearts:Int = 3;
-	public var maxHearts:Int = 3;
 	public var invuln:Float = 0;
 	public var dashing:Bool = false;
 	public var dropT:Float = 0;
@@ -85,17 +83,10 @@ class Player extends FlxSprite
 		acceleration.y = GRAV;
 		maxVelocity.set(400, MAX_FALL + 200);
 		refreshLook();
-		applyParts();
-		hearts = maxHearts;
 	}
 
-	/** Az alkatrészek hatása: szívek száma (CORE) és a szökellések száma (THRUSTER). */
-	public function applyParts():Void
-	{
-		maxHearts = 2 + Std.int(Math.min(3, Parts.tier(Parts.CORE)));
-		if (hearts > maxHearts)
-			hearts = maxHearts;
-	}
+	/** Az alkatrészek hatását a lekérdezések (Parts.tier) adják, ide már nincs mit állítani (a hívók megmaradtak). */
+	public function applyParts():Void {}
 
 	function maxDashes():Int
 	{
@@ -470,7 +461,6 @@ class Player extends FlxSprite
 	{
 		if (invuln > 0 || dashing)
 			return false;
-		hearts--;
 		var core = Parts.tier(Parts.CORE);
 		invuln = core >= 5 ? 2.4 : (core >= 4 ? 2.0 : 1.5); // a CORE IV-V. szintje: hosszabb védelem sérülés után
 		stun = core >= 5 ? 0.18 : 0.28;
