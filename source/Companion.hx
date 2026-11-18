@@ -174,6 +174,13 @@ class Companion extends FlxSprite
 						gx += Math.cos(bobT * 8) * 16;
 						gy += Math.sin(bobT * 8) * 10;
 					}
+					// segítség: a közelben lévő (akár magasan lebegő) atomokat, akkukat összeszedi
+					updateLoot(elapsed);
+					if (loot != null)
+					{
+						gx = loot.x + loot.width / 2 - width / 2;
+						gy = loot.y + loot.height / 2 - height / 2;
+					}
 					velocity.x = clamp((gx - x) * 4, 150);
 					velocity.y = clamp((gy - y) * 4, 150);
 					face = velocity.x >= 0 ? 1 : -1;
@@ -205,9 +212,14 @@ class Companion extends FlxSprite
 					setSolidRole(false);
 				case 0:
 					wantUp = target.y + target.height < y + height - 12;
+					// segítség: a vele egy szinten, közel fekvő atomot / akkut útközben összeszedi
+					updateLoot(elapsed);
 					if (!idling)
 						// lefelé: ha a cél talpa legalább egy csempével lejjebb van, lelépünk (a középpont-összehasonlítás ezt két csempére tolta)
-						walkToward(tx, kind == Companions.TALL ? 30 : 22, onFloor, hitWall, target.y + target.height > y + height + 12);
+						walkToward(loot != null ? loot.x + loot.width / 2 : tx, loot != null ? 4 : (kind == Companions.TALL ? 30 : 22), onFloor, hitWall, target.y + target.height > y + height + 12);
+					// a gyűjtendő tárgy közvetlenül fölöttünk van: ugrunk érte
+					if (loot != null && onFloor && !idling && Math.abs(loot.x + loot.width / 2 - cx) < 12 && loot.y + loot.height / 2 < y + height - 6)
+						velocity.y = -310;
 					setSolidRole(false);
 					// elakadás / lemaradás / leesés: a célhoz kerül
 					var dx = tx - cx;
@@ -517,6 +529,50 @@ class Companion extends FlxSprite
 	var wantUp:Bool = false;
 	/** Falra / platformra ugrás iránya a levegőben (0 = nincs): a csúcson is a perem felé nyomjuk. */
 	var hopDir:Int = 0;
+	/**
+	 * Segítség (gyűjtés): a PlayState keres egy közeli felvehető tárgyat (atom, akku): `findLoot(társ, kihagyandó)`; a társ érte megy.
+	 * Ha 4 mp alatt nem éri el, 25 mp-re kihagyja (pl. falba zárt tárgy).
+	 */
+	public var findLoot:Companion->FlxSprite->FlxSprite = null;
+	var loot:FlxSprite = null;
+	var skip:FlxSprite = null;
+	var skipT:Float = 0;
+	var lootScan:Float = 0;
+	var lootT:Float = 0;
+
+	function updateLoot(elapsed:Float):Void
+	{
+		if (findLoot == null)
+			return;
+		if (skipT > 0)
+		{
+			skipT -= elapsed;
+			if (skipT <= 0)
+				skip = null;
+		}
+		if (loot != null && (!loot.alive || !loot.exists))
+			loot = null;
+		if (loot != null)
+		{
+			lootT += elapsed;
+			if (lootT > 4)
+			{
+				skip = loot;
+				skipT = 25;
+				loot = null;
+			}
+		}
+		if (loot == null)
+		{
+			lootScan -= elapsed;
+			if (lootScan <= 0)
+			{
+				lootScan = 0.4;
+				loot = findLoot(this, skip);
+				lootT = 0;
+			}
+		}
+	}
 	/** Veszély (tüske, nem ráléphető ellenség) a társ előtt a megadott irányban? A PlayState állítja be; igaz esetén a társ átugorja. */
 	public var hazardAhead:Companion->Int->Bool = null;
 	/** A lelépés megválasztott iránya (a peremhez), amíg a cél alattunk van: nem ingadozik a két perem között. */

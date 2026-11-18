@@ -1737,6 +1737,42 @@ class PlayState extends FlxState
 	}
 
 	/** Egy társ létrehozása a megadott helyen. */
+	/**
+	 * Gyűjtés (segítő társak): a követett robot közelében lévő felvehető tárgy (atom, akku; a titkos atom csak ha látszik).
+	 * Az ORB (repül) a hős körüli 170 x 130 px-es sávból bármit elér, a földön járók csak a velük egy szinten, 90 px-en belül lévőt.
+	 */
+	function findLoot(c:Companion, skip:FlxSprite):FlxSprite
+	{
+		var hx = c.target.x + c.target.width / 2;
+		var hy = c.target.y + c.target.height / 2;
+		var cx = c.x + c.width / 2;
+		var cy = c.y + c.height / 2;
+		var flies = c.kind == Companions.ORB;
+		var best:FlxSprite = null;
+		var bd = 1e9;
+		for (g in [gems, batts])
+			for (i in 0...g.length)
+			{
+				var s = g.members[i];
+				if (s == null || !s.alive || !s.exists || s == skip || s.alpha < 0.3)
+					continue;
+				var sx = s.x + s.width / 2;
+				var sy = s.y + s.height / 2;
+				if (Math.abs(sx - hx) > 170 || Math.abs(sy - hy) > 130)
+					continue;
+				// a földi társ a vele egy szinten lévőt, vagy a fölötte ugrással elérhetőt (legfeljebb ~48 px) veszi fel
+				if (!flies && (Math.abs(sx - cx) > 90 || sy - cy > 22 || cy - sy > 48))
+					continue;
+				var d = Math.abs(sx - cx) + Math.abs(sy - cy);
+				if (d < bd)
+				{
+					bd = d;
+					best = s;
+				}
+			}
+		return best;
+	}
+
 	/** Tüske vagy nem rálépható (tüskés hátú) ellenség közvetlenül a társ előtt (kb. 6-20 px): a társ átugorja. */
 	function hazardAhead(c:Companion, dir:Int):Bool
 	{
@@ -1765,6 +1801,7 @@ class PlayState extends FlxState
 		c.mode = followAll ? 0 : 1;
 		c.onSpecial = doSpecial;
 		c.hazardAhead = hazardAhead;
+		c.findLoot = findLoot;
 		// a mozgó platformok a követő számára: hova ugorhat (és milyen sebességgel megy a platform)
 		c.movingStand = (tx:Int, ty:Int) ->
 		{
