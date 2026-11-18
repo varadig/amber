@@ -699,6 +699,31 @@ class Companion extends FlxSprite
 	var routeT:Float = 0;
 	var routeX:Float = 0;
 	var routeStall:Float = 0;
+	/** Az útvonal kiinduló csempéje (a tiltólistához) és a sikertelen élek: kulcs = honnan * N + hova, érték = a tiltás lejárta (másodpercben). */
+	var routeStartC:Int = 0;
+	var routeStartR:Int = 0;
+	var badEdges:Map<Int, Float> = new Map();
+	var jumpStep:Int = -1;
+	var jumpTries:Int = 0;
+
+	/** Az éppen követett lépés (honnan -> hova) sikertelen: 25 mp-re tiltólistára kerül, hogy az újratervezés ne ugyanazt próbálja; az útvonal megszakad. */
+	function failStep():Void
+	{
+		if (route != null && routeI < route.length)
+		{
+			var W = level.w;
+			var N = W * LevelData.H;
+			var n = route[routeI];
+			var fc = routeI > 0 ? route[routeI - 1].c : routeStartC;
+			var fr = routeI > 0 ? route[routeI - 1].r : routeStartR;
+			var key = (fr * W + fc) * N + (n.r * W + n.c);
+			var prev = badEdges.get(key);
+			// ugyanaz az él másodszor is sikertelen: hosszabb tiltás
+			badEdges.set(key, haxe.Timer.stamp() + (prev != null && prev > haxe.Timer.stamp() - 60 ? 90 : 25));
+		}
+		route = null;
+		jumpStep = -1;
+	}
 	/** Felfelé ugrás közben a cél felület magassága (px), amíg a talpunk nem ér fölé: addig csak függőlegesen emelkedünk. */
 	var jumpTop:Float = -1;
 	var planCool:Float = 0;
@@ -813,9 +838,14 @@ class Companion extends FlxSprite
 			}
 			return top;
 		}
+		var nowT = haxe.Timer.stamp();
 		function relax(from:Int, c2:Int, r2:Int, cost:Float, k:Int):Void
 		{
 			var id = r2 * W + c2;
+			// a korábban sikertelen élek (ahol elakadtunk / többször nem sikerült az ugrás) egy ideig tiltottak
+			var until = badEdges.get(from * N + id);
+			if (until != null && until > nowT)
+				return;
 			var ng = g[from] + cost;
 			if (ng < g[id])
 			{
@@ -827,6 +857,8 @@ class Companion extends FlxSprite
 		}
 		var maxGap = kind == Companions.TALL ? 3 : 4;
 		var tall = kind == Companions.TALL;
+		routeStartC = sc;
+		routeStartR = sr;
 		var sid = sr * W + sc;
 		g[sid] = 0;
 		push(sid, Math.abs(sc - gc) + Math.abs(sr - gr));
@@ -947,7 +979,7 @@ class Companion extends FlxSprite
 		routeT += elapsed;
 		if (routeT > 10)
 		{
-			route = null;
+			failStep();
 			planCool = 1;
 			return false;
 		}
@@ -988,6 +1020,20 @@ class Companion extends FlxSprite
 				var tt = (v + Math.sqrt(v * v + 2 * g * dyl)) / g;
 				if (dd / tt <= spd * 1.35)
 				{
+					// ugyanarra a csempére ugrik-e már harmadszor? akkor az az él nem jó: tiltólista, újratervezés
+					if (jumpStep == routeI)
+						jumpTries++;
+					else
+					{
+						jumpStep = routeI;
+						jumpTries = 1;
+					}
+					if (jumpTries > 2)
+					{
+						failStep();
+						planCool = 0.3;
+						return false;
+					}
 					velocity.y = -v;
 					velocity.x = dir * Math.max(40.0, dd / tt);
 					ok = true;
@@ -1015,7 +1061,7 @@ class Companion extends FlxSprite
 			routeStall += elapsed;
 			if (routeStall > 1.2)
 			{
-				route = null;
+				failStep();
 				planCool = 0.8;
 				return false;
 			}

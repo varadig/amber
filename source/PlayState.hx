@@ -351,6 +351,8 @@ class PlayState extends FlxState
 
 	// A HUD külön kamerán (hudCam) rajzol, amin nincs shader: a sérülés-kisülés, a fáradtság-elmosás és a homályos látás a játékot érinti,
 	// a fontos információ (szívek, akku, alkatrészek) viszont mindig tisztán olvasható.
+	static var sharedHud:HudShader;
+	static var sharedLamp:LampShader;
 	var hudCam:flixel.FlxCamera;
 	var hudLayer:flixel.group.FlxGroup;
 	var hudAdding:Bool = false;
@@ -374,8 +376,17 @@ class PlayState extends FlxState
 		super.openSubState(subState);
 	}
 
+	/** Idő-jelölő a betöltés méréséhez (csak teszt-buildben: window.__marks). */
+	inline function mark(name:String):Void
+	{
+		#if test
+		js.Syntax.code("(window.__marks = window.__marks || []).push([{0}, {1}])", name, haxe.Timer.stamp() * 1000);
+		#end
+	}
+
 	override public function create():Void
 	{
+		mark("create start");
 		super.create();
 		Audio.init();
 		Audio.playMusic(level);
@@ -388,6 +399,7 @@ class PlayState extends FlxState
 		score = totalScore;
 		found = [for (_ in data.parts) false];
 
+		mark("level data loaded");
 		// háttér: csillagok és két réteg távoli rom (paralaxis)
 		// pályánként más: égitest + távoli és közeli réteg stílusa (romok, gyár, árbocok, kupolák, hűtőtornyok, fogaskerekek, barlang, akvadukt, kábelek, felhőkarcolók)
 		var li = level % 10;
@@ -395,6 +407,7 @@ class PlayState extends FlxState
 		addBackdrop(Art.backdrop(480 + Std.int(worldW * 0.18), 11 + level, "5", 30, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9][li]), 0.18, 0.12, -70);
 		addBackdrop(Art.backdrop(480 + Std.int(worldW * 0.34), 29 + level, "6", 60, [0, 0, 9, 1, 2, 1, 6, 2, 3, 4][li]), 0.34, 0.2, -60);
 
+		mark("backdrops done");
 		// épületek: homlokzat a felszínen, falpapír a belső termekben (a csempék mögé)
 		for (d in data.decor)
 		{
@@ -740,7 +753,9 @@ class PlayState extends FlxState
 		hudCam.bgColor = 0x00000000;
 		hudCam.pixelPerfectRender = true;
 		hudCam.antialiasing = false;
-		hudCam.filters = [new openfl.filters.ShaderFilter(new HudShader())]; // borostyán árnyalat, de effektek nélkül
+		if (sharedHud == null)
+			sharedHud = new HudShader(); // a shader-program fordítása drága: pályaváltáskor újrahasznosítjuk
+		hudCam.filters = [new openfl.filters.ShaderFilter(sharedHud)]; // borostyán árnyalat, de effektek nélkül
 		FlxG.cameras.add(hudCam, false);
 		hudLayer = new flixel.group.FlxGroup();
 		hudLayer.cameras = [hudCam];
@@ -764,6 +779,7 @@ class PlayState extends FlxState
 		#if cheats
 		applyDevGoto();
 		#end
+		mark("create end");
 		#if test
 		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}; window.__LevelLoader = {5}; window.__Audio = {6}; window.__Parts = {7}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery, LevelLoader, Audio, Parts);
 		#end
@@ -796,7 +812,9 @@ class PlayState extends FlxState
 					break;
 				}
 		}
-		lampShader = new LampShader();
+		if (sharedLamp == null)
+			sharedLamp = new LampShader(); // a shader-program fordítása drága: pályaváltáskor újrahasznosítjuk
+		lampShader = sharedLamp;
 		lampOverlay = new FlxSprite(0, 0);
 		lampOverlay.makeGraphic(480, 270, 0xFFFFFFFF, false, "lampoverlay");
 		lampOverlay.scrollFactor.set(0, 0);

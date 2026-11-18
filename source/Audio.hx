@@ -153,6 +153,14 @@ class Audio
 	 * A zene biztosítása: ha még nem indult, indítjuk; ha létezik (akkor is, ha áll: pl. a böngészőablak fókuszvesztésekor a Flixel megállította), nem indítunk másikat.
 	 * Korábban ilyenkor új példány indult, a régi pedig a fókusz visszatértekor folytatódott: dupla / szellemzene.
 	 */
+	/** Idő-jelölő a betöltés méréséhez (csak teszt-buildben: window.__marks). */
+	public static inline function mark(name:String):Void
+	{
+		#if test
+		js.Syntax.code("(window.__marks = window.__marks || []).push([{0}, {1}])", name, haxe.Timer.stamp() * 1000);
+		#end
+	}
+
 	static function ensureMusic():Void
 	{
 		if (!musicWanted)
@@ -172,7 +180,9 @@ class Audio
 		if (m == null)
 		{
 			playingTheme = musicTheme;
+			mark("playMusic begin");
 			FlxG.sound.playMusic(snd, null, MUSIC_VOLUME * musicVolume, true);
+			mark("playMusic end");
 			if (musicHeld && FlxG.sound.music != null)
 				FlxG.sound.music.pause();
 		}
@@ -196,6 +206,17 @@ class Audio
 	{
 		if (!initialized)
 			return;
+		// a kész mintákból a hangpuffer is részletekben készül (különben ~0,3 mp-es akadás a pályák elején)
+		if (soundJob != null)
+		{
+			if (soundJob.step(5))
+			{
+				musicSounds.set(soundJobTheme, soundJob.result);
+				soundJob = null;
+				ensureMusic();
+			}
+			return;
+		}
 		if (job != null && jobTheme != musicTheme && !musicSounds.exists(musicTheme))
 			job = null; // közben másik téma lett sürgős
 		if (job == null)
@@ -208,11 +229,15 @@ class Audio
 		}
 		if (job.step(5))
 		{
-			musicSounds.set(jobTheme, toSound(job.result, 2, 0.8));
+			mark("music samples done");
+			soundJob = new SoundJob(job.result, 2, 0.8);
+			soundJobTheme = jobTheme;
 			job = null;
-			ensureMusic();
 		}
 	}
+
+	static var soundJob:SoundJob;
+	static var soundJobTheme:Int = -1;
 
 	/** Védőháló: a zene-példányon kívül semmilyen hosszú (>15 s) hang nem szólhat (szellemzene / dupla indítás ellen); képkockánként hívva. */
 	public static function guard():Void
@@ -442,5 +467,76 @@ class Audio
 			b.set(44 + i, Std.int(Math.round(v * 127)) + 128);
 		}
 		return Sound.fromAudioBuffer(AudioBuffer.fromBytes(b));
+	}
+}
+
+/**
+ * A zene hangpufferének (8 bites WAV) részletekben készítése: az aluláteresztő szűrő és a bájtírás ~2,6 millió mintán egyben másodperc tört részéig
+ * akasztaná a játékot; ez képkockánként néhány ms-ot dolgozik (mint a MusicJob).
+ */
+class SoundJob
+{
+	var samples:Array<Float>;
+	var channels:Int;
+	var lp:Float;
+	var b:Bytes;
+	var state:Array<Float>;
+	var i:Int = 0;
+	var dataLen:Int;
+
+	public var result:Sound;
+	public var done:Bool = false;
+
+	public function new(samples:Array<Float>, channels:Int, lp:Float)
+	{
+		this.samples = samples;
+		this.channels = channels;
+		this.lp = lp;
+		dataLen = samples.length;
+		b = Bytes.alloc(44 + dataLen);
+		function str(pos:Int, s:String)
+			for (k in 0...s.length)
+				b.set(pos + k, s.charCodeAt(k));
+		str(0, "RIFF");
+		b.setInt32(4, 36 + dataLen);
+		str(8, "WAVE");
+		str(12, "fmt ");
+		b.setInt32(16, 16);
+		b.setUInt16(20, 1);
+		b.setUInt16(22, channels);
+		b.setInt32(24, Audio.RATE);
+		b.setInt32(28, Audio.RATE * channels);
+		b.setUInt16(32, channels);
+		b.setUInt16(34, 8);
+		str(36, "data");
+		b.setInt32(40, dataLen);
+		state = [for (c in 0...channels) 0.0];
+	}
+
+	/** Legfeljebb ~ms milliszekundumnyi munka; igazzal tér vissza, ha kész (result). */
+	public function step(ms:Float):Bool
+	{
+		if (done)
+			return true;
+		var t0 = haxe.Timer.stamp();
+		while (i < dataLen)
+		{
+			var end = Std.int(Math.min(dataLen, i + 20000));
+			for (k in i...end)
+			{
+				var c = k % channels;
+				state[c] += (samples[k] - state[c]) * lp;
+				var v = Math.max(-1, Math.min(1, state[c]));
+				b.set(44 + k, Std.int(Math.round(v * 127)) + 128);
+			}
+			i = end;
+			if ((haxe.Timer.stamp() - t0) * 1000 >= ms)
+				return false;
+		}
+		Audio.mark("wav filled");
+		result = Sound.fromAudioBuffer(AudioBuffer.fromBytes(b));
+		Audio.mark("wav decoded");
+		done = true;
+		return true;
 	}
 }

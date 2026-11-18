@@ -141,22 +141,21 @@ class Music
 				var third = chord.minor ? 3 : 4;
 				var barLen = Std.int(SLOTS * eighth);
 
+				// Minden hang külön kis feladat (a MusicJob időkeretet tart: egy hosszú hang renderelése se akaszthassa meg a képkockát)
 				// lebegő pad: a hangok enyhén elhangolt, lassan felfutó fűrészek (alacsony oktáv)
 				if (sec.layers.indexOf("p") >= 0)
-					tasks.push(() ->
-					{
+				{
 					var root = chord.root;
 					while (root > 52)
 						root -= 12;
 					while (root < 45)
 						root += 12;
 					for (iv in [0, third, 7])
-						put(pad(freq(root + iv), barLen + Std.int(eighth)), Std.int(barStart), 0.13, 0);
-					});
+						tasks.push(() -> put(pad(freq(root + iv), barLen + Std.int(eighth)), Std.int(barStart), 0.13, 0));
+				}
 				// zenedoboz-arpeggio: nyolcadonként egy akkordhang
 				if (sec.layers.indexOf("b") >= 0)
-					tasks.push(() ->
-					{
+				{
 					var base = chord.root;
 					while (base < 72)
 						base += 12;
@@ -165,32 +164,30 @@ class Music
 					var tones = [base, base + third, base + 7, base + 12];
 					var order = ARP_ORDERS[th.arp];
 					for (k in 0...SLOTS)
-						put(box(freq(tones[order[k]]), Std.int(eighth * 3)), Std.int(barStart + k * eighth), 0.16, k % 2 == 0 ? -0.35 : 0.2);
-					});
+						tasks.push(() -> put(box(freq(tones[order[k]]), Std.int(eighth * 3)), Std.int(barStart + k * eighth), 0.16, k % 2 == 0 ? -0.35 : 0.2));
+				}
 				// pengetett basszus az 1. és 3. negyeden
 				if (sec.layers.indexOf("s") >= 0)
-					tasks.push(() ->
-					{
+				{
 					var bs = chord.root;
 					while (bs > 47)
 						bs -= 12;
 					while (bs < 38)
 						bs += 12;
-					put(bassPluck(freq(bs), Std.int(eighth * 3.5)), Std.int(barStart), 0.38, 0);
-					put(bassPluck(freq(bs + 7), Std.int(eighth * 3)), Std.int(barStart + 4 * eighth), 0.3, 0);
-					});
+					tasks.push(() -> put(bassPluck(freq(bs), Std.int(eighth * 3.5)), Std.int(barStart), 0.38, 0));
+					tasks.push(() -> put(bassPluck(freq(bs + 7), Std.int(eighth * 3)), Std.int(barStart + 4 * eighth), 0.3, 0));
+				}
 				// óraműszerű kattogás a 2. és 4. negyeden, halk fa-koppanás az 1.-en
 				if (th.ticks && sec.layers.indexOf("t") >= 0)
 					tasks.push(() ->
 					{
-					put(tickSnd, Std.int(barStart + 2 * eighth), 0.22, -0.5);
-					put(tickSnd, Std.int(barStart + 6 * eighth), 0.22, 0.5);
-					put(woodSnd, Std.int(barStart), 0.12, 0.2);
+						put(tickSnd, Std.int(barStart + 2 * eighth), 0.22, -0.5);
+						put(tickSnd, Std.int(barStart + 6 * eighth), 0.22, 0.5);
+						put(woodSnd, Std.int(barStart), 0.12, 0.2);
 					});
-				// dallam: klarinétszerű
+				// dallam: klarinétszerű (hangonként külön feladat)
 				if (sec.layers.indexOf("m") >= 0 && sec.melody != null)
-					tasks.push(() ->
-					{
+				{
 					var toks = sec.melody[b % sec.melody.length].split(" ");
 					var t = 0;
 					while (t < toks.length)
@@ -206,44 +203,83 @@ class Music
 							len++;
 						var nf = freq(noteToMidi(tok) + shift);
 						var nl = Std.int(eighth * len * 1.05);
-						put(th.lead == "box" ? box(nf, nl) : reed(nf, nl), Std.int(barStart + t * eighth), th.lead == "box" ? 0.42 : 0.3, 0.25);
+						var nt = t;
+						tasks.push(() -> put(th.lead == "box" ? box(nf, nl) : reed(nf, nl), Std.int(barStart + nt * eighth), th.lead == "box" ? 0.42 : 0.3, 0.25));
 						t += len;
 					}
-					});
+				}
 			}
 			bar += sec.chords.length;
 		}
 
-		function finish():Array<Float>
-		{
-		// normalizálás + enyhe visszhang (két késleltetett másolat)
+		// Utómunka (visszhang, hurok-összehajlítás, normalizálás, sztereó összefűzés): szeletekben, külön feladatokként, hogy ne akadjon a játék
+		var SLICE = 50000;
 		var delay = Std.int(eighth * 3);
-		for (i in delay...n)
+		var loopLen = Std.int(bars * SLOTS * eighth);
+		var peak = 0.0;
+		var gain = 1.0;
+		var out:Array<Float> = [];
+		var i0 = delay;
+		while (i0 < n)
 		{
-			left[i] += right[i - delay] * 0.22;
-			right[i] += left[i - delay] * 0.22;
+			var a = i0;
+			var b = Std.int(Math.min(n, i0 + SLICE));
+			// enyhe visszhang (két késleltetett másolat)
+			tasks.push(() ->
+			{
+				for (i in a...b)
+				{
+					left[i] += right[i - delay] * 0.22;
+					right[i] += left[i - delay] * 0.22;
+				}
+			});
+			i0 = b;
 		}
 		// a dal végén túlnyúló hangok / visszhang a hurok elejére hajlanak: nincs csend és nincs "újraindulás" a hurokpontnál
-		var loopLen = Std.int(bars * SLOTS * eighth);
-		for (i in loopLen...n)
+		i0 = loopLen;
+		while (i0 < n)
 		{
-			left[i - loopLen] += left[i];
-			right[i - loopLen] += right[i];
+			var a = i0;
+			var b = Std.int(Math.min(n, i0 + SLICE));
+			tasks.push(() ->
+			{
+				for (i in a...b)
+				{
+					left[i - loopLen] += left[i];
+					right[i - loopLen] += right[i];
+				}
+			});
+			i0 = b;
 		}
-		n = loopLen;
-		var peak = 0.0;
-		for (i in 0...n)
-			peak = Math.max(peak, Math.max(Math.abs(left[i]), Math.abs(right[i])));
-		var g = peak > 0 ? 0.9 / peak : 1;
-		var out:Array<Float> = [];
-		for (i in 0...n)
+		i0 = 0;
+		while (i0 < loopLen)
 		{
-			out.push(left[i] * g);
-			out.push(right[i] * g);
+			var a = i0;
+			var b = Std.int(Math.min(loopLen, i0 + SLICE));
+			tasks.push(() ->
+			{
+				for (i in a...b)
+					peak = Math.max(peak, Math.max(Math.abs(left[i]), Math.abs(right[i])));
+			});
+			i0 = b;
 		}
-		return out;
+		tasks.push(() -> gain = peak > 0 ? 0.9 / peak : 1);
+		i0 = 0;
+		while (i0 < loopLen)
+		{
+			var a = i0;
+			var b = Std.int(Math.min(loopLen, i0 + SLICE));
+			tasks.push(() ->
+			{
+				for (i in a...b)
+				{
+					out.push(left[i] * gain);
+					out.push(right[i] * gain);
+				}
+			});
+			i0 = b;
 		}
-		return new MusicJob(tasks, finish);
+		return new MusicJob(tasks, () -> out);
 	}
 
 	/** Teljes, egyben renderelés (tesztekhez). */
