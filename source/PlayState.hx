@@ -762,18 +762,9 @@ class PlayState extends FlxState
 		var own = [for (p in data.parts) if (p.friend == null || p.friend < 0) p.label];
 		var fr = [for (p in data.parts) if (p.friend != null && p.friend >= 0) p.label];
 		var names = own.join("  ") + (fr.length > 0 ? "\nFRIEND PARTS: " + fr.join("  ") : "");
-		var off:Array<String> = [];
-		if (!Parts.has(Parts.LEGS))
-			off.push("JUMP");
-		if (!Parts.has(Parts.VISOR))
-			off.push("VISION");
-		if (!Parts.has(Parts.CHIP))
-			off.push("CONTROLS");
-		if (!Parts.has(Parts.GEAR))
-			off.push("AIR CONTROL");
-		var offLine = off.length > 0 ? "\nSYSTEMS OFFLINE: " + off.join(", ") : "";
-		bannerStr = (data.name + (data.buildings.length > 0 ? "\n(UP / E ENTERS DOORS)" : "") + "\nMISSION: FIND THE " + data.parts.length + " MISSING PARTS\n" + names + offLine);
-		bannerT = 4.2;
+		// rövid bemutató: pályanév + a keresendő alkatrészek (a hiányzó rendszerek a HUD-on és a játékban úgyis látszanak)
+		bannerStr = data.name + "\nFIND " + data.parts.length + " PARTS: " + names;
+		bannerT = 3.6;
 		#if cheats
 		applyDevGoto();
 		#end
@@ -970,8 +961,8 @@ class PlayState extends FlxState
 		infoFill.makeGraphic(1, 1, 0xF0080808);
 		infoFill.visible = false;
 		add(infoFill);
-		infoText = new FlxText(46, 0, 388, "", 8);
-		infoText.setFormat(null, 8, 0xFFFFFFFF, CENTER);
+		infoText = new FlxText(96, 0, 288, "", 8);
+		infoText.setFormat(null, 8, 0xFFFFFFFF, LEFT);
 		infoText.visible = false;
 		add(infoText);
 		for (s in [infoBorder, infoFill, infoText])
@@ -1139,36 +1130,65 @@ class PlayState extends FlxState
 	{
 		if (bannerT > 0)
 			bannerT -= elapsed;
+		// legfeljebb két szakasz (az üzenet és a súgó előbbre való, mint a pálya-bemutató), hogy a doboz kicsi maradjon
 		var lines:Array<String> = [];
-		if (bannerT > 0)
-			lines.push(bannerStr);
 		if (toast.visible && toast.text != "")
 			lines.push(toast.text);
 		if (hint.visible && hint.text != "")
 			lines.push(hint.text);
-		else if (ctrl != null && bannerT <= 0)
+		if (bannerT > 0)
+			lines.push(bannerStr);
+		else if (ctrl != null && lines.length == 0)
 			for (w in worldTexts)
 				if (!w.solved && Math.abs(ctrl.x - (w.x + 100)) < 150 && Math.abs(ctrl.y - w.y) < 90)
 				{
 					lines.push(w.s);
 					break;
 				}
+		if (lines.length > 2)
+			lines = lines.slice(0, 2);
 		var on = lines.length > 0 && !(mode == 1 || mode == 2) && !paused;
 		infoBorder.visible = infoFill.visible = infoText.visible = on;
 		if (!on)
+		{
+			infoFull = "";
 			return;
-		infoText.text = lines.join("\n");
-		var h = Math.max(14, infoText.height) + 8;
-		var w = 400;
-		var py = 250 - h;
+		}
+		// "futó" szöveg: karakterenként gépelődik; a doboz mérete a teljes szövegből számolódik (nem ugrál)
+		var full = lines.join("\n");
+		if (full != infoFull)
+		{
+			infoFull = full;
+			infoChars = 0;
+			infoShown = -1;
+			infoText.text = full;
+			infoH = Math.max(12, infoText.height) + 6;
+		}
+		if (infoChars < full.length)
+			infoChars += elapsed * 60;
+		var n = Std.int(Math.min(full.length, infoChars));
+		if (n != infoShown)
+		{
+			infoShown = n;
+			infoText.text = full.substr(0, n);
+		}
+		var h = infoH;
+		var w = 300;
+		var px = 90;
+		var py = 252 - h;
 		infoBorder.setGraphicSize(w, Std.int(h));
 		infoBorder.updateHitbox();
-		infoBorder.setPosition(40, py);
+		infoBorder.setPosition(px, py);
 		infoFill.setGraphicSize(w - 2, Std.int(h) - 2);
 		infoFill.updateHitbox();
-		infoFill.setPosition(41, py + 1);
-		infoText.setPosition(46, py + 4);
+		infoFill.setPosition(px + 1, py + 1);
+		infoText.setPosition(px + 6, py + 3);
 	}
+
+	var infoFull:String = "";
+	var infoChars:Float = 0;
+	var infoShown:Int = -1;
+	var infoH:Float = 14;
 
 	function showToast(txt:String, secs:Float = 2.8):Void
 	{
@@ -2282,7 +2302,7 @@ class PlayState extends FlxState
 		burst(bench.x + 12, bench.y + 4, 30, 0xFFFFFFFF, 170);
 		FlxG.camera.flash(0xFFFFFFFF, 0.4);
 		Audio.play("door", 1);
-		showToast("YOU BUILT A FRIEND: " + Companions.NAMES[kind] + "\nQ: SEND / WAIT   TAB: SWITCH FRIEND", 4.5);
+		showToast("FRIEND BUILT: " + Companions.NAMES[kind] + "\nQ: WAIT/FOLLOW  TAB: SWITCH", 3.6);
 		if (partsFound >= data.parts.length)
 			door.animation.play("open");
 	}
@@ -2544,17 +2564,14 @@ class PlayState extends FlxState
 		if (partsFound >= data.parts.length)
 		{
 			if (data.benches.length > 0 && !benchBuilt)
-				msg += "\nALL PARTS FOUND: BUILD YOUR FRIEND AT THE WORKBENCH";
+				msg += "\nALL FOUND: BUILD A FRIEND";
 			else
 			{
-				msg += "\nALL PARTS FOUND: GO TO THE DOOR";
+				msg += "\nALL FOUND: GO TO THE DOOR";
 				door.animation.play("open");
 			}
 		}
-		if (partsFound < data.parts.length)
-			msg += "
-NEXT: " + navTarget().label + " >>";
-		showToast(msg, 3.6);
+		showToast(msg, 3.2);
 	}
 
 	var showcase:Showcase;
