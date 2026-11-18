@@ -659,11 +659,16 @@ class PlayState extends FlxState
 
 		enemies = new FlxTypedGroup();
 		grounded = new FlxGroup();
+		var walkerIdx = 0;
 		for (e in data.enemies)
 		{
-			var en = new Enemy(e.kind, e.x, e.y, data);
+			var k = e.kind;
+			// a 2. pályától minden második WALKER üldöző (HUNTER): észreveszi a robotot, és rárohan
+			if (k == LevelData.WALKER && level >= 1 && walkerIdx++ % 2 == 1)
+				k = LevelData.HUNTER;
+			var en = new Enemy(k, e.x, e.y, data);
 			enemies.add(en);
-			if (e.kind != LevelData.FLYER)
+			if (k != LevelData.FLYER)
 				grounded.add(en);
 		}
 		add(enemies);
@@ -1248,6 +1253,7 @@ class PlayState extends FlxState
 		// látás: a robot körül éles kör, kifelé fokozatosan homályos; a VISOR szintjével nő a kör (lásd Parts.visionRadius, AmberShader)
 		Main.sightTarget = Parts.tier(Parts.VISOR) >= 2 ? 1.2 : 1.0;
 		Main.clearTarget = Parts.visionRadius();
+		Enemy.chase = ctrl; // az üldöző ellenségek az irányított robotot követik
 		if (ctrl != null)
 		{
 			Main.focusX = ctrl.x + ctrl.width / 2 - FlxG.camera.scroll.x;

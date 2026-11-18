@@ -167,6 +167,8 @@ class LevelData
 	public static inline var WALKER = 0;
 	public static inline var FLYER = 1;
 	public static inline var CRAWLER = 2;
+	/** Üldöző: észreveszi a robotot, és rárohan (lásd Enemy). A pályákon a WALKER-ek egy részéből lesz (PlayState). */
+	public static inline var HUNTER = 3;
 
 	public static final NAMES = ["RUSTED CAVES", "COPPER WELLS", "NEON RUINS", "DEEP STATIC", "THE HOLLOW", "SIGNAL TOWERS", "GLASS GARDEN", "BLACK RELAY", "THE LONG DARK", "THE AMBER CORE"];
 

@@ -25,7 +25,7 @@ class LevelFormat
 	/** Az alkatrész-ikonok (Art.partIcons) képkockáinak száma. */
 	public static inline var PART_FRAMES = 13;
 
-	public static final ENEMY_KINDS = ["WALKER", "FLYER", "CRAWLER"];
+	public static final ENEMY_KINDS = ["WALKER", "FLYER", "CRAWLER", "HUNTER"];
 
 	public static final SPRITES:Array<SpriteDef> = build();
 

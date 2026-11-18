@@ -573,6 +573,27 @@ class Art
 		});
 	}
 
+	/** HUNTER: szarvas, egyszemű üldöző (14x12): 0-1 járás, 2 riadó (tágra nyílt szem), 3 legyőzve (lelapult). */
+	public static function hunter():BitmapData
+	{
+		return cached("hunter", () ->
+		{
+			var top = ["..4........4..", "..44......44..", "...44444444...", "..3333333333..", "..3322222233..", "..3224444223..", "..3224004223..", "..3322442233..", "...33333333...", "...3.3333.3..."];
+			var a = top.concat(["..22......22..", "..22......22.."]);
+			var b = top.concat(["...22....22...", "..222....222.."]);
+			var alert = top.copy();
+			alert[5] = "..3244444423..";
+			alert[6] = "..3244444423..";
+			alert[0] = ".44........44.";
+			var al = alert.concat(["..22......22..", "..22......22.."]);
+			var dead = [
+				"..............", "..............", "..............", "..............", "..............", "..............", "..............", "..............",
+				"..4........4..", "..4333333334..", "..3334004333..", "..2222222222.."
+			];
+			return strip([a, b, al, dead]);
+		});
+	}
+
 	/** Címképernyő kabala (a vázlat alapján): fogaskerék-haj, négyzetes fej, kerek láb. 14x18. */
 	public static function mascot():BitmapData
 	{

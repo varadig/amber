@@ -248,6 +248,7 @@ class CheatSubState extends FlxSubState
 					act("SPAWN WALKER", () -> g.cheatEnemy(LevelData.WALKER)),
 					act("SPAWN FLYER", () -> g.cheatEnemy(LevelData.FLYER)),
 					act("SPAWN CRAWLER", () -> g.cheatEnemy(LevelData.CRAWLER)),
+					act("SPAWN HUNTER (CHASES YOU)", () -> g.cheatEnemy(LevelData.HUNTER)),
 					act("KILL ALL ENEMIES", g.cheatKillEnemies)
 				];
 			case "minigames":
