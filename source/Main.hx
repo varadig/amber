@@ -17,6 +17,13 @@ class Main extends Sprite
 	/** Fáradtság (lemerülő akku): a kép elsötétül és elmosódik, simán követi a célértéket. */
 	public static var tiredTarget:Float = 0;
 	static var tiredNow:Float = 0;
+	/** VISOR-élesedés effekt: 1-ről 0-ra fut (FOCUS_TIME mp alatt); lásd AmberShader.uFocus. */
+	static var focusT:Float = 0;
+	static inline var FOCUS_TIME = 2.8;
+
+	/** A VISOR felvételekor: a kép villódzik, majd egy fénysáv élesíti fentről lefelé. */
+	public static function startFocus():Void
+		focusT = 1;
 
 	public function new()
 	{
@@ -35,6 +42,7 @@ class Main extends Sprite
 			sightTarget = 1;
 			tiredTarget = 0;
 			hitFx = 0;
+			focusT = 0;
 			FlxG.camera.filters = [filter];
 		});
 		FlxG.signals.postGameStart.addOnce(() ->
@@ -49,7 +57,19 @@ class Main extends Sprite
 		{
 			clock += FlxG.elapsed;
 			amber.uTime.value = [clock];
-			sightNow += (sightTarget - sightNow) * Math.min(1, FlxG.elapsed * 2.5);
+			if (focusT > 0)
+			{
+				// VISOR-élesedés: a villódzás + fénysáv alatt a látás nem változik, a végén egyből a célérték
+				focusT -= FlxG.elapsed / FOCUS_TIME;
+				if (focusT <= 0)
+				{
+					focusT = 0;
+					sightNow = sightTarget;
+				}
+			}
+			else
+				sightNow += (sightTarget - sightNow) * Math.min(1, FlxG.elapsed * 2.5);
+			amber.uFocus.value = [focusT];
 			amber.uSight.value = [sightNow];
 			hitFx = Math.max(0, hitFx - FlxG.elapsed * 2.2);
 			amber.uHit.value = [hitFx];

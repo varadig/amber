@@ -2459,6 +2459,11 @@ class PlayState extends FlxState
 		else
 		{
 			tier = Parts.add(it.icon);
+			if (it.icon == Parts.VISOR)
+			{
+				Main.startFocus(); // látványos képtisztulás: villódzás, majd élesítő fénysáv
+				Audio.play("checkpoint", 0.9);
+			}
 			player.refreshLook();
 			player.applyParts();
 		}
