@@ -278,7 +278,14 @@ class Companion extends FlxSprite
 				default:
 					// vár: a földön megáll; a magas társ ilyenkor platform
 					if (onFloor && !idling)
-						velocity.x = 0;
+					{
+						// a repedező (leszakadó) platformról a legközelebbi stabil talajra menekül
+						var sx = hurry > 0 && safeGround != null ? safeGround(this) : Math.NaN;
+						if (!Math.isNaN(sx))
+							walkToward(sx, 3, onFloor, hitWall, false);
+						else
+							velocity.x = 0;
+					}
 					setSolidRole(onFloor);
 			}
 		}
@@ -286,7 +293,26 @@ class Companion extends FlxSprite
 			face = Math.sin(idleLeft * 7) > 0 ? 1 : -1; // körülnéz
 		state = mode == 4 ? "control" : (mode == 3 ? "door" : (idleAct > 0 ? ["", "look", "hop", "stroll", "beep"][idleAct] : (mode == 0 ? "follow" : "wait")));
 		flipX = face < 0;
+		if (kind != Companions.ORB && mode != 4 && mode != 3 && route == null)
+			guardFall(onFloor);
 		super.update(elapsed);
+	}
+
+	/** A talajon álló társ ne lépjen le halálos szakadékba (talaj nélküli mélység): a perem előtt megáll. Mozgó / leszakadó platformon is véd. */
+	function guardFall(onFloor:Bool):Void
+	{
+		if (!onFloor || velocity.y < -1 || Math.abs(velocity.x) < 1)
+			return;
+		var T = LevelData.T;
+		var d = velocity.x > 0 ? 1 : -1;
+		var col = Std.int((x + width / 2 + d * (width / 2 + 2)) / T);
+		var footRow = Std.int((y + height + 2) / T);
+		if (stand(col, footRow))
+			return;
+		for (j in 1...17)
+			if (stand(col, footRow + j))
+				return; // van lent talaj: lépcső / lelépés (azt a trapBelow-s logika dönti el)
+		velocity.x = 0;
 	}
 
 	/** Üresjárat-időzítő: ~4 mp tétlenség után véletlen tevékenység (1 körülnéz, 2 ugrik / keringő ORB, 3 sétál, 4 "pittyeg" = összenyomódik). */
@@ -613,6 +639,8 @@ class Companion extends FlxSprite
 	var descendDir:Int = 0;
 	/** Leszakadó platformon áll: sietős mozgás (másodpercek); a PlayState állítja. */
 	public var hurry:Float = 0;
+	/** A legközelebbi stabil talaj x-e (NaN, ha nincs): a repedező platformról való menekülés célja. A PlayState állítja. */
+	public var safeGround:Companion->Float = null;
 
 	/**
 	 * Felugrás egy magasabb felületre (egyirányú / mozgó / leszakadó platform, legfeljebb a saját ugrásmagasságig): ha a közelben (a saját oszlopunkban

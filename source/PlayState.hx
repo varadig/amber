@@ -1820,6 +1820,22 @@ class PlayState extends FlxState
 		c.onSpecial = doSpecial;
 		c.hazardAhead = hazardAhead;
 		c.findLoot = findLoot;
+		// a legközelebbi stabil (nem mozgó / leszakadó) talaj: onnan menekül a leszakadó platformról
+		c.safeGround = (cc:Companion) ->
+		{
+			var T = LevelData.T;
+			var col = Std.int((cc.x + cc.width / 2) / T);
+			var footRow = Std.int((cc.y + cc.height + 2) / T);
+			for (k in 1...13)
+				for (s in 0...2)
+				{
+					var cl = col + (s == 0 ? 1 : -1) * k;
+					for (r in -1...2)
+						if (data.isStandable(cl, footRow + r) && !data.isSolid(cl, footRow + r - 1))
+							return cl * T + T / 2;
+				}
+			return Math.NaN;
+		};
 		// az útkereső dinamikus akadályai: repedezett falak, zárt kapuk (és a TALL-nak a rács)
 		c.blockedExtra = (tx:Int, ty:Int) ->
 		{
@@ -1861,7 +1877,7 @@ class PlayState extends FlxState
 			for (i in 0...crumbles.length)
 			{
 				var cr = crumbles.members[i];
-				if (cr != null && cr.alive && cr.exists && cr.allowCollisions != FlxDirectionFlags.NONE && cr.x < tx * T + T && cr.x + cr.width > tx * T && Math.abs(cr.y - ty * T) < 9)
+				if (cr != null && cr.alive && cr.exists && cr.allowCollisions != FlxDirectionFlags.NONE && (cr.crackingLeft() < 0 || cr.crackingLeft() > 0.6) && cr.x < tx * T + T && cr.x + cr.width > tx * T && Math.abs(cr.y - ty * T) < 9)
 					return 0.0;
 			}
 			return null;
@@ -2895,6 +2911,7 @@ NEXT: " + navTarget().label + " >>";
 	public function cheatPart(id:Int):Void
 	{
 		Parts.add(id);
+		Parts.commit();
 		player.applyParts();
 		player.refreshLook();
 		showToast("CHEAT: " + Parts.NAMES[id] + " TIER " + Parts.tier(id), 1.6);
@@ -2905,6 +2922,7 @@ NEXT: " + navTarget().label + " >>";
 		for (i in 0...Parts.COUNT)
 			if (!Parts.has(i))
 				Parts.add(i);
+		Parts.commit();
 		player.applyParts();
 		player.refreshLook();
 		showToast("CHEAT: ALL PARTS", 1.6);
@@ -2914,6 +2932,7 @@ NEXT: " + navTarget().label + " >>";
 	{
 		Parts.owned = [for (_ in 0...Parts.COUNT) false];
 		Parts.tiers = [for (_ in 0...Parts.COUNT) 0];
+		Parts.commit();
 		player.applyParts();
 		player.refreshLook();
 		showToast("CHEAT: NAKED ROBOT", 1.6);
@@ -3049,6 +3068,8 @@ NEXT: " + navTarget().label + " >>";
 	{
 		FlxG.timeScale = 1;
 		level = n;
+		// a cheattel hozzáadott alkatrészek/atomok/akku maradjanak meg a pályaugrás után (a create restore()-ja a mentettre áll vissza)
+		Parts.commit();
 		FlxG.switchState(() -> new PlayState());
 	}
 
