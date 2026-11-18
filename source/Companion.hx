@@ -31,6 +31,11 @@ class Companion extends FlxSprite
 	/** A különleges képesség gombja (X / Shift / V / J): a PlayState kezeli (WHEELIE turbó, TALL láda-emelés, ORB szikra). */
 	public var onSpecial:Companion->Void;
 	public var carrying:Crate = null;
+	/**
+	 * Mozgó platform a (csempe-oszlop, csempe-sor) csempe tetején? A platform vízszintes sebességét (px/s) adja, különben null.
+	 * A PlayState állítja be: a pályatérkép (`level`) a mozgó platformokat nem ismeri, ezért a követő ezzel látja, hova ugorhat.
+	 */
+	public var movingStand:Int->Int->Null<Float> = null;
 	var level:LevelData;
 	var bobT:Float = Math.random() * 6;
 	var stuckT:Float = 0;
@@ -197,7 +202,8 @@ class Companion extends FlxSprite
 					setSolidRole(false);
 				case 0:
 					if (!idling)
-						walkToward(tx, kind == Companions.TALL ? 30 : 22, onFloor, hitWall, ty > y + height + 20);
+						// lefelé: ha a cél talpa legalább egy csempével lejjebb van, lelépünk (a középpont-összehasonlítás ezt két csempére tolta)
+						walkToward(tx, kind == Companions.TALL ? 30 : 22, onFloor, hitWall, target.y + target.height > y + height + 12);
 					setSolidRole(false);
 					// elakadás / lemaradás / leesés: a célhoz kerül
 					var dx = tx - cx;
@@ -365,9 +371,15 @@ class Companion extends FlxSprite
 		var maxGap = kind == Companions.TALL ? 3 : 4;
 		if (Math.abs(dx) <= near)
 		{
-			if (onFloor)
-				velocity.x = 0;
-			return;
+			// a cél közvetlenül alattunk van (lent áll): a legközelebbi peremhez megyünk, és lelépünk, különben örökre fent maradnánk
+			var ed = wantDown && onFloor ? edgeDir() : 0;
+			if (ed == 0)
+			{
+				if (onFloor)
+					velocity.x = 0;
+				return;
+			}
+			dx = ed * 100;
 		}
 		var dir = dx > 0 ? 1 : -1;
 		face = dir;
@@ -399,28 +411,31 @@ class Companion extends FlxSprite
 			velocity.x = 0;
 			return;
 		}
-		if (!level.isStandable(colAhead, footRow))
+		if (!stand(colAhead, footRow))
 		{
 			var below = false;
 			for (k in 1...7)
-				if (level.isStandable(colAhead, footRow + k))
+				if (stand(colAhead, footRow + k))
 				{
 					below = true;
 					break;
 				}
 			if (below && wantDown)
 				return; // lelép
-			// a legközelebbi túlsó talaj: a szakadék szélessége és a magasságkülönbség szerint számolt ugrás (nem ugrik túl)
+			// a legközelebbi túlsó talaj (mozgó platform is): a szakadék szélessége és a magasságkülönbség szerint számolt ugrás (nem ugrik túl)
 			var landCol = -999;
 			var landRow = 0;
+			var landVx = 0.0;
 			for (k in 1...maxGap + 2)
 			{
 				var cc = colAhead + dir * k;
 				for (r in -2...3)
-					if (level.isStandable(cc, footRow + r) && !level.isSolid(cc, footRow + r - 1) && !level.isSolid(cc, footRow + r - 2))
+					if (stand(cc, footRow + r) && !level.isSolid(cc, footRow + r - 1) && !level.isSolid(cc, footRow + r - 2))
 					{
 						landCol = cc;
 						landRow = footRow + r;
+						var mv = movingStand != null ? movingStand(cc, footRow + r) : null;
+						landVx = mv != null ? mv : 0.0;
 						break;
 					}
 				if (landCol != -999)
@@ -431,7 +446,6 @@ class Companion extends FlxSprite
 				velocity.x = 0; // a peremen vár
 				return;
 			}
-			var dist = Math.abs(landCol * T + T / 2 - cx);
 			var dyl = landRow * T - (y + height);
 			var vmin = Math.max(150.0, Math.sqrt(2 * g * Math.max(0.0, -dyl + 6)));
 			var v = vmin;
@@ -439,6 +453,8 @@ class Companion extends FlxSprite
 			while (v <= jumpV)
 			{
 				var tt = (v + Math.sqrt(v * v + 2 * g * dyl)) / g;
+				// a mozgó platform a repülés alatt odébb megy: a leszállási pontot előre számoljuk
+				var dist = Math.abs(landCol * T + T / 2 + landVx * tt - cx);
 				if (dist / tt <= spd * 1.35)
 				{
 					jumpOk = true;
@@ -451,6 +467,35 @@ class Companion extends FlxSprite
 			if (!jumpOk)
 				velocity.x = 0;
 		}
+	}
+
+	/** Szilárd / egyirányú csempe vagy mozgó platform a (tx, ty) csempén. */
+	function stand(tx:Int, ty:Int):Bool
+		return level.isStandable(tx, ty) || (movingStand != null && movingStand(tx, ty) != null);
+
+	/** A legközelebbi perem iránya (-1 / 1), ahol a talaj véget ér és lent (legfeljebb 6 csempével mélyebben) újra van talaj; 0, ha nincs. */
+	function edgeDir():Int
+	{
+		var T = LevelData.T;
+		var col = Std.int((x + width / 2) / T);
+		var footRow = Std.int((y + height + 2) / T);
+		var blocked = [false, false];
+		for (k in 1...11)
+			for (s in 0...2)
+			{
+				var d = s == 0 ? 1 : -1;
+				var c = col + d * k;
+				if (blocked[s])
+					continue;
+				if (!stand(c, footRow))
+				{
+					for (j in 1...7)
+						if (stand(c, footRow + j))
+							return d;
+					blocked[s] = true; // ezen az oldalon szakadék van lent talaj nélkül: nem lépünk le
+				}
+			}
+		return 0;
 	}
 
 	/** A magas társ álló helyzetben platform (a feje): a hős rá tud állni. */

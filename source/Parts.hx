@@ -4,7 +4,7 @@ package;
  * A robot alkatrészei. A hős csupaszon indul; minden alkatrésznek hatása van a játékra, hiányuk pedig hátrány:
  *  - LEGS: teljes ugrás és gyors futás (nélküle csak szökdécsel, lassú)
  *  - CORE: szívek (nélküle csak 2, alkatrészenként +1, legfeljebb 5)
- *  - VISOR: látás (nélküle homályos, sötét, zajos a kép; a LENS = II. szint: a rejtett dolgok is kivehetők)
+ *  - VISOR: látás (nélküle homályos, sötét, zajos a kép; a LENS = II. szint: a titkos atomok világítanak, és 3-at érnek)
  *  - THRUSTER: szökellés (dash); II. szint: két szökellés leszállás előtt
  *  - CLAWS: fal-kapaszkodás és fal-ugrás
  *  - BLASTER: lövés; II. szint: gyorstűz
@@ -40,12 +40,15 @@ class Parts
 		"FIRE WITH V / J", "CONTROLS RESPOND FASTER", "AIR CONTROL + STRONGER BOUNCE", "RADAR ONLINE", "FLIGHT: HOLD JUMP"
 	];
 	public static final INFO2 = [
-		"HIGHER JUMP, FASTER RUN", "+1 HEART", "LENS: HIDDEN THINGS GLOW", "BOOSTER: TWO DASHES PER JUMP", "", "RAPID FIRE",
+		"HIGHER JUMP, FASTER RUN", "+1 HEART", "LENS: SECRET ATOMS GLOW (+3 EACH)", "BOOSTER: TWO DASHES PER JUMP", "", "RAPID FIRE",
 		"SNAPPIER STILL", "EVEN BETTER AIR CONTROL", "RADAR SHOWS ENEMIES TOO", ""
 	];
 
 	/** Az akku töltöttsége (0..100): az idővel és a műveletekkel fogy, az akkupakkok töltik; a pálya elején mentett érték köztes szintje marad. */
 	public static var battery:Float = 100;
+	/** Az összegyűjtött atomok bankja (pályák között megmarad; a MŰHELYBEN alkatrész-fejlesztésre költhető). */
+	public static var atoms:Int = 0;
+	static var savedAtoms:Int = 0;
 	static var savedBattery:Float = 100;
 	public static var owned:Array<Bool> = [for (_ in 0...COUNT) false];
 	public static var tiers:Array<Int> = [for (_ in 0...COUNT) 0];
@@ -72,6 +75,7 @@ class Parts
 		owned = [for (_ in 0...COUNT) false];
 		tiers = [for (_ in 0...COUNT) 0];
 		battery = 100;
+		atoms = 0;
 		commit();
 	}
 
@@ -81,6 +85,7 @@ class Parts
 		owned = saved.copy();
 		tiers = savedTiers.copy();
 		battery = Math.max(savedBattery, 60);
+		atoms = savedAtoms;
 	}
 
 	public static function commit():Void
@@ -88,6 +93,7 @@ class Parts
 		saved = owned.copy();
 		savedTiers = tiers.copy();
 		savedBattery = battery;
+		savedAtoms = atoms;
 	}
 
 	/** A látszathoz: a birtokolt alkatrészek bitmaszkja. */

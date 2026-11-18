@@ -14,6 +14,7 @@ import flixel.util.FlxTimer;
 import flixel.util.FlxDirectionFlags;
 import LevelData.LampDef;
 import Puzzle;
+import MiniGames;
 
 /** Egy felvehető / dekorációs tárgy (gyémánt, szív, alkatrész, repülő-cella, ellenőrzőpont). */
 class Pickup extends FlxSprite
@@ -25,6 +26,8 @@ class Pickup extends FlxSprite
 	public var label:String = "";
 	public var idx:Int = -1;
 	public var friend:Int = -1;
+	/** Titkos atom: láthatatlan, amíg nincs LENS (VISOR II. szint); 3 atomot ér a bankban. */
+	public var secret:Bool = false;
 
 	override public function update(elapsed:Float):Void
 	{
@@ -174,6 +177,8 @@ class Crumble extends FlxSprite
 class Mover extends FlxSprite
 {
 	public var dx:Float = 0;
+	/** Vízszintes sebesség (px/s): a követő társak ebből számolják az ugrás célpontját. */
+	public var vx:Float = 0;
 	public var gid:Int = -1;
 	public var powered:Bool = true;
 	var ox:Float;
@@ -216,6 +221,7 @@ class Mover extends FlxSprite
 				x = nx;
 			}
 		}
+		vx = elapsed > 0 ? dx / elapsed : 0;
 		super.update(elapsed);
 	}
 }
@@ -578,14 +584,22 @@ class PlayState extends FlxState
 			}
 
 		gems = new FlxTypedGroup();
+		var gi = 0;
+		gemsTotal = 0;
 		for (g in data.gems)
 		{
 			var p = makePickup(g.x, g.y, Art.atom(), 8, 8, "gem");
 			p.animation.add("spin", [0, 1, 2, 3], 6);
 			p.animation.play("spin");
+			// minden 6. atom titkos: csak a LENS (VISOR II. szint) mutatja, 3 atomot ér, és nem számít a pálya "összes atom" számlálójába
+			p.secret = gi % 6 == 5;
+			if (p.secret)
+				p.alpha = 0;
+			else
+				gemsTotal++;
 			gems.add(p);
+			gi++;
 		}
-		gemsTotal = data.gems.length;
 		add(gems);
 
 		hearts = new FlxTypedGroup();
@@ -746,7 +760,7 @@ class PlayState extends FlxState
 		applyDevGoto();
 		#end
 		#if test
-		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}; window.__LevelLoader = {5}; window.__Audio = {6}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery, LevelLoader, Audio);
+		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}; window.__LevelLoader = {5}; window.__Audio = {6}; window.__Parts = {7}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery, LevelLoader, Audio, Parts);
 		#end
 	}
 
@@ -1051,7 +1065,7 @@ class PlayState extends FlxState
 			hudHearts[i].loadGraphic(i < heartsOf(ctrl) ? Art.heart() : Art.heartEmpty(), false, 8, 8, false, i < heartsOf(ctrl) ? "heart" : "heartEmpty");
 		for (i in 0...hudParts.length)
 			hudParts[i].alpha = found[i] ? 1 : 0.25;
-		hudGems.text = "ATOMS " + gemsGot + "/" + gemsTotal;
+		hudGems.text = "ATOMS " + gemsGot + "/" + gemsTotal + "  BANK " + Parts.atoms;
 		hudScore.text = "SCORE " + score;
 		hudParts2.text = "PARTS " + partsFound + "/" + data.parts.length;
 		// iránymutatás: a következő cél (alkatrész / szerelőasztal / kijárat), mindig látszik
@@ -1250,7 +1264,7 @@ class PlayState extends FlxState
 			super.update(elapsed);
 			collideFriends();
 			if (modeT > 0.6 && Input.confirmPressed())
-				nextLevel();
+				finishLevel();
 			return;
 		}
 		if (mode == 2)
@@ -1287,6 +1301,12 @@ class PlayState extends FlxState
 		{
 			// LENS: a rejtett repedezett falak villognak, az alkatrészekről szikrák szállnak
 			cracked.forEachAlive(c -> c.alpha = 0.55 + 0.45 * Math.abs(Math.sin(time * 5)));
+			// a titkos atomok világítanak
+			gems.forEachAlive(g ->
+			{
+				if (g.secret)
+					g.alpha = 0.5 + 0.5 * Math.abs(Math.sin(time * 4 + g.t));
+			});
 			if (Std.int(time * 4) != glowT)
 			{
 				glowT = Std.int(time * 4);
@@ -1666,10 +1686,21 @@ class PlayState extends FlxState
 		FlxG.collide(companions, gates);
 		FlxG.collide(companions, crumbles);
 		FlxG.collide(companions, crates);
-		FlxG.collide(companions, movers, (c:Companion, m:Mover) ->
+		FlxG.collide(companions, movers);
+		// a mozgó platform viszi a rajta álló társat (a talp a platform tetején, vízszintesen átfedik egymást); az ütközés-callback erre nem volt megbízható
+		companions.forEachAlive(c ->
 		{
-			if (c.isTouching(FlxDirectionFlags.FLOOR))
-				c.x += m.dx;
+			if (c.velocity.y < -1)
+				return;
+			for (i in 0...movers.length)
+			{
+				var m = movers.members[i];
+				if (m != null && m.alive && m.exists && Math.abs((c.y + c.height) - m.y) < 3.5 && c.x + c.width > m.x && c.x < m.x + m.width)
+				{
+					c.x += m.dx;
+					break;
+				}
+			}
 		});
 		companions.forEachAlive(c ->
 		{
@@ -1696,6 +1727,18 @@ class PlayState extends FlxState
 		var c = new Companion(kind, x, y, data, ctrl != null ? ctrl : player);
 		c.mode = followAll ? 0 : 1;
 		c.onSpecial = doSpecial;
+		// a mozgó platformok a követő számára: hova ugorhat (és milyen sebességgel megy a platform)
+		c.movingStand = (tx:Int, ty:Int) ->
+		{
+			var T = LevelData.T;
+			for (i in 0...movers.length)
+			{
+				var m = movers.members[i];
+				if (m != null && m.alive && m.exists && m.x < tx * T + T && m.x + m.width > tx * T && Math.abs(m.y - ty * T) < 9)
+					return m.vx;
+			}
+			return null;
+		};
 		companions.add(c);
 		return c;
 	}
@@ -2240,10 +2283,22 @@ class PlayState extends FlxState
 	function onGem(p:FlxSprite, g:Pickup):Void
 	{
 		g.kill();
-		gemsGot++;
-		score += 10;
-		Audio.play("gem", 0.7);
-		burst(g.x + 4, g.y + 4, 6, 0xFFFFFFFF, 50);
+		if (g.secret)
+		{
+			Parts.atoms += 3;
+			score += 50;
+			Audio.play("key", 0.8);
+			burst(g.x + 4, g.y + 4, 14, 0xFFFFFFFF, 90);
+			popText("SECRET ATOM +3", g.x + 4, g.y - 6);
+		}
+		else
+		{
+			gemsGot++;
+			Parts.atoms++;
+			score += 10;
+			Audio.play("gem", 0.7);
+			burst(g.x + 4, g.y + 4, 6, 0xFFFFFFFF, 50);
+		}
 	}
 
 	function onHeart(p:FlxSprite, h:Pickup):Void
@@ -2484,10 +2539,37 @@ NEXT: " + navTarget().label + " >>";
 		score += bonus + Std.int(Math.max(0, 600 - time) * 2);
 		var m = Std.int(time / 60), s = Std.int(time % 60);
 		var names = [for (p in data.parts) p.label].join(" ");
-		var lines = "LEVEL " + (level + 1) + " CLEAR\n\nPARTS " + names + "\nATOMS " + gemsGot + "/" + gemsTotal + (bonus > 0 ? "  ALL FOUND +500" : "") + "\nTIME " + m + ":" + (s < 10 ? "0" : "") + s + "\nSCORE " + score + "\n\nPRESS JUMP";
+		var lines = "LEVEL " + (level + 1) + " CLEAR\n\nPARTS " + names + "\nATOMS " + gemsGot + "/" + gemsTotal + (bonus > 0 ? "  ALL FOUND +500" : "") + "\nATOM BANK " + Parts.atoms + (canUpgrade() ? "  (WORKSHOP READY)" : "") + "\nTIME " + m + ":" + (s < 10 ? "0" : "") + s + "\nSCORE " + score + "\n\nPRESS JUMP";
 		overlay.text = lines;
 		overlay.visible = true;
 		refreshHud();
+	}
+
+	var workshopShown:Bool = false;
+
+	/** Van-e olyan birtokolt alkatrész, amit az atom-bankból fejleszteni lehet (és elég az atom)? */
+	function canUpgrade():Bool
+	{
+		if (Parts.atoms < Workshop.COST)
+			return false;
+		for (i in 0...Parts.COUNT)
+			if (Parts.has(i) && Parts.INFO2[i] != "" && Parts.tier(i) < 2)
+				return true;
+		return false;
+	}
+
+	/** A pálya végén: ha van mit fejleszteni, megnyílik a műhely (atomokért II. szintű alkatrész), utána jön a következő pálya. */
+	function finishLevel():Void
+	{
+		if (canUpgrade() && !workshopShown)
+		{
+			workshopShown = true;
+			var g = new Workshop();
+			g.setup("WORKSHOP", "THE ATOMS YOU COLLECTED POWER UPGRADES. SPEND THEM ON AN IMPROVED PART.", "UP / DOWN: SELECT    SPACE / A: UPGRADE    ESC / B: CONTINUE", 1, (ok:Bool) -> nextLevel());
+			openSubState(g);
+			return;
+		}
+		nextLevel();
 	}
 
 	function nextLevel():Void

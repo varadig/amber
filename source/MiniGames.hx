@@ -747,3 +747,77 @@ class TankGame extends MiniGame
 		canvas.dirty = true;
 	}
 }
+
+/** Műhely: a pálya végén az összegyűjtött atomokból II. szintre fejleszthetők az alkatrészek (a MiniGame keretét használja). */
+class Workshop extends MiniGame
+{
+	public static inline var COST = 30;
+
+	var rows:Array<Int> = [];
+	var lines:Array<FlxText> = [];
+	var head:FlxText;
+	var sel:Int = 0;
+	var openT:Float = 0;
+
+	override function build():Void
+	{
+		head = txt("", 62, 52, 356, 8, 0xFFFFFFFF, "center");
+		for (i in 0...Parts.COUNT)
+			if (Parts.has(i) && Parts.INFO2[i] != "")
+				rows.push(i);
+		rows.push(-1); // CONTINUE
+		for (i in 0...rows.length)
+			lines.push(txt("", 70, 74 + i * 14, 344, 8, 0xFFBBBBBB));
+		refresh();
+	}
+
+	function refresh():Void
+	{
+		head.text = "ATOMS " + Parts.atoms + "     UPGRADE COST " + COST;
+		for (i in 0...rows.length)
+		{
+			var id = rows[i];
+			var t = lines[i];
+			var cur = i == sel ? "> " : "  ";
+			if (id < 0)
+				t.text = cur + "CONTINUE";
+			else if (Parts.tier(id) >= 2)
+				t.text = cur + Parts.NAMES[id] + "  II  (MAX)";
+			else
+				t.text = cur + Parts.NAMES[id] + "  I -> II   " + Parts.INFO2[id];
+			t.color = i == sel ? 0xFFFFFFFF : (id >= 0 && (Parts.tier(id) >= 2 || Parts.atoms < COST) ? 0xFF555555 : 0xFFBBBBBB);
+		}
+	}
+
+	override function tick(dt:Float):Void
+	{
+		openT += dt;
+		if (openT < 0.25)
+			return;
+		if (ju)
+			sel = (sel + rows.length - 1) % rows.length;
+		if (jd)
+			sel = (sel + 1) % rows.length;
+		if (jact)
+		{
+			var id = rows[sel];
+			if (id < 0)
+			{
+				leave(true);
+				return;
+			}
+			if (Parts.tier(id) >= 2)
+				msg.text = "ALREADY AT MAX LEVEL";
+			else if (Parts.atoms < COST)
+				msg.text = "NOT ENOUGH ATOMS";
+			else
+			{
+				Parts.atoms -= COST;
+				Parts.add(id);
+				Audio.play("key", 1);
+				msg.text = "UPGRADED: " + Parts.INFO2[id];
+			}
+		}
+		refresh();
+	}
+}
