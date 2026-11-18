@@ -1,6 +1,7 @@
 package;
 
 import flixel.FlxG;
+import flixel.FlxObject;
 import flixel.FlxSprite;
 import flixel.FlxState;
 import flixel.group.FlxGroup;
@@ -1722,7 +1723,17 @@ class PlayState extends FlxState
 					c.hurry = 0.3;
 			}
 		});
-		FlxG.collide(companions, crates);
+		// a követő társ nem tolja a ládát (leütné a szakadékba, vagy elakadna): a láda számára mozdíthatatlan; csak az irányított társ tolhatja
+		FlxG.overlap(companions, crates, null, (c:Companion, cr:Crate) ->
+		{
+			if (c.mode == 4)
+				return FlxObject.separate(c, cr);
+			var was = cr.immovable;
+			cr.immovable = true;
+			FlxObject.separate(c, cr);
+			cr.immovable = was;
+			return false;
+		});
 		FlxG.collide(companions, movers);
 		// a mozgó platform viszi a rajta álló társat (a talp a platform tetején, vízszintesen átfedik egymást); az ütközés-callback erre nem volt megbízható
 		companions.forEachAlive(c ->
@@ -1758,6 +1769,49 @@ class PlayState extends FlxState
 		});
 	}
 
+	/**
+	 * Biztonságos-e a földi társnak a tárgyért menni: a társ és a tárgy közötti minden oszlopban van talaj a talp szintje körül (±1 csempe),
+	 * a tárgy alatt legfeljebb 4 csempén belül is van talaj (különben szakadék fölött lebeg), és nincs rajta ellenség / tüske az úton.
+	 */
+	function lootSafe(c:Companion, sx:Float, sy:Float):Bool
+	{
+		var T = LevelData.T;
+		var c0 = Std.int((c.x + c.width / 2) / T);
+		var c1 = Std.int(sx / T);
+		var footRow = Std.int((c.y + c.height + 2) / T);
+		var dir = c1 >= c0 ? 1 : -1;
+		var col = c0;
+		while (true)
+		{
+			var ok = false;
+			for (r in -1...2)
+				if (data.isStandable(col, footRow + r))
+					ok = true;
+			if (!ok)
+				return false;
+			if (col == c1)
+				break;
+			col += dir;
+		}
+		var lootRow = Std.int(sy / T);
+		var support = false;
+		for (j in 0...5)
+			if (data.isStandable(c1, lootRow + j))
+				support = true;
+		if (!support)
+			return false;
+		// tüske / veszélyes ellenség a tárgy közelében: nem megy érte
+		var lo = Math.min(c.x + c.width / 2, sx) - 6;
+		var hi = Math.max(c.x + c.width / 2, sx) + 6;
+		for (i in 0...spikes.length)
+		{
+			var s = spikes.members[i];
+			if (s != null && s.alive && s.exists && s.x < hi && s.x + s.width > lo && Math.abs(s.y - (c.y + c.height)) < 24)
+				return false;
+		}
+		return true;
+	}
+
 	/** Egy társ létrehozása a megadott helyen. */
 	/**
 	 * Gyűjtés (segítő társak): a követett robot közelében lévő felvehető tárgy (atom, akku; a titkos atom csak ha látszik).
@@ -1784,6 +1838,9 @@ class PlayState extends FlxState
 					continue;
 				// a földi társ a vele egy szinten lévőt, vagy a fölötte ugrással elérhetőt (legfeljebb ~48 px) veszi fel
 				if (!flies && (Math.abs(sx - cx) > 90 || sy - cy > 22 || cy - sy > 48))
+					continue;
+				// előbb gondolkodik: csak akkor indul érte, ha az út végig szilárd talajon vezet (nincs szakadék / gödör közte), és a tárgy alatt van talaj
+				if (!flies && !lootSafe(c, sx, sy))
 					continue;
 				var d = Math.abs(sx - cx) + Math.abs(sy - cy);
 				if (d < bd)
@@ -1812,6 +1869,13 @@ class PlayState extends FlxState
 		{
 			var e = enemies.members[i];
 			if (e != null && e.alive && e.exists && e.dying < 0 && !e.stompable && e.x < x1 && e.x + e.width > x0 && e.y < feet && e.y + e.height > c.y)
+				return true;
+		}
+		// ládák: a követő nem tolja, hanem átugorja
+		for (i in 0...crates.length)
+		{
+			var cr = crates.members[i];
+			if (cr != null && cr.alive && cr.exists && !cr.carried && cr.x < x1 && cr.x + cr.width > x0 && cr.y < feet - 2 && cr.y + cr.height > c.y)
 				return true;
 		}
 		return false;

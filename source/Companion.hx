@@ -68,6 +68,7 @@ class Companion extends FlxSprite
 				width = 8;
 				height = 30;
 				offset.set(1, 0);
+				origin.set(5, 30); // a nyújtózkodás lefelé rögzített (lásd updateStretch)
 			case Companions.ORB:
 				loadGraphic(Art.companion(kind), true, 10, 10, false, "comp" + kind);
 				width = 8;
@@ -291,6 +292,8 @@ class Companion extends FlxSprite
 			face = Math.sin(idleLeft * 7) > 0 ? 1 : -1; // körülnéz
 		state = mode == 4 ? "control" : (mode == 3 ? "door" : (idleAct > 0 ? ["", "look", "hop", "stroll", "beep"][idleAct] : (mode == 0 ? "follow" : "wait")));
 		flipX = face < 0;
+		if (kind == Companions.TALL)
+			updateStretch(elapsed, onFloor);
 		if (kind != Companions.ORB && mode != 4 && mode != 3 && route == null)
 			guardFall(onFloor);
 		super.update(elapsed);
@@ -418,14 +421,16 @@ class Companion extends FlxSprite
 		if (dir != 0)
 			face = dir;
 		coyote = onFloor ? 0.08 : coyote - elapsed;
-		jumpBuf = Input.jumpPressed() ? 0.12 : jumpBuf - elapsed;
+		// a TALL-nál a FEL gomb nyújtózkodás (nem ugrás): ugrás Space / Z / C
+		var tallKind = kind == Companions.TALL;
+		jumpBuf = (tallKind ? Input.jumpPressedNoUp() : Input.jumpPressed()) ? 0.12 : jumpBuf - elapsed;
 		if (jumpBuf > 0 && coyote > 0)
 		{
 			velocity.y = -jumpV;
 			coyote = 0;
 			jumpBuf = 0;
 		}
-		acceleration.y = (velocity.y < 0 && !Input.jumpHeld()) ? 900 * 2.4 : 900;
+		acceleration.y = (velocity.y < 0 && !(tallKind ? Input.jumpHeldNoUp() : Input.jumpHeld())) ? 900 * 2.4 : 900;
 	}
 
 	/** Belépés az ajtón: a társ beleolvad (elhalványul és összement). */
@@ -1160,6 +1165,33 @@ class Companion extends FlxSprite
 			s += 2;
 		}
 		return true;
+	}
+
+	/** TALL nyújtózkodás: a pillanatnyi plusz magasság (px). Irányítva a FEL gombbal nő, váró módban megmarad (a feje magasabb platform), követéskor visszahúzódik. */
+	public var ext:Float = 0;
+	static inline var MAX_EXT = 26.0;
+
+	function updateStretch(elapsed:Float, onFloor:Bool):Void
+	{
+		var want = mode == 4 ? (Input.up() && onFloor ? MAX_EXT : 0.0) : (mode == 1 ? ext : 0.0);
+		var d = want - ext;
+		var step = (d > 0 ? 80.0 : 120.0) * elapsed;
+		d = Math.max(-step, Math.min(step, d));
+		if (d > 0)
+		{
+			// a fej fölött szabad hely kell (a szilárd csempébe nem nyúlunk bele)
+			var T = LevelData.T;
+			var row = Std.int((y - d - 1) / T);
+			if (level.isSolid(Std.int((x + 1) / T), row) || level.isSolid(Std.int((x + width - 1) / T), row))
+				d = 0;
+		}
+		if (d == 0)
+			return;
+		y -= d;
+		height += d;
+		ext += d;
+		offset.y = 30 - height;
+		scale.y = height / 30;
 	}
 
 	/** A magas társ álló helyzetben platform (a feje): a hős rá tud állni. */

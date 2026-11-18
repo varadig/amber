@@ -72,6 +72,17 @@ class Input
 		return FlxG.keys.anyPressed([UP, W, Z, SPACE, C]) || (held(FlxGamepadInputID.A));
 	}
 
+	/** Ugrás a FEL gomb nélkül (a TALL-nál a FEL a nyújtózkodás): Z / Space / C / A. */
+	public static function jumpPressedNoUp():Bool
+	{
+		return FlxG.keys.anyJustPressed([Z, SPACE, C]) || (just(FlxGamepadInputID.A));
+	}
+
+	public static function jumpHeldNoUp():Bool
+	{
+		return FlxG.keys.anyPressed([Z, SPACE, C]) || (held(FlxGamepadInputID.A));
+	}
+
 	public static function dashPressed():Bool
 	{
 		return FlxG.keys.anyJustPressed([X, SHIFT, K]) || (just(FlxGamepadInputID.X) || just(FlxGamepadInputID.B));
