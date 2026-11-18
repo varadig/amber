@@ -103,7 +103,7 @@ class TitleState extends FlxState
 			PlayState.totalScore = 0;
 			Parts.reset();
 			Companions.reset();
-			FlxG.camera.fade(0xFF000000, 0.3, false, () -> FlxG.switchState(() -> new PlayState()));
+			FlxG.camera.fade(0xFF000000, 0.3, false, () -> FlxG.switchState(() -> new IntroState())); // a bevezető után indul a játék
 		}
 	}
 }

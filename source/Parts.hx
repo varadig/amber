@@ -36,11 +36,11 @@ class Parts
 
 	/** Az első felvételkor kiírt hatás-leírás (a játék szövege angolul), és a magasabb szintekre. */
 	public static final INFO = [
-		"FULL JUMP + FAST RUN", "POWER ONLINE: BATTERY DRAINS SLOWER", "VISION CLEARS UP", "DASH: X / SHIFT", "CLING TO WALLS + WALL JUMP",
+		"FULL JUMP + FAST RUN", "POWER ONLINE: BATTERY DRAINS SLOWER", "CLEAR SIGHT AROUND YOU", "DASH: X / SHIFT", "CLING TO WALLS + WALL JUMP",
 		"FIRE WITH V / J", "CONTROLS RESPOND FASTER", "AIR CONTROL + STRONGER BOUNCE", "RADAR ONLINE", "FLIGHT: HOLD JUMP"
 	];
 	public static final INFO2 = [
-		"HIGHER JUMP, FASTER RUN", "BATTERY DRAINS EVEN SLOWER", "LENS: SECRET ATOMS GLOW (+3 EACH)", "BOOSTER: TWO DASHES PER JUMP", "GRIP: SLOWER WALL SLIDE", "RAPID FIRE",
+		"HIGHER JUMP, FASTER RUN", "BATTERY DRAINS EVEN SLOWER", "LENS: SEE FARTHER, SECRET ATOMS GLOW", "BOOSTER: TWO DASHES PER JUMP", "GRIP: SLOWER WALL SLIDE", "RAPID FIRE",
 		"SNAPPIER STILL", "EVEN BETTER AIR CONTROL", "RADAR SHOWS ENEMIES TOO", "LONGER FLIGHT"
 	];
 
@@ -48,7 +48,7 @@ class Parts
 	static final UP = [
 		["TURBO LEGS: HIGHER, FASTER", "RACING LEGS: HIGHER, FASTER", "PEAK LEGS: HIGHER, FASTER"],
 		["HITS DRAIN LESS BATTERY", "LONGER PROTECTION AFTER A HIT", "TOUGHEST: LEAST DAMAGE, QUICK RECOVERY"],
-		["SECRET ATOMS WORTH +4", "SECRET ATOMS WORTH +5", "SECRET ATOMS WORTH +6"],
+		["SEE FARTHER, SECRET ATOMS +4", "SEE EVEN FARTHER, ATOMS +5", "FULL CLEAR VISION, ATOMS +6"],
 		["THREE DASHES PER JUMP", "FASTER DASH RECHARGE", "FOUR DASHES PER JUMP"],
 		["HIGHER WALL JUMP", "IRON GRIP: BARELY SLIDES", "MASTER CLIMBER: WALL JUMP++"],
 		["FASTER FIRE", "FASTER STILL", "MAXIMUM FIRE RATE"],
@@ -73,6 +73,10 @@ class Parts
 
 	public static function jumpBoost():Float
 		return at([1.0, 1.10, 1.15, 1.20, 1.24], LEGS);
+
+	/** A tiszta látás sugara (px, a 480x270-es képen): VISOR nélkül kis kör a robot körül, szintenként nagyobb; V. szinten az egész kép éles (700 = korlátlan). */
+	public static function visionRadius():Float
+		return has(VISOR) ? at([100.0, 160.0, 230.0, 340.0, 700.0], VISOR) : 52.0;
 
 	/** Mennyi akkut vesz el egy találat (a CORE szintje csökkenti). */
 	public static function hitCost():Float

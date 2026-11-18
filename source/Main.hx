@@ -17,6 +17,11 @@ class Main extends Sprite
 	/** Fáradtság (lemerülő akku): a kép elsötétül és elmosódik, simán követi a célértéket. */
 	public static var tiredTarget:Float = 0;
 	static var tiredNow:Float = 0;
+	/** Tiszta látás sugara (px) és a robot helye a képen: kívül átmenetesen homályos (AmberShader.uClear / uFocusPos). 640 fölött nincs homály. */
+	public static var clearTarget:Float = 700;
+	static var clearNow:Float = 700;
+	public static var focusX:Float = 240;
+	public static var focusY:Float = 135;
 	/** VISOR-élesedés effekt: 1-ről 0-ra fut (FOCUS_TIME mp alatt); lásd AmberShader.uFocus. */
 	static var focusT:Float = 0;
 	static inline var FOCUS_TIME = 2.8;
@@ -43,6 +48,8 @@ class Main extends Sprite
 			tiredTarget = 0;
 			hitFx = 0;
 			focusT = 0;
+			clearTarget = 700;
+			clearNow = 700;
 			FlxG.camera.filters = [filter];
 		});
 		FlxG.signals.postGameStart.addOnce(() ->
@@ -65,10 +72,17 @@ class Main extends Sprite
 				{
 					focusT = 0;
 					sightNow = sightTarget;
+					clearNow = clearTarget;
 				}
 			}
 			else
+			{
 				sightNow += (sightTarget - sightNow) * Math.min(1, FlxG.elapsed * 2.5);
+				clearNow += (clearTarget - clearNow) * Math.min(1, FlxG.elapsed * 2.0);
+			}
+			amber.uClear.value = [clearNow];
+			amber.uClearNew.value = [focusT > 0 ? clearTarget : clearNow];
+			amber.uFocusPos.value = [focusX, focusY];
 			amber.uFocus.value = [focusT];
 			amber.uSight.value = [sightNow];
 			hitFx = Math.max(0, hitFx - FlxG.elapsed * 2.2);
@@ -102,6 +116,11 @@ class Main extends Sprite
 		direct = true;
 		#end
 		var first:Class<flixel.FlxState> = direct ? PlayState : TitleState;
+		if (qs.indexOf("intro=1") >= 0)
+		{
+			first = IntroState; // ?intro=1: a bevezető közvetlen megnyitása (teszt); ?intro=1&manual=1: nincs automatikus lépés
+			IntroState.manual = qs.indexOf("manual=1") >= 0;
+		}
 		addChild(new FlxGame(480, 270, first, 60, 60, true));
 		#else
 		addChild(new FlxGame(480, 270, TitleState, 60, 60, true));

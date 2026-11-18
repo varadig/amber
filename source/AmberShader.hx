@@ -17,6 +17,9 @@ class AmberShader extends FlxShader
 		uniform float uHit;
 		uniform float uTired;
 		uniform float uFocus;
+		uniform float uClear;
+		uniform float uClearNew;
+		uniform vec2 uFocusPos;
 
 		void main()
 		{
@@ -54,21 +57,24 @@ class AmberShader extends FlxShader
 			}
 			vec2 px = vec2(1.0 / 480.0, 1.0 / 270.0);
 			// látás: VISOR nélkül a kép homályos (elmosott), sötétebb és zajos; a LENS (uSight > 1) kicsit fényesít
-			float sight = clamp(uSight, 0.0, 1.0);
 			float tired = clamp(uTired, 0.0, 1.0);
 			float sweep = 0.0;
+			// tiszta látás sugara (px): a robot körül éles, kifelé átmenetesen homályos; az élesítő sáv felett már az új (nagyobb) sugár érvényes
+			float clearR = uClear;
 			if (foc)
 			{
 				float sweepY = clamp((fp - 0.3) / 0.6, 0.0, 1.0);
 				if (fp >= 0.3)
 				{
-					// a sáv fölötti rész már éles, alatta még homályos
-					sight = q.y < sweepY ? 1.0 : sight;
+					clearR = q.y < sweepY ? uClearNew : uClear;
 					sweep = exp(-abs(q.y - sweepY) * 60.0) * step(sweepY, 0.999);
 				}
-				else
-					sight = min(sight, 0.4);
 			}
+			float dpx = length((q - uFocusPos / vec2(480.0, 270.0)) * vec2(480.0, 270.0));
+			float blurK = clearR > 640.0 ? 0.0 : smoothstep(clearR, clearR * 1.9 + 45.0, dpx);
+			float sight = min(clamp(uSight, 0.0, 1.0), mix(1.0, 0.0, blurK));
+			if (foc && fp < 0.3)
+				sight = min(sight, 0.4);
 			float rad = (1.0 - sight) * 3.2 + tired * 2.6;
 			vec3 s = flixel_texture2D(bitmap, q).rgb * (rad > 0.01 ? 0.34 : 1.0);
 			if (rad > 0.01)
@@ -126,5 +132,8 @@ class AmberShader extends FlxShader
 		uHit.value = [0.0];
 		uTired.value = [0.0];
 		uFocus.value = [0.0];
+		uClear.value = [700.0];
+		uClearNew.value = [700.0];
+		uFocusPos.value = [240.0, 135.0];
 	}
 }

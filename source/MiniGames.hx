@@ -751,9 +751,9 @@ class TankGame extends MiniGame
 /** Műhely: a pálya végén az összegyűjtött atomokból II. szintre fejleszthetők az alkatrészek (a MiniGame keretét használja). */
 class Workshop extends MiniGame
 {
-	/** A következő szintre fejlesztés ára: 30 × a mostani szint (II: 30, III: 60, IV: 90, V: 120). */
+	/** A következő szintre fejlesztés ára (II: 60, III: 100, IV: 160, V: 240): egy pálya ~45 atomot ad, így nagyjából pályánként egy fejlesztés fér bele. */
 	public static function costOf(id:Int):Int
-		return 30 * Std.int(Math.max(1, Parts.tier(id)));
+		return [60, 100, 160, 240][Std.int(Math.max(0, Math.min(3, Parts.tier(id) - 1)))];
 
 	static function roman(t:Int):String
 		return ["", "I", "II", "III", "IV", "V"][Std.int(Math.min(5, t))];
@@ -773,11 +773,11 @@ class Workshop extends MiniGame
 		rows.push(-1); // CONTINUE
 		for (i in 0...rows.length)
 		{
-			lines.push(txt("", 74, 74 + i * 14, 340, 8, 0xFFBBBBBB));
+			lines.push(txt("", 72, 74 + i * 14, 346, 8, 0xFFBBBBBB));
 			if (rows[i] >= 0)
 			{
-				// az alkatrész ikonja a sor előtt
-				var ic = new FlxSprite(60, 73 + i * 14);
+				// az alkatrész ikonja a sor előtt (a FlxText 2 px-es belső margója miatt 1 px-szel lejjebb: a szöveg közepére esik)
+				var ic = new FlxSprite(60, 75 + i * 14);
 				ic.loadGraphic(Art.partIcons(), true, 10, 10, false, "parts");
 				ic.animation.frameIndex = rows[i];
 				ic.scrollFactor.set(0, 0);

@@ -1245,7 +1245,14 @@ class PlayState extends FlxState
 		lampClock += elapsed;
 		composeInfo(elapsed);
 		// látás: VISOR nélkül homályos kép (a shader uSight értéke); a LENS (II. szint) kicsit fényesít
-		Main.sightTarget = Parts.has(Parts.VISOR) ? (Parts.tier(Parts.VISOR) >= 2 ? 1.2 : 1.0) : 0.4;
+		// látás: a robot körül éles kör, kifelé fokozatosan homályos; a VISOR szintjével nő a kör (lásd Parts.visionRadius, AmberShader)
+		Main.sightTarget = Parts.tier(Parts.VISOR) >= 2 ? 1.2 : 1.0;
+		Main.clearTarget = Parts.visionRadius();
+		if (ctrl != null)
+		{
+			Main.focusX = ctrl.x + ctrl.width / 2 - FlxG.camera.scroll.x;
+			Main.focusY = ctrl.y + ctrl.height / 2 - FlxG.camera.scroll.y;
+		}
 		// fáradtság: a lemerülő akku fokozatosan elsötétíti és elmossa a képet; leálláskor erősen
 		Main.tiredTarget = player != null && player.powerDown > 0 ? 1.0 : (Parts.battery < 25 ? (25 - Parts.battery) / 25 * 0.75 : 0.0);
 		if (subState == null && hudLayer != null)
