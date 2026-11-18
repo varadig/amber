@@ -1,4 +1,4 @@
-# Teszt: a shader-hangulatok (Looks): minden hangulatrol kep (tests/out/look-N.png); a valasztas megmarad ujratoltes utan; a TALL lab-nyujtozasa.
+﻿# Teszt: a shader-hangulatok (Looks): minden hangulatrol kep (tests/out/look-N.png); a valasztas megmarad ujratoltes utan; a TALL lab-nyujtozasa.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {
@@ -19,3 +19,4 @@ try {
     Js "(function(){window.__Looks.set(0);})()" | Out-Null
     "errors: " + ((Js "window.__errors") -join '; ')
 } finally { Stop-Cdp }
+

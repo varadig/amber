@@ -20,11 +20,39 @@ class AmberShader extends FlxShader
 		uniform float uClear;
 		uniform float uClearNew;
 		uniform vec2 uFocusPos;
-		uniform vec3 uDark;
-		uniform vec3 uMid;
-		uniform vec3 uLight;
+		uniform vec3 uS0;
+		uniform vec3 uS1;
+		uniform vec3 uS2;
+		uniform vec3 uS3;
+		uniform vec3 uS4;
 		uniform vec3 uHi;
 		uniform vec4 uLook;
+		uniform vec4 uLook2;
+		uniform vec3 uTop;
+		uniform vec3 uBot;
+
+		// 5 színű színrámpa (a fényességhez rendelt szín)
+		vec3 rampAt(float v)
+		{
+			float t = clamp(v, 0.0, 1.0) * 4.0;
+			if (t < 1.0)
+				return mix(uS0, uS1, t);
+			if (t < 2.0)
+				return mix(uS1, uS2, t - 1.0);
+			if (t < 3.0)
+				return mix(uS2, uS3, t - 2.0);
+			return mix(uS3, uS4, t - 3.0);
+		}
+
+		// 4x4 rendezett (Bayer) raszter 0..1
+		float bayer4(vec2 p)
+		{
+			vec2 a = mod(p, 2.0);
+			vec2 b = mod(floor(p / 2.0), 2.0);
+			float ia = a.x * 2.0 + a.y * 3.0 - a.x * a.y * 4.0;
+			float ib = b.x * 2.0 + b.y * 3.0 - b.x * b.y * 4.0;
+			return (ia * 4.0 + ib) / 16.0;
+		}
 
 		void main()
 		{
@@ -114,7 +142,21 @@ class AmberShader extends FlxShader
 			// halk vibrálás
 			float fl = 1.0 - uLook.z + uLook.z * sin(uTime * 47.0) + 0.006 * sin(uTime * 3.1);
 			// színátmenet-leképezés: a fényességből a hangulat (Looks) három színű rámpája (sötét - közép - világos)
-			vec3 ramp = v < 0.5 ? mix(uDark, uMid, v * 2.0) : mix(uMid, uLight, (v - 0.5) * 2.0);
+			if (uLook2.y > 0.0)
+				v = clamp(v + (bayer4(floor(q * vec2(480.0, 270.0))) - 0.5) * uLook2.y, 0.0, 1.0);
+			vec3 ramp = rampAt(v);
+			if (uLook2.x > 0.0)
+			{
+				// kromatikus aberráció: a vörös és a kék csatorna vízszintesen szétcsúszik
+				vec3 lw = vec3(0.299, 0.587, 0.114);
+				float l0 = dot(flixel_texture2D(bitmap, q).rgb, lw);
+				float dr = dot(flixel_texture2D(bitmap, q + vec2(px.x * uLook2.x, 0.0)).rgb, lw) - l0;
+				float db = dot(flixel_texture2D(bitmap, q - vec2(px.x * uLook2.x, 0.0)).rgb, lw) - l0;
+				ramp = vec3(rampAt(v + dr).r, ramp.g, rampAt(v + db).b);
+			}
+			// ég / talaj színezés (felül és alul más árnyalat)
+			if (uLook2.z > 0.0)
+				ramp *= mix(vec3(1.0), mix(uBot, uTop, 1.0 - q.y), uLook2.z);
 			vec3 col = ramp * sl * fl;
 			// a legfényesebb részek a kiemelő szín felé tolódnak (foszfor-izzás)
 			col += uHi * pow(max(v - 0.78, 0.0) * 4.5, 2.0) * 0.10;
@@ -129,7 +171,7 @@ class AmberShader extends FlxShader
 			col *= 1.0 + (foc ? 0.7 : 0.0) * smoothstep(0.88, 0.93, fp) * (1.0 - smoothstep(0.93, 1.0, fp));
 			col *= vig;
 			// a fekete sem teljesen fekete (csőizzás)
-			col += uMid * 0.04 * vig;
+			col += uS2 * 0.04 * vig;
 			gl_FragColor = vec4(col, 1.0);
 		}
 	')

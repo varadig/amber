@@ -14,11 +14,28 @@ class HudShader extends FlxShader
 	@:glFragmentSource('
 		#pragma header
 
-		uniform vec3 uDark;
-		uniform vec3 uMid;
-		uniform vec3 uLight;
+		uniform vec3 uS0;
+		uniform vec3 uS1;
+		uniform vec3 uS2;
+		uniform vec3 uS3;
+		uniform vec3 uS4;
 		uniform vec3 uHi;
 		uniform vec4 uLook;
+		uniform vec4 uLook2;
+		uniform vec3 uTop;
+		uniform vec3 uBot;
+
+		vec3 rampAt(float v)
+		{
+			float t = clamp(v, 0.0, 1.0) * 4.0;
+			if (t < 1.0)
+				return mix(uS0, uS1, t);
+			if (t < 2.0)
+				return mix(uS1, uS2, t - 1.0);
+			if (t < 3.0)
+				return mix(uS2, uS3, t - 2.0);
+			return mix(uS3, uS4, t - 3.0);
+		}
 
 		void main()
 		{
@@ -35,8 +52,7 @@ class HudShader extends FlxShader
 			if (uLook.w > 0.5)
 				l = floor(l * uLook.w + 0.5) / uLook.w;
 			float sl = 1.0 - uLook.x * 0.7 + uLook.x * 0.7 * sin(q.y * 270.0 * 6.2831853);
-			vec3 ramp = l < 0.5 ? mix(uDark, uMid, l * 2.0) : mix(uMid, uLight, (l - 0.5) * 2.0);
-			vec3 col = ramp * sl;
+			vec3 col = rampAt(l) * sl;
 			col += uHi * pow(max(l - 0.78, 0.0) * 4.5, 2.0) * 0.10 * t.a;
 			gl_FragColor = vec4(col, t.a);
 		}
