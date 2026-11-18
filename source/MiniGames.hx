@@ -671,6 +671,7 @@ class TankGame extends MiniGame
 					msg.text = "YOU WERE HIT: RESTARTING";
 					bullets = [];
 					retryT = 1.2;
+					return; // a lista kiürült: a ciklus nem folytatható (különben undefined lövedéket olvasna, és lefagy a játék)
 				}
 			}
 		}

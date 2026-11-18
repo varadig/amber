@@ -378,9 +378,11 @@ class PlayState extends FlxState
 		found = [for (_ in data.parts) false];
 
 		// háttér: csillagok és két réteg távoli rom (paralaxis)
-		addBackdrop(Art.stars(480 + Std.int(worldW * 0.05), 7), 0.05, 0.03, -70);
-		addBackdrop(Art.backdrop(480 + Std.int(worldW * 0.18), 11 + level, "5", 30), 0.18, 0.12, -70);
-		addBackdrop(Art.backdrop(480 + Std.int(worldW * 0.34), 29 + level, "6", 60), 0.34, 0.2, -60);
+		// pályánként más: égitest + távoli és közeli réteg stílusa (romok, gyár, árbocok, kupolák, hűtőtornyok, fogaskerekek, barlang, akvadukt, kábelek, felhőkarcolók)
+		var li = level % 10;
+		addBackdrop(Art.stars(480 + Std.int(worldW * 0.05), 7 + level * 5, [1, 0, 2, 3, 0, 1, 0, 2, 3, 1][li]), 0.05, 0.03, -70);
+		addBackdrop(Art.backdrop(480 + Std.int(worldW * 0.18), 11 + level, "5", 30, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9][li]), 0.18, 0.12, -70);
+		addBackdrop(Art.backdrop(480 + Std.int(worldW * 0.34), 29 + level, "6", 60, [0, 0, 9, 1, 2, 1, 6, 2, 3, 4][li]), 0.34, 0.2, -60);
 
 		// épületek: homlokzat a felszínen, falpapír a belső termekben (a csempék mögé)
 		for (d in data.decor)
@@ -1293,6 +1295,7 @@ class PlayState extends FlxState
 		}
 
 		updateBattery(elapsed);
+		updatePitRescue(elapsed);
 		FlxG.collide(player, solidMap);
 		if (player.dropT <= 0)
 		{
@@ -1448,6 +1451,94 @@ class PlayState extends FlxState
 
 
 	/** Az akku fogyása: idővel és a műveletekkel; kimerülve a robot ~4 mp-re leáll (sötét kép), majd kevés töltéssel újraindul. */
+	var pitT:Float = 0;
+	var rescuing:Bool = false;
+
+	/**
+	 * Gödör-mentés: ha a hős egy nyitott tetejű gödörben ül (mindkét oldalon fal), amiből ugrással és karmok nélkül nem jut ki
+	 * (pl. a 3. pálya kútja a CLAWS előtt), kb. 2 mp után a vészlift a legközelebbi peremre emeli (kevés akkuba kerül).
+	 */
+	function updatePitRescue(dt:Float):Void
+	{
+		if (rescuing || ctrl != player || heroExited || exiting || !player.onFloor || player.frozen || Parts.has(Parts.CLAWS) || player.flightT > 0 || inAnyRoom(player))
+		{
+			pitT = 0;
+			return;
+		}
+		var T = LevelData.T;
+		var pc = Std.int((player.x + player.width / 2) / T);
+		var fr = Std.int((player.y + player.height - 1) / T);
+		var minRise = 999;
+		var rimCol = 0;
+		var rimRow = 0;
+		var s = -1;
+		while (s <= 1)
+		{
+			var c = pc;
+			var n = 0;
+			while (n < 5 && !data.isSolid(c, fr))
+			{
+				c += s;
+				n++;
+			}
+			if (!data.isSolid(c, fr))
+			{
+				pitT = 0; // az egyik oldal nyitott: simán kisétál
+				return;
+			}
+			var r = fr;
+			while (r > fr - 14 && data.isSolid(c, r - 1))
+				r--;
+			var rise = fr + 1 - r;
+			if (rise < minRise && !data.isSolid(c, r - 1) && !data.isSolid(c, r - 2))
+			{
+				minRise = rise;
+				rimCol = c;
+				rimRow = r;
+			}
+			s += 2;
+		}
+		// a perem elérhető ugrással, vagy nincs használható perem, vagy tető van fölöttünk (terem): nem csapda
+		var open = minRise < 999 && minRise * T > player.jumpReach() + 10;
+		if (open)
+			for (k in 1...minRise + 1)
+				if (data.isSolid(pc, fr - k))
+					open = false;
+		if (!open)
+		{
+			pitT = 0;
+			return;
+		}
+		pitT += dt;
+		if (pitT < 2.0)
+			return;
+		pitT = 0;
+		rescuing = true;
+		player.frozen = true;
+		player.moves = false;
+		player.velocity.set(0, 0);
+		Parts.battery = Math.max(0, Parts.battery - 5);
+		Audio.play("dash", 0.9);
+		showToast("TRAPPED! EMERGENCY LIFT ENGAGED", 2.4);
+		var tx = rimCol * T + T / 2 - player.width / 2;
+		var ty = rimRow * T - player.height;
+		var steps = 0;
+		FlxTween.tween(player, {x: tx, y: ty}, 0.9, {ease: FlxEase.cubeInOut, onUpdate: _ ->
+		{
+			// fúvóka-láng a láb alatt
+			if (steps++ % 2 == 0)
+				burst(player.x + player.width / 2, player.y + player.height, 2, 0xFFFFFFFF, 40);
+		}, onComplete: _ ->
+		{
+			player.frozen = false;
+			player.moves = true;
+			player.velocity.set(0, 0);
+			player.invuln = Math.max(player.invuln, 0.5);
+			rescuing = false;
+			ring(player.x + player.width / 2, player.y + player.height, 16, 60);
+		}});
+	}
+
 	function updateBattery(dt:Float):Void
 	{
 		// az újraindulás: a leállás lejárt (a hős powerDown értéke negatívba fordult), kevés töltéssel indul újra
@@ -2204,6 +2295,8 @@ class PlayState extends FlxState
 		burst(it.x + 5, it.y + 5, 16, 0xFFFFFFFF, 100);
 		FlxG.camera.flash(0xFFFFFFFF, 0.35);
 		partFx(it);
+		if (it.friend < 0)
+			startShowcase(it.icon, tier);
 		var info = it.friend >= 0 ? "A PART FOR YOUR FRIEND " + Companions.NAMES[it.friend] : (tier <= 1 ? Parts.INFO[it.icon] : (Parts.INFO2[it.icon] != "" ? Parts.INFO2[it.icon] : "INSTALLED"));
 		var msg = "FOUND: " + it.label + "\n" + info;
 		if (partsFound >= data.parts.length)
@@ -2220,6 +2313,24 @@ class PlayState extends FlxState
 			msg += "
 NEXT: " + navTarget().label + " >>";
 		showToast(msg, 3.6);
+	}
+
+	var showcase:Showcase;
+
+	/** Rövid mozgó bemutató az új képességről (a sarokban, a hős valódi kinézetével). */
+	function startShowcase(icon:Int, tier:Int):Void
+	{
+		if (icon >= Parts.COUNT)
+			return;
+		if (showcase != null)
+		{
+			hudLayer.remove(showcase, true);
+			showcase.destroy();
+		}
+		showcase = new Showcase(icon, tier, 2.1);
+		hudAdding = true;
+		add(showcase);
+		hudAdding = false;
 	}
 
 	function onCell(p:Player, c:Pickup):Void

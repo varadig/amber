@@ -112,7 +112,7 @@ class Player extends FlxSprite
 		height = 12;
 		offset.set(2, 2);
 		animation.add("idle", [0], 1);
-		animation.add("run", [1, 2, 3, 4], 12);
+		animation.add("run", [1, 2, 3, 4, 11, 12], 14);
 		animation.add("jump", [5], 1);
 		animation.add("fall", [6], 1);
 		animation.add("wall", [7], 1);
@@ -189,6 +189,10 @@ class Player extends FlxSprite
 	/** Ugrás-erő: csupaszon csak egy kis szökkenés. */
 	function jumpPower():Float
 		return Parts.has(Parts.LEGS) ? (Parts.tier(Parts.LEGS) >= 2 ? 365.0 : 332.0) : 215.0;
+
+	/** A teljes ugrás magassága pixelben (a gödörből kijutás ellenőrzéséhez). */
+	public function jumpReach():Float
+		return jumpPower() * jumpPower() / (2 * GRAV);
 
 	override public function update(elapsed:Float):Void
 	{

@@ -38,3 +38,10 @@
 - Beállítások: `SettingsSubState` (O / háromszög a szünetből és a címképernyőről), zene/SFX hangerő mentve (`Audio.saveVolumes`), a menü alatt szól a zene (`previewOn/Off`).
 - Lámpa: `LampShader`, `PlayState.addLamps`, `Lamp` Tiled-objektum (lásd docs/LEVELS.md). Teszt: `tests/lamps.ps1` (képernyőkép: tests/out/lamps.png).
 - Fejlesztői ugrás: `PlayState.cheatSpots/cheatTeleportTo/applyDevGoto`, URL-paraméterek a `Main`-ben (`?level=&goto=&parts=`), leírás: docs/LEVELS.md.
+
+## Hátterek, animáció, bemutató, gödör-mentés
+- Háttér: `Art.backdrop(w, seed, tone, density, style)` 10 stílus (romok, gyár, árbocok, kupolák, hűtőtornyok, fogaskerekek, barlang, akvadukt, kábelek, felhőkarcolók), `Art.stars(w, seed, celestial)` égitesttel (hold / gyűrűs bolygó / napfogyatkozás). A `PlayState.create` pályánként (level % 10) választ távoli + közeli réteg-stílust. Az alacsony stílusok (`lifted`) feljebb ülnek, különben a talaj eltakarja őket. Képernyőképek: `tests/bgshots.ps1`.
+- Hős-futás: 6 képkocka (`Art.player`: 1-4 és 11-12 az animációban), a földet érő képkockákon a törzs 1 px-szel lejjebb ül (`bobs`), a második fél lépés az első tükrözése.
+- Alkatrész-bemutató: `Showcase.hx` (a HUD-rétegen, `PlayState.startShowcase` az `onPart`-ból): a sarokban hurokban lejátszott mini-jelenet minden képességről (a hős valódi kinézetével). Új alkatrésznél vegyél fel egy `case`-t a `Showcase.scene`-be.
+- Gödör-mentés: `PlayState.updatePitRescue`: nyitott tetejű gödörben, CLAWS nélkül, ha a perem magasabb az ugrásnál (`Player.jumpReach`), ~2 mp után vészlift a peremre (-5 akku). Teszt: `tests/pit.ps1`.
+- Tank mini-játék: a találatkor a lövedéklista kiürítése után `return` kell (különben undefined lövedék → kivétel → lefagy a játék); teszt: `tests/tank.ps1`.

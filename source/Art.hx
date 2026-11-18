@@ -84,18 +84,29 @@ class Art
 			function has(id:Int):Bool
 				return (mask & (1 << id)) != 0;
 			var stand = ["...22..22...", "...32..23...", "...22..22...", "..333..333.."];
-			var runA = ["..22....22..", "..32....23..", "...22..22...", "..333..333.."];
-			var runB = ["...22..22...", "...32..23...", "...22..22...", "...33..33..."];
-			var runC = ["...22..22...", "..32....23..", "..22....22..", ".333....333."];
+			// Futás: 6 képkocka, két "lépés" tükrözve. Robotos hatás: dugattyú-combok, világos térdízület, lapos talp;
+			// a földet érő (lent) képkockákon a törzs 1 px-szel lejjebb ül (bob: 3 soros láb), a lendítő képkockán fent van.
+			var contact = ["..22....22..", ".42.....24..", "33......333."];
+			var passing = ["...22..22...", "...22..42...", "...32...33..", "..333......."];
+			var reach = ["..22....22..", "..32....24..", ".32.....33..", ".3.........."];
+			function mirror(a:Array<String>):Array<String>
+				return [for (s in a) [for (k in 0...s.length) s.charAt(s.length - 1 - k)].join("")];
 			var jump = ["..32....23..", "...33..33...", "............", "............"];
 			var fall = ["..32....23..", "..22....22..", "..22....22..", "..33....33.."];
 			var stub = ["............", "............", "...22..22...", "...22..22..."];
-			var legs = [stand, runA, runB, runC, runB, jump, fall, stand, runA, fall, stand];
+			// 0 állás, 1-4 futás (1 és 4 a földet érés), 5 ugrás, 6 esés, 7 fal, 8 dash, 9 sérülés, 10 kikapcsolt, 11-12 a futás vége
+			var legs = [stand, contact, passing, reach, mirror(contact), jump, fall, stand, ["..22....22..", "..32....23..", "...22..22...", "..333..333.."], fall, stand, mirror(passing), mirror(reach)];
+			var bobs = [false, true, false, false, true, false, false, false, false, false, false, false, false];
 			if (!has(Parts.LEGS))
+			{
 				legs = [for (_ in legs) stub];
+				bobs = [for (_ in bobs) false];
+			}
 			var frames:Array<Array<String>> = [];
 			for (i in 0...legs.length)
 			{
+				var bob = bobs[i];
+				var o = bob ? 1 : 0;
 				var body = BODY.copy();
 				if (!has(Parts.VISOR))
 				{
@@ -118,11 +129,11 @@ class Art
 					body[7] = ".2232222322.";
 					body[8] = ".2232222322.";
 				}
-				var rows = body.concat(legs[i]);
+				var rows = (bob ? ["............"] : []).concat(body).concat(legs[i]);
 				function setc(r:Int, c:Int, ch:String):Void
 				{
-					var s = rows[r];
-					rows[r] = s.substr(0, c) + ch + s.substr(c + 1);
+					var s = rows[r + o];
+					rows[r + o] = s.substr(0, c) + ch + s.substr(c + 1);
 				}
 				if (has(Parts.THRUSTER))
 				{
@@ -824,7 +835,7 @@ class Art
 	}
 
 	/** Háttér-sziluett (távoli romok, csillagpontok): `w` x 340, a paralaxishoz. */
-	public static function backdrop(w:Int, seed0:Int, tone:String, density:Int):BitmapData
+	public static function backdrop(w:Int, seed0:Int, tone:String, density:Int, style:Int = 0):BitmapData
 	{
 		var bd = new BitmapData(w, 340, true, 0x00000000);
 		var seed = seed0;
@@ -833,30 +844,293 @@ class Art
 			seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF;
 			return seed >> 8;
 		}
-		var x = 0;
-		while (x < w)
+		var col = color(tone);
+		// az alacsony sziluettek (gyár, kupolák, hűtőtornyok, fogaskerekek) feljebb ülnek, különben a talaj eltakarja őket
+		var lifted = style == 1 || style == 3 || style == 4 || style == 5;
+		var H = lifted ? 255 : 340;
+		var BLK = 0xFF000000;
+		function rect(x:Int, y:Int, rw:Int, rh:Int, c:Int = -1):Void
+			bd.fillRect(new openfl.geom.Rectangle(x, y, rw, rh), c == -1 ? col : c);
+		/** Átlátszóra vágás (ívek, lyukak). */
+		function cut(x:Int, y:Int, rw:Int, rh:Int):Void
+			bd.fillRect(new openfl.geom.Rectangle(x, y, rw, rh), 0x00000000);
+		function disc(cx:Int, cy:Int, r:Int):Void
 		{
-			var pw = 8 + rnd() % 22;
-			var ph = 90 + rnd() % 140;
-			var broken = rnd() % 3 == 0 ? rnd() % 20 : 0;
-			for (px in x...Std.int(Math.min(w, x + pw)))
-				for (py in 340 - ph + broken...340)
-					bd.setPixel32(px, py, color(tone));
-			// ablakok / rések
-			if (pw > 12)
-				for (wy in 0...Std.int(ph / 16))
-					if (rnd() % 3 != 0)
-						bd.fillRect(new openfl.geom.Rectangle(x + 3, 340 - ph + broken + 8 + wy * 16, 3, 5), 0xFF000000);
-			x += pw + rnd() % density;
+			for (dy in -r...r + 1)
+			{
+				var dx = Std.int(Math.sqrt(r * r - dy * dy));
+				rect(cx - dx, cy + dy, 2 * dx + 1, 1);
+			}
 		}
+		var x = 0;
+		switch (style)
+		{
+			case 1: // gyár: fűrészfogas csarnokok és magas kémények
+				while (x < w)
+				{
+					if (rnd() % 4 == 0)
+					{
+						var cw = 5 + rnd() % 3;
+						var ch = 120 + rnd() % 90;
+						rect(x, H - ch, cw, ch);
+						rect(x - 1, H - ch, cw + 2, 3);
+						rect(x + 1, H - ch + 10, cw - 2, 1, BLK);
+						x += cw + 6 + rnd() % density;
+					}
+					else
+					{
+						var bw = 28 + rnd() % 40;
+						var bh = 40 + rnd() % 60;
+						rect(x, H - bh, bw, bh);
+						var tx = x;
+						while (tx + 8 <= x + bw)
+						{
+							for (k in 0...8)
+								rect(tx + k, H - bh - k, 1, k);
+							tx += 8;
+						}
+						for (wx in 0...Std.int(bw / 8))
+							rect(x + 3 + wx * 8, H - bh + 10, 4, 3, BLK);
+						x += bw + rnd() % density;
+					}
+				}
+			case 2: // rácsos árbocok villogó lámpával
+				while (x < w)
+				{
+					var mh = 110 + rnd() % 130;
+					var mw = 12 + rnd() % 6;
+					var secH = 14;
+					for (yy in 0...mh)
+					{
+						var half = mw / 2 * (1 - yy / mh) + 1;
+						var l = Std.int(x + mw / 2 - half);
+						var r = Std.int(x + mw / 2 + half - 1);
+						rect(l, H - yy - 1, 1, 1);
+						rect(r, H - yy - 1, 1, 1);
+						// átlós merevítés: szakaszonként ellenkező irányban
+						var sec = Std.int(yy / secH);
+						var k = (yy % secH) / secH;
+						var px = (sec % 2 == 0) ? l + k * (r - l) : r - k * (r - l);
+						rect(Std.int(px), H - yy - 1, 1, 1);
+					}
+					rect(x + Std.int(mw / 2), H - mh - 16, 1, 16);
+					rect(x + Std.int(mw / 2) - 1, H - mh - 18, 3, 2, color("1"));
+					x += mw + 18 + rnd() % (density * 2);
+				}
+			case 3: // kupolák és gömbtartályok
+				while (x < w)
+				{
+					var r = 14 + rnd() % 22;
+					if (rnd() % 2 == 0)
+					{
+						var bh = 10 + rnd() % 16;
+						rect(x, H - bh, 2 * r + 1, bh);
+						disc(x + r, H - bh, r);
+						rect(x + r - 1, H - bh - r - 8, 2, 8);
+					}
+					else
+					{
+						var legH = 40 + rnd() % 50;
+						var cy = H - legH - r;
+						disc(x + r, cy, r);
+						rect(x + 3, cy + Std.int(r / 2), 3, H - cy - Std.int(r / 2));
+						rect(x + 2 * r - 5, cy + Std.int(r / 2), 3, H - cy - Std.int(r / 2));
+						rect(x + r - 1, cy + r, 3, H - cy - r);
+						rect(x + 3, H - Std.int(legH / 2), 2 * r - 5, 2);
+					}
+					x += 2 * r + 6 + rnd() % density;
+				}
+			case 4: // hűtőtornyok
+				while (x < w)
+				{
+					var th = 100 + rnd() % 70;
+					var bw = 44 + rnd() % 28;
+					var neck = bw * 0.62;
+					for (yy in 0...th)
+					{
+						var t = yy / th;
+						var wd = neck + (bw - neck) * ((t - 0.65) * (t - 0.65)) / (0.65 * 0.65);
+						rect(x + Std.int((bw - wd) / 2), H - yy - 1, Std.int(wd), 1);
+					}
+					x += bw + 6 + rnd() % density;
+				}
+			case 5: // félig a földbe süllyedt fogaskerekek
+				while (x < w)
+				{
+					var r = 22 + rnd() % 26;
+					var cx = x + r;
+					var cy = H - 10 - Std.int(r / 2) - rnd() % 20;
+					var teeth = 10 + Std.int(r / 4);
+					for (dy in -r - 5...r + 6)
+						for (dx in -r - 5...r + 6)
+						{
+							var d = Math.sqrt(dx * dx + dy * dy);
+							var rt = r + (Math.sin(Math.atan2(dy, dx) * teeth) > 0 ? 4 : 0);
+							if (d <= rt && (d > r * 0.62 || d < r * 0.16 || Math.abs(dx) <= 1 || Math.abs(dy) <= 1) && cx + dx >= 0 && cx + dx < w && cy + dy >= 0 && cy + dy < H)
+								bd.setPixel32(cx + dx, cy + dy, col);
+						}
+					x += r + rnd() % (density + r);
+				}
+			case 6: // barlang: mennyezet cseppkövekkel, a talajon függő kövek
+				rect(0, 0, w, 78);
+				while (x < w)
+				{
+					var sw = 10 + rnd() % 18;
+					var sl = 20 + rnd() % 90;
+					for (yy in 0...sl)
+					{
+						var wd = Std.int(Math.max(1, sw * (1 - yy / sl)));
+						rect(x + Std.int((sw - wd) / 2), 78 + yy, wd, 1);
+					}
+					x += sw + 2 + rnd() % density;
+				}
+				x = 0;
+				while (x < w)
+				{
+					var sw = 10 + rnd() % 16;
+					var sh = 40 + rnd() % 110;
+					for (yy in 0...sh)
+					{
+						var wd = Std.int(Math.max(1, sw * (1 - yy / sh)));
+						rect(x + Std.int((sw - wd) / 2), H - yy - 1, wd, 1);
+					}
+					x += sw + 4 + rnd() % (density * 2);
+				}
+			case 7: // akvadukt: ívsorok
+				while (x < w)
+				{
+					var ph = 90 + rnd() % 50;
+					var run = 3 + rnd() % 4;
+					var aw = 28;
+					rect(x, H - ph, run * aw + 6, ph);
+					for (k in 0...run)
+					{
+						var r = Std.int((aw - 6) / 2);
+						var cx = x + k * aw + 6 + r;
+						var cy = H - ph + 8 + r;
+						for (dy in -r...1)
+						{
+							var dx = Std.int(Math.sqrt(r * r - dy * dy));
+							cut(cx - dx, cy + dy, 2 * dx + 1, 1);
+						}
+						cut(cx - r, cy, 2 * r + 1, H - cy);
+					}
+					x += run * aw + 6 + 24 + rnd() % (density * 2);
+				}
+			case 8: // villanyoszlopok kábelekkel
+				var prevX = -1;
+				var prevTop = 0;
+				while (x < w + 80)
+				{
+					var ph = 150 + rnd() % 70;
+					var top = H - ph;
+					rect(x, top, 5, ph);
+					rect(x - 8, top + 6, 21, 3);
+					rect(x - 5, top + 26, 15, 2);
+					if (prevX >= 0)
+						for (arm in 0...2)
+						{
+							var ox0 = arm == 0 ? 8 : 5;
+							var oy = arm == 0 ? 7 : 27;
+							var x0 = prevX + (arm == 0 ? 10 : 8);
+							var x1 = x - (arm == 0 ? 8 : 5);
+							for (px in x0...x1 + 1)
+							{
+								var t = (px - x0) / Math.max(1, x1 - x0);
+								var yy = prevTop + oy + (top - prevTop) * t + 14 * 4 * t * (1 - t);
+								if (px >= 0 && px < w)
+									bd.setPixel32(px, Std.int(yy), col);
+							}
+						}
+					prevX = x;
+					prevTop = top;
+					x += 70 + rnd() % (density * 2);
+				}
+			case 9: // felhőkarcolók: lépcsős tetők, antennák
+				while (x < w)
+				{
+					var bw = 14 + rnd() % 26;
+					var bh = 110 + rnd() % 130;
+					rect(x, H - bh, bw, bh);
+					if (bw > 18)
+					{
+						rect(x + 3, H - bh - 12, bw - 6, 12);
+						if (bw > 28)
+							rect(x + 7, H - bh - 20, bw - 14, 8);
+					}
+					if (rnd() % 3 == 0)
+						rect(x + Std.int(bw / 2), H - bh - 34, 1, 34);
+					for (wy in 0...Std.int(bh / 10) - 1)
+						for (wx in 0...Std.int((bw - 4) / 6))
+							if (rnd() % 4 != 0)
+								rect(x + 3 + wx * 6, H - bh + 6 + wy * 10, 2, 3, BLK);
+					x += bw + rnd() % Std.int(density / 2 + 1);
+				}
+			default: // romok
+				while (x < w)
+				{
+					var pw = 8 + rnd() % 22;
+					var ph = 90 + rnd() % 140;
+					var broken = rnd() % 3 == 0 ? rnd() % 20 : 0;
+					for (px in x...Std.int(Math.min(w, x + pw)))
+						for (py in 340 - ph + broken...340)
+							bd.setPixel32(px, py, col);
+					// ablakok / rések
+					if (pw > 12)
+						for (wy in 0...Std.int(ph / 16))
+							if (rnd() % 3 != 0)
+								bd.fillRect(new openfl.geom.Rectangle(x + 3, 340 - ph + broken + 8 + wy * 16, 3, 5), 0xFF000000);
+					x += pw + rnd() % density;
+				}
+		}
+		// a feljebb ültetett sziluettek alatt tömör sáv, hogy a szakadékokban ne látsszon át
+		if (lifted)
+			rect(0, H, w, 340 - H);
 		return bd;
 	}
 
 	/** Csillagpontok (halvány) a legtávolabbi rétegre. */
-	public static function stars(w:Int, seed0:Int):BitmapData
+	public static function stars(w:Int, seed0:Int, celestial:Int = 0):BitmapData
 	{
 		var bd = new BitmapData(w, 340, true, 0x00000000);
 		var seed = seed0;
+		// égitest: 1 hold (sarlóval árnyékolva), 2 gyűrűs bolygó, 3 napfogyatkozás
+		if (celestial > 0)
+		{
+			var cx = 90 + (seed0 * 37) % 260;
+			var cy = 112 + (seed0 * 13) % 40;
+			var R = celestial == 1 ? 26 : (celestial == 2 ? 22 : 34);
+			for (dy in -R - 50...R + 51)
+				for (dx in -R - 50...R + 51)
+				{
+					var d = Math.sqrt(dx * dx + dy * dy);
+					var px = cx + dx;
+					var py = cy + dy;
+					if (px < 0 || px >= w || py < 0 || py >= 340)
+						continue;
+					switch (celestial)
+					{
+						case 1:
+							var d2 = Math.sqrt((dx - 9) * (dx - 9) + (dy + 3) * (dy + 3));
+							if (d <= R && d2 > R - 2)
+								bd.setPixel32(px, py, (dx + dy) % 7 == 0 && d < R - 4 ? 0xFF282828 : 0xFF383838);
+						case 2:
+							var ring = (dx / 46.0) * (dx / 46.0) + (dy / 9.0) * (dy / 9.0);
+							var onRing = ring > 0.74 && ring < 1;
+							if (d <= R)
+								bd.setPixel32(px, py, (dy % 6 == 0) ? 0xFF282828 : 0xFF303030);
+							if (onRing && (dy > 0 || d > R))
+								bd.setPixel32(px, py, 0xFF454545);
+						default:
+							if (d <= R - 1)
+								bd.setPixel32(px, py, 0xFF0E0E0E);
+							else if (d <= R + 1)
+								bd.setPixel32(px, py, 0xFF606060);
+							else if (d <= R + 7 && (Std.int(Math.atan2(dy, dx) * 9 / Math.PI * 2) % 2 == 0))
+								bd.setPixel32(px, py, 0xFF2A2A2A);
+					}
+				}
+		}
 		for (i in 0...Std.int(w / 9))
 		{
 			seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF;
