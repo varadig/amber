@@ -210,7 +210,9 @@ class Art
 			// 11: MOTOR
 			["...4444...", "..433334..", ".43333334.", "4332222334", "4332442334", "4332442334", "4332222334", ".43333334.", "..433334..", "...4444..."],
 			// 12: FEJ
-			["....44....", "....44....", ".44444444.", ".43333334.", ".43444434.", ".43444434.", ".43333334.", ".44444444.", "..44..44..", ".........."]
+			["....44....", "....44....", ".44444444.", ".43333334.", ".43444434.", ".43444434.", ".43333334.", ".44444444.", "..44..44..", ".........."],
+			// 13: APU (hang-processzor): hangszóró hanghullámokkal
+			["......4...", "...4...4..", "..44.4..4.", "4444..4.4.", "4334..4..4", "4334..4..4", "4444..4.4.", "..44.4..4.", "...4...4..", "......4..."]
 		]));
 	}
 
@@ -267,17 +269,35 @@ class Art
 	{
 		return cached("grate", () ->
 		{
-			var rows:Array<String> = [];
-			for (y in 0...16)
+			// felül 6 px falazat (a járat alacsonynak látszik: csak a MICRO fér be), alatta alacsony rács
+			var rows:Array<String> = tunnelLidRows();
+			for (y in 6...16)
 			{
 				var r = "";
 				for (x in 0...16)
-					r += (y == 0 || y == 15) ? "3" : ((x % 5 == 2) ? "3" : (y % 6 == 3 ? "2" : "."));
+					r += (y == 6 || y == 15) ? "3" : ((x % 5 == 2) ? "3" : (y % 6 == 3 ? "2" : "."));
 				rows.push(r);
 			}
 			return strip([rows]);
 		});
 	}
+
+	/** A MICRO-járat mennyezete 16x6 (a tégla-csempe alsó sorai: a járat így alacsonynak látszik, a társ magasságához illik). */
+	static function tunnelLidRows():Array<String>
+	{
+		var rows:Array<String> = [];
+		for (y in 2...8)
+		{
+			var r = "";
+			for (x in 0...16)
+				r += (y == 7 || x % 16 == 15) ? "0" : "2";
+			rows.push(r);
+		}
+		return rows;
+	}
+
+	public static function tunnelLid():BitmapData
+		return cached("tunnelLid", () -> strip([tunnelLidRows()]));
 
 	/** Aljzat 12x12: 0 üres, 1-2 áram alatt. */
 	public static function socket():BitmapData
@@ -706,6 +726,13 @@ class Art
 							ch = "3";
 						else if (open == 0)
 							ch = (x == 7 || x == 8) && y > 10 && y < 15 ? "0" : "1";
+						else if (open >= 10)
+						{
+							// nyílás: a két szárny középről széthúzódik (s = a rés fél-szélessége), a résben fény
+							var s = open - 10;
+							var gap = (x >= 8 - s && x <= 7 + s);
+							ch = gap ? (y % 3 == 0 ? "4" : "0") : (x == 8 - s - 1 || x == 7 + s + 1 ? "2" : "1");
+						}
 						else
 						{
 							ch = "0";
@@ -721,7 +748,8 @@ class Art
 				}
 				return rows;
 			}
-			return strip([make(0), make(1), make(2)]);
+			// 0 csukott, 1-6 nyílás (a szárnyak széthúzódnak), 7-8 nyitott (csillogó)
+			return strip([make(0), make(10), make(11), make(12), make(13), make(14), make(15), make(1), make(2)]);
 		});
 	}
 

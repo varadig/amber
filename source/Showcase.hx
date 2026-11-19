@@ -404,6 +404,22 @@ class Showcase extends FlxGroup
 					rc(x + 8, y + 28, 3, fl, 0xFFFFFFFF, 0.9);
 					rc(x + 13, y + 28, 3, fl + 2, 0xFFBBBBBB, 0.8);
 				}
+			case Parts.AUDIO: // a recsegő, zajos hanghullám kisimul: tiszta hang
+				floorRect(0, SW);
+				place(hero, 8, hy, 0);
+				var clean = seg(p, 0.2, 0.75);
+				var mid = 24.0;
+				var x = 34.0;
+				while (x < SW - 6)
+				{
+					var w = Math.sin(x * 0.22 - t * 9) * 9;
+					// zaj és lépcsős (bitzajos) torzítás, ami a tisztulással eltűnik
+					var nz = (Math.random() - 0.5) * 14 * (1 - clean);
+					var y = mid + w + nz;
+					y = clean < 1 ? Math.round(y / (2 + 4 * (1 - clean))) * (2 + 4 * (1 - clean)) : y;
+					rc(x, y, 2, 2, clean > 0.95 ? 0xFFFFFFFF : 0xFFBBBBBB);
+					x += 2;
+				}
 			default:
 		}
 	}

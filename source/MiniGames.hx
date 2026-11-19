@@ -753,7 +753,7 @@ class Workshop extends MiniGame
 {
 	/** A következő szintre fejlesztés ára (II: 60, III: 100, IV: 160, V: 240): egy pálya ~45 atomot ad, így nagyjából pályánként egy fejlesztés fér bele. */
 	public static function costOf(id:Int):Int
-		return [60, 100, 160, 240][Std.int(Math.max(0, Math.min(3, Parts.tier(id) - 1)))];
+		return [60, 100][Std.int(Math.max(0, Math.min(1, Parts.tier(id) - 1)))];
 
 	static function roman(t:Int):String
 		return ["", "I", "II", "III", "IV", "V"][Std.int(Math.min(5, t))];
@@ -767,7 +767,7 @@ class Workshop extends MiniGame
 	override function build():Void
 	{
 		head = txt("", 62, 52, 356, 8, 0xFFFFFFFF, "center");
-		for (i in 0...Parts.COUNT)
+		for (i in Parts.ABILITIES)
 			if (Parts.has(i))
 				rows.push(i);
 		rows.push(-1); // CONTINUE

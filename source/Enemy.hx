@@ -174,7 +174,16 @@ class Enemy extends FlxSprite
 				dir = dx > 0 ? 1 : -1;
 				animation.play("walk");
 				animation.timeScale = 2;
-				if (ledge)
+				// a peremről lelép, ha a célpont lejjebb van és a perem alatt (legfeljebb 6 csempével) talaj van; szakadékba nem megy, felfelé nem mászik
+				var dropOk = false;
+				if (ledge && dy > 8)
+					for (k in 1...7)
+						if (level.isStandable(ahead, footRow + k))
+						{
+							dropOk = true;
+							break;
+						}
+				if (ledge && !dropOk)
 					velocity.x = 0;
 				else
 					velocity.x = dir * 80;

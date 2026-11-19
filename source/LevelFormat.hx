@@ -64,6 +64,8 @@ class LevelFormat
 			l.push({name: "part" + i, cls: "Part", def: {icon: i, label: i < Parts.COUNT ? Parts.NAMES[i] : "", friend: -1}});
 		// a lámpa a lista végén: az eddigi csempe-azonosítók (gid) nem tolódnak el
 		l.push({name: "lamp", cls: "Lamp", def: {radius: 110, intensity: 1.0, flicker: true, angle: 90, spread: 50}});
+		// a később felvett alkatrészek a lista végén (a meglévő csempék gid-je nem tolódik el): 13 = APU (hang-processzor)
+		l.push({name: "part13", cls: "Part", def: {icon: Parts.AUDIO, label: Parts.NAMES[Parts.AUDIO], friend: -1}});
 		return l;
 	}
 

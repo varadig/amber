@@ -6,12 +6,15 @@
 	<window width="960" height="540" fps="60" background="#000000" hardware="true" vsync="true" />
 	<!-- Böngészőben a vászon kitölti az ablakot (0x0), a játék belső felbontása 480x270 -->
 	<window if="html5" width="0" height="0" resizable="true" allow-high-dpi="false" />
-	<window if="desktop" orientation="landscape" fullscreen="false" resizable="true" />
+	<!-- Windows (HashLink, scripts/build-windows.ps1): a lime HL-ben az ékezetes ablakcímből csak az "Ä" marad, ezért ékezet nélkül -->
+	<window if="desktop" orientation="landscape" fullscreen="false" resizable="true" title="Amber" />
 
 	<source path="source" />
 
 	<!-- A pályák Tiled-térképei (levels/levelN.tmj, szerkesztés: docs/LEVELS.md), beágyazva; hiányzó pályát a generátor készít -->
 	<assets path="levels" rename="assets/levels" include="*.tmj" type="text" embed="true" />
+	<!-- Nyelvi fájlok (lang/<kód>.json, leírás: a fájlok _info mezője); minden itt lévő fájl választható nyelv (szünet-menü: LANGUAGE) -->
+	<assets path="lang" rename="assets/lang" include="*.json" type="text" embed="true" />
 
 	<!-- Tesztbuild (-Dtest): egyből a játék indul, a PlayState elérhető a window.__ps-en -->
 	<!-- Cheatek (CheatSubState, F9): csak debug és teszt (-Dtest) buildben; a release-ben a kód ki sem fordul. -Dcheats-szel kézzel is bekapcsolható. -->

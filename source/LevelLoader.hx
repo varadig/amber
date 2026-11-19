@@ -153,7 +153,8 @@ class LevelLoader
 					var k = LevelFormat.ENEMY_KINDS.indexOf(Std.string(p.kind));
 					d.enemies.push({kind: k < 0 ? 0 : k, x: x, y: y});
 				case "Part":
-					var ps:PartSpawn = {icon: Std.int(num(p.icon, 0)), label: p.label != null ? Std.string(p.label) : "", x: x, y: y};
+					// a régi feliratok (VISOR, PROCESSOR) az új névre (GPU, CPU) képezve
+					var ps:PartSpawn = {icon: Std.int(num(p.icon, 0)), label: p.label != null ? Parts.canonical(Std.string(p.label)) : "", x: x, y: y};
 					if (p.friend != null && Std.int(p.friend) >= 0)
 						ps.friend = Std.int(p.friend);
 					// Tiled-ben kézzel letett / átnevezett alkatrész: ha az objektumnak nincs saját "icon" tulajdonsága (csak a csempe alapértéke),

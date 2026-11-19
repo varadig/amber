@@ -9,6 +9,10 @@ class Main extends Sprite
 {
 	static var amber:AmberShader;
 	static var clock:Float = 0;
+
+	/** A shaderek közös órája (a HUD szünet-hullámzása a játékképével együtt mozog). */
+	public static function shaderTime():Float
+		return clock;
 	/** A látás célértéke (0 homályos .. 1 éles): a PlayState állítja a VISOR szerint; a megjelenített érték simán követi. */
 	public static var sightTarget:Float = 1;
 	static var sightNow:Float = 1;
@@ -22,6 +26,14 @@ class Main extends Sprite
 	static var clearNow:Float = 700;
 	/** A PlayState.create állítja: a következő állapotváltás / képkocka a látást átmenet nélkül a célértékre teszi. */
 	public static var snapVision:Bool = false;
+
+	/** Szünet-effekt (0..1, a PlayState.setPaused állítja): AmberShader.uPause, lágyan be- és kiúszik. */
+	public static var pauseTarget:Float = 0;
+	static var pauseNow:Float = 0;
+
+	/** Teszthez: a szünet-effekt pillanatnyi erőssége. */
+	public static function amberPause():Float
+		return pauseNow;
 
 	/** A shaderben éppen érvényes tiszta-látás sugár (px); a PlayState.updateFog ehhez halványítja a tárgyakat / ellenségeket. */
 	public static function clearRadius():Float
@@ -54,6 +66,18 @@ class Main extends Sprite
 		// A borostyán-monitor shader az egész játékon (a játék példányon, hogy a pásztázó-vonalak az ablak felbontásán is élesek legyenek)
 		Looks.load();
 		Lang.load(); // a választott nyelv (cheat-menü: LANGUAGE), a böngésző megjegyzi
+		Prefs.load(); // eszköz-súgó be / ki (beállítások menü)
+		#if (cheats && js)
+		// fejlesztői mentés: az előző munkamenet utolsó állapotából dátumozott mentés lesz (cheat-menü: SAVE STATES),
+		// és az oldal elhagyásakor (frissítés, bezárás, élő újratöltés) a pillanatnyi állapot elmentődik
+		DevSave.snapshotOnLoad();
+		js.Browser.window.addEventListener("pagehide", (_) ->
+		{
+			var ps = Std.downcast(FlxG.state, PlayState);
+			if (ps != null)
+				DevSave.saveLatest(ps.devSnapshot());
+		});
+		#end
 		DevReload.init(); // dev build: élő újratöltés új dev build esetén
 		amber = new AmberShader();
 		var filter = new ShaderFilter(amber);
@@ -63,6 +87,8 @@ class Main extends Sprite
 			tiredTarget = 0;
 			hitFx = 0;
 			focusT = 0;
+			pauseTarget = 0;
+			pauseNow = 0;
 			if (!snapVision)
 			{
 				sightTarget = 1;
@@ -115,6 +141,12 @@ class Main extends Sprite
 			amber.uClearNew.value = [focusT > 0 ? clearTarget : clearNow];
 			amber.uFocusPos.value = [focusX, focusY];
 			amber.uFocus.value = [focusT];
+			pauseNow += (pauseTarget - pauseNow) * Math.min(1, FlxG.elapsed * 7.0);
+			if (Math.abs(pauseTarget - pauseNow) < 0.002)
+				pauseNow = pauseTarget;
+			amber.uPause.value = [pauseNow];
+			// hangminőség az APU szintjéből (globális effekt-lánc)
+			AudioFx.update();
 			amber.uSight.value = [sightNow];
 			hitFx = Math.max(0, hitFx - FlxG.elapsed * 2.2);
 			amber.uHit.value = [hitFx];
@@ -126,7 +158,12 @@ class Main extends Sprite
 		#if cheats
 		// fejlesztői URL-paraméterek (csak -debug / -Dtest / -Dcheats buildben): ?level=N (0-tól) a megadott pályával indít, ?goto=<pont> a pálya egy pontjára ugrik
 		// (spawn, cpN, partN, buildingN, doorN, terminalN, benchN, exit, vagy "x,y" pixel), ?parts=prev|all az előző pályák / minden alkatrészt megadja
+		#if js
 		var qs = js.Browser.location.search;
+		#else
+		// Windows (HashLink): ugyanezek parancssori argumentumként: Amber.exe level=3 goto=exit
+		var qs = "?" + Sys.args().join("&");
+		#end
 		var direct = false;
 		var lm = ~/[?&]level=([0-9]+)/;
 		if (lm.match(qs))
@@ -168,6 +205,30 @@ class Main extends Sprite
 				return;
 			toggleFullscreen();
 		});
+		#else
+		// asztali (Windows, HashLink) változat: az F billentyűt képkockánként olvassuk
+		FlxG.signals.postUpdate.add(() ->
+		{
+			if (FlxG.keys.justPressed.F)
+				toggleFullscreen();
+		});
+		#if hl
+		// a lime HL-kötése a címet UTF-16 bájtokként adja át (az első 0 bájtnál elvágódik: "A"):
+		// a kívánt bájtokat (ANSI kódlap: Windows-1250 / 1252, az Ä mindkettőben 0xC4) kettesével egy-egy karakterbe csomagoljuk
+		var win = lime.app.Application.current != null ? lime.app.Application.current.window : null;
+		if (win != null)
+		{
+			var b = haxe.io.Bytes.ofHex("c46d626572"); // "Ämber"
+			var t = new StringBuf();
+			var i = 0;
+			while (i < b.length)
+			{
+				t.addChar(b.get(i) | ((i + 1 < b.length ? b.get(i + 1) : 0) << 8));
+				i += 2;
+			}
+			win.title = t.toString();
+		}
+		#end
 		#end
 	}
 
@@ -182,6 +243,8 @@ class Main extends Sprite
 		js.Syntax.code("var d = document;
 			var p = d.fullscreenElement ? d.exitFullscreen() : d.documentElement.requestFullscreen();
 			if (p && p.catch) p.catch(function () {});");
+		#else
+		FlxG.fullscreen = !FlxG.fullscreen;
 		#end
 	}
 
@@ -190,7 +253,7 @@ class Main extends Sprite
 		#if js
 		return js.Syntax.code("!!document.fullscreenElement");
 		#else
-		return false;
+		return FlxG.fullscreen;
 		#end
 	}
 }

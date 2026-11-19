@@ -1,4 +1,4 @@
-﻿package;
+package;
 
 /**
  * A robot alkatrészei. A hős csupaszon indul; minden alkatrésznek hatása van a játékra, hiányuk pedig hátrány:
@@ -30,32 +30,56 @@ class Parts
 	public static inline var FRAME = 10;
 	public static inline var MOTOR = 11;
 	public static inline var HEAD = 12;
+	/** Hang-processzor (APU): a hang minősége (nélküle tompa, recsegő, zajos; szintenként tisztább, V. szinten tiszta: AudioFx). */
+	public static inline var AUDIO = 13;
+	/** Az első tíz képesség (0..9); a teljes tömbméret TOTAL (a 10..12 a társ-ikonok helye), a képességek listája ABILITIES. */
 	public static inline var COUNT = 10;
+	public static inline var TOTAL = 14;
+	public static final ABILITIES = [LEGS, CORE, VISOR, THRUSTER, CLAWS, BLASTER, CHIP, GEAR, ANTENNA, JET, AUDIO];
 
-	public static final NAMES = ["LEGS", "CORE", "VISOR", "THRUSTER", "CLAWS", "BLASTER", "PROCESSOR", "SERVOS", "ANTENNA", "JET CELL"];
+	/** Képesség-alkatrész-e (nem társ-ikon). */
+	public static inline function isAbility(id:Int):Bool
+		return (id >= 0 && id < COUNT) || id == AUDIO;
+
+	/** A VISOR neve GPU (a látásért felel), a CHIP-é CPU (a vezérlés fürgesége), az AUDIO-é APU (a hang minősége). A 10..12 a társ-ikonok. */
+	public static final NAMES = ["LEGS", "CORE", "GPU", "THRUSTER", "CLAWS", "BLASTER", "CPU", "SERVOS", "ANTENNA", "JET CELL", "FRAME", "MOTOR", "HEAD", "APU"];
+
+	/** Régi alkatrész-nevek (Tiled-feliratok, régi mentések): az új névre képezve. */
+	public static function canonical(label:String):String
+	{
+		var l = StringTools.trim(label).toUpperCase();
+		return l == "VISOR" ? "GPU" : (l == "PROCESSOR" ? "CPU" : (l == "AUDIO PROCESSOR" || l == "AUDIO" ? "APU" : l));
+	}
 
 	/** Az első felvételkor kiírt hatás-leírás (a játék szövege angolul), és a magasabb szintekre. */
 	public static final INFO = [
 		"FULL JUMP + FAST RUN", "POWER ONLINE: BATTERY DRAINS SLOWER", "CLEAR SIGHT AROUND YOU", "DASH: X / SHIFT", "CLING TO WALLS + WALL JUMP",
-		"FIRE: V / J / RIGHT CLICK", "CONTROLS RESPOND FASTER", "AIR CONTROL + STRONGER BOUNCE", "RADAR ONLINE", "FLIGHT: HOLD JUMP"
+		"FIRE: V / J / RIGHT CLICK", "CONTROLS RESPOND FASTER", "AIR CONTROL + STRONGER BOUNCE", "RADAR ONLINE", "FLIGHT: HOLD JUMP",
+		"", "", "", "AUDIO PROCESSOR: CLEARER SOUND"
 	];
 	public static final INFO2 = [
 		"HIGHER JUMP, FASTER RUN", "BATTERY DRAINS EVEN SLOWER", "LENS: SEE FARTHER, SECRET ATOMS GLOW", "BOOSTER: TWO DASHES PER JUMP", "GRIP: SLOWER WALL SLIDE", "RAPID FIRE",
-		"SNAPPIER STILL", "EVEN BETTER AIR CONTROL", "RADAR SHOWS ENEMIES TOO", "LONGER FLIGHT"
+		"SNAPPIER STILL", "EVEN BETTER AIR CONTROL", "RADAR SHOWS ENEMIES TOO", "LONGER FLIGHT",
+		"", "", "", "CLEANER SOUND, LESS NOISE"
 	];
 
-	/** A II. szint utáni fejlesztések (III-tól): részenként a következő szintek hatása; a hossza adja a legnagyobb szintet. */
+	/**
+		A III. szint hatása (minden alkatrész legfeljebb III. szintű: a hossza 1). A GPU és az APU III. szinten teljes
+		(korlátlan látás, tiszta hang); a mozgás-alkatrészek III. szintje mérsékelt (ne legyen túl erős a végére).
+	**/
 	static final UP = [
-		["TURBO LEGS: HIGHER, FASTER", "RACING LEGS: HIGHER, FASTER", "PEAK LEGS: HIGHER, FASTER"],
-		["HITS DRAIN LESS BATTERY", "LONGER PROTECTION AFTER A HIT", "TOUGHEST: LEAST DAMAGE, QUICK RECOVERY"],
-		["SEE FARTHER, SECRET ATOMS +4", "SEE EVEN FARTHER, ATOMS +5", "FULL CLEAR VISION, ATOMS +6"],
-		["THREE DASHES PER JUMP", "FASTER DASH RECHARGE", "FOUR DASHES PER JUMP"],
-		["HIGHER WALL JUMP", "IRON GRIP: BARELY SLIDES", "MASTER CLIMBER: WALL JUMP++"],
-		["FASTER FIRE", "FASTER STILL", "MAXIMUM FIRE RATE"],
-		["SHARPER GROUND CONTROL", "RAZOR REFLEXES", "PERFECT REFLEXES"],
-		["AIR CONTROL +, BOUNCIER", "AIR CONTROL ++, BOUNCIER", "AIR MASTER"],
-		["RADAR SHOWS SECRET ATOMS", "RADAR SHOWS ALL ATOMS"],
-		["FLIGHT +50%", "FLIGHT +100%"]
+		["TURBO LEGS: HIGHER, FASTER"],
+		["HITS DRAIN LESS BATTERY"],
+		["FULL CLEAR VISION, ATOMS +4"],
+		["THREE DASHES PER JUMP"],
+		["HIGHER WALL JUMP"],
+		["FASTER FIRE"],
+		["SHARPER GROUND CONTROL"],
+		["AIR CONTROL +, BOUNCIER"],
+		["RADAR SHOWS SECRET ATOMS"],
+		["FLIGHT +50%"],
+		[], [], [],
+		["PERFECT SOUND"]
 	];
 
 	/** A legnagyobb elérhető szint (I-től). */
@@ -69,14 +93,14 @@ class Parts
 
 	/** A társak a hős LEGS-szintjéből kapnak futás- és ugrásbónuszt (a hőssel azonos arány), hogy tarthassák a tempót. */
 	public static function runBoost():Float
-		return at([1.0, 1.10, 1.19, 1.27, 1.36], LEGS);
+		return at([1.0, 1.08, 1.17], LEGS);
 
 	public static function jumpBoost():Float
-		return at([1.0, 1.10, 1.15, 1.20, 1.24], LEGS);
+		return at([1.0, 1.06, 1.11], LEGS);
 
-	/** A tiszta látás sugara (px, a 480x270-es képen): VISOR nélkül kis kör a robot körül, szintenként nagyobb; V. szinten az egész kép éles (700 = korlátlan). */
+	/** A tiszta látás sugara (px, a 480x270-es képen): GPU nélkül kis kör a robot körül, II. szinten nagyobb; III. szinten az egész kép éles (700 = korlátlan). */
 	public static function visionRadius():Float
-		return has(VISOR) ? at([74.0, 115.0, 165.0, 240.0, 700.0], VISOR) : 40.0;
+		return has(VISOR) ? at([80.0, 140.0, 700.0], VISOR) : 40.0;
 
 	/** Mennyi akkut vesz el egy találat (a CORE szintje csökkenti). */
 	public static function hitCost():Float
@@ -99,10 +123,10 @@ class Parts
 	public static var atoms:Int = 0;
 	static var savedAtoms:Int = 0;
 	static var savedBattery:Float = 100;
-	public static var owned:Array<Bool> = [for (_ in 0...COUNT) false];
-	public static var tiers:Array<Int> = [for (_ in 0...COUNT) 0];
-	public static var saved:Array<Bool> = [for (_ in 0...COUNT) false];
-	public static var savedTiers:Array<Int> = [for (_ in 0...COUNT) 0];
+	public static var owned:Array<Bool> = [for (_ in 0...TOTAL) false];
+	public static var tiers:Array<Int> = [for (_ in 0...TOTAL) 0];
+	public static var saved:Array<Bool> = [for (_ in 0...TOTAL) false];
+	public static var savedTiers:Array<Int> = [for (_ in 0...TOTAL) 0];
 
 	public static inline function has(id:Int):Bool
 		return owned[id];
@@ -121,8 +145,8 @@ class Parts
 
 	public static function reset():Void
 	{
-		owned = [for (_ in 0...COUNT) false];
-		tiers = [for (_ in 0...COUNT) 0];
+		owned = [for (_ in 0...TOTAL) false];
+		tiers = [for (_ in 0...TOTAL) 0];
 		battery = 100;
 		atoms = 0;
 		lives = START_LIVES;

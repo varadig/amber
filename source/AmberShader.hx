@@ -30,6 +30,7 @@ class AmberShader extends FlxShader
 		uniform vec4 uLook2;
 		uniform vec3 uTop;
 		uniform vec3 uBot;
+		uniform float uPause;
 
 		// 5 színű színrámpa (a fényességhez rendelt szín)
 		vec3 rampAt(float v)
@@ -67,7 +68,18 @@ class AmberShader extends FlxShader
 			// a képernyő domborúsága; sérüléskor erősebben kidagad (elektromos kisülés)
 			float gl = uHit * uHit;
 			c *= 1.0 + (uLook.y + 0.075 * uHit) * dot(c, c);
+			// szünet: a kép kicsit "hátrébb húzódik" (kicsinyedik), és lassan hullámzik, mint egy elhangolt adás
+			float pz = clamp(uPause, 0.0, 1.0);
+			c *= 1.0 + 0.06 * pz;
 			vec2 q = c * 0.5 + 0.5;
+			if (pz > 0.001)
+			{
+				q.x += sin(q.y * 34.0 + uTime * 2.6) * 0.0035 * pz + sin(q.y * 7.0 - uTime * 1.3) * 0.002 * pz;
+				// időnként egy-egy vízszintes sáv elcsúszik (zavar a képben)
+				float pb = floor(q.y * 45.0);
+				float pr = fract(sin(pb * 41.3 + floor(uTime * 6.0) * 17.1) * 43758.5453);
+				q.x += (pr - 0.5) * 0.02 * pz * step(0.93, pr);
+			}
 			if (foc && fp < 0.3)
 			{
 				flk = fh > 0.45 ? 1.0 : 0.12;
@@ -144,14 +156,21 @@ class AmberShader extends FlxShader
 			// színátmenet-leképezés: a fényességből a hangulat (Looks) három színű rámpája (sötét - közép - világos)
 			if (uLook2.y > 0.0)
 				v = clamp(v + (bayer4(floor(q * vec2(480.0, 270.0))) - 0.5) * uLook2.y, 0.0, 1.0);
-			vec3 ramp = rampAt(v);
-			if (uLook2.x > 0.0)
+			// szünet: halványabb, kontrasztszegényebb kép (a menü kiemelkedik), lépcsős fényesség (régi monitor-állókép)
+			if (pz > 0.001)
 			{
-				// kromatikus aberráció: a vörös és a kék csatorna vízszintesen szétcsúszik
+				float vp = floor(v * 7.0 + 0.5) / 7.0;
+				v = mix(v, vp * 0.62 + 0.06, pz);
+			}
+			vec3 ramp = rampAt(v);
+			float ab = max(uLook2.x, 2.6 * pz);
+			if (ab > 0.0)
+			{
+				// kromatikus aberráció: a vörös és a kék csatorna vízszintesen szétcsúszik (szünetben is)
 				vec3 lw = vec3(0.299, 0.587, 0.114);
 				float l0 = dot(flixel_texture2D(bitmap, q).rgb, lw);
-				float dr = dot(flixel_texture2D(bitmap, q + vec2(px.x * uLook2.x, 0.0)).rgb, lw) - l0;
-				float db = dot(flixel_texture2D(bitmap, q - vec2(px.x * uLook2.x, 0.0)).rgb, lw) - l0;
+				float dr = dot(flixel_texture2D(bitmap, q + vec2(px.x * ab, 0.0)).rgb, lw) - l0;
+				float db = dot(flixel_texture2D(bitmap, q - vec2(px.x * ab, 0.0)).rgb, lw) - l0;
 				ramp = vec3(rampAt(v + dr).r, ramp.g, rampAt(v + db).b);
 			}
 			// ég / talaj színezés (felül és alul más árnyalat)
@@ -169,6 +188,14 @@ class AmberShader extends FlxShader
 			// élesítő fénysáv és a végi felvillanás
 			col += uHi * sweep * 0.9;
 			col *= 1.0 + (foc ? 0.7 : 0.0) * smoothstep(0.88, 0.93, fp) * (1.0 - smoothstep(0.93, 1.0, fp));
+			if (pz > 0.001)
+			{
+				// szünet: lassan lefelé gördülő világos sáv (képcső-hengerlés), sűrűbb pásztázó-vonalak, erősebb perem-sötétítés
+				float roll = fract(q.y * 0.9 - uTime * 0.22);
+				col += uHi * exp(-pow((roll - 0.5) * 9.0, 2.0)) * 0.10 * pz;
+				col *= 1.0 - 0.18 * pz * (0.5 + 0.5 * sin(q.y * 270.0 * 3.14159));
+				vig *= 1.0 - 0.35 * pz * dot(c, c);
+			}
 			col *= vig;
 			// a fekete sem teljesen fekete (csőizzás)
 			col += uS2 * 0.04 * vig;
@@ -186,6 +213,7 @@ class AmberShader extends FlxShader
 		uClear.value = [700.0];
 		uClearNew.value = [700.0];
 		uFocusPos.value = [240.0, 135.0];
+		uPause.value = [0.0];
 		Looks.apply(this);
 	}
 }

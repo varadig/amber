@@ -110,6 +110,12 @@ class Audio
 		add("heal", [{dur: 0.5, wave: TRI, f0: 440, arp: [0, 5, 9, 12, 17, 21, 24], arpRate: 15, arpHold: true, decay: 0.6, vol: 0.5, vibrato: 0.2}]);
 		add("checkpoint", [{dur: 0.4, wave: SQUARE, duty: 0.5, f0: 659, arp: [0, 7, 12], arpRate: 12, arpHold: true, decay: 0.9, vol: 0.3}]);
 		add("door", [{dur: 0.7, wave: SQUARE, duty: 0.25, f0: 392, arp: [0, 4, 7, 12, 16, 12, 16, 19, 24], arpRate: 16, arpHold: true, decay: 0.7, vol: 0.38, vibrato: 0.12}, {dur: 0.7, wave: TRI, f0: 196, arp: [0, 7, 12, 19], arpRate: 8, arpHold: true, decay: 0.8, vol: 0.3}]);
+		// kijárati ajtó nyitása: emelkedő pneumatikus sziszegés + mély koppanás a zár kioldásakor + halk, késleltetett csengés
+		add("doorOpen", [
+			{dur: 0.09, wave: SINE, f0: 140, f1: 60, decay: 1.4, vol: 0.55},
+			{dur: 0.7, wave: NOISE, f0: 500, f1: 2600, attack: 0.18, decay: 0.9, vol: 0.22, delay: 0.05},
+			{dur: 0.55, wave: TRI, f0: 523, arp: [0, 7, 12, 19], arpRate: 9, arpHold: true, decay: 0.7, vol: 0.22, delay: 0.38}
+		]);
 		add("blip", [{dur: 0.035, wave: SQUARE, duty: 0.5, f0: 1760, decay: 1, vol: 0.18}]);
 		add("select", [{dur: 0.12, wave: SQUARE, duty: 0.5, f0: 880, arp: [0, 7], arpRate: 18, arpHold: true, decay: 1, vol: 0.3}]);
 		add("shoot", [{dur: 0.1, wave: SQUARE, duty: 0.125, f0: 1800, f1: 500, decay: 1.3, vol: 0.3, crush: 2}, {dur: 0.06, wave: NOISE, f0: 5000, f1: 1500, vol: 0.18}]);
@@ -124,8 +130,57 @@ class Audio
 		var mix:Array<Float> = [];
 		for (t in layers)
 			mixInto(mix, tone(t), Std.int((t.delay != null ? t.delay : 0) * RATE), 1);
-		sounds.set(name, toSound(mix, 1, 0.8));
+		rawSfx.set(name, mix);
+		sounds.set(name, toSound(reduce(mix, sfxQ < 0 ? 0 : sfxQ), 1, 0.8));
 	}
+
+	/** A hangeffektek eredeti mintái (a minőség-váltáskor ezekből készül újra a "rontott" változat). */
+	static var rawSfx = new Map<String, Array<Float>>();
+	/** A hangeffektek minősége (0..5, az APU szintje; AudioFx): -1 = még nincs beállítva. A zenét nem érinti. */
+	static var sfxQ:Int = -1;
+	/** Digital reducer: mintavétel-csökkentés (minden HOLD. mintát tartja) és bitmélység-csökkentés (LEVELS lépcső / egység); 0 = nincs. */
+	static final HOLD = [6, 4, 3, 2, 1, 1];
+	static final LEVELS = [7, 12, 22, 44, 96, 0];
+
+	/** A hangeffekt "lerontása" a minőség szerint (5 = tiszta). */
+	static function reduce(src:Array<Float>, q:Int):Array<Float>
+	{
+		if (q >= 5)
+			return src;
+		var h = HOLD[q];
+		var l = LEVELS[q];
+		var out:Array<Float> = [];
+		var held = 0.0;
+		for (i in 0...src.length)
+		{
+			if (i % h == 0)
+				held = l > 0 ? Math.round(src[i] * l) / l : src[i];
+			out.push(held);
+		}
+		return out;
+	}
+
+	/** A hangeffektek minőségének beállítása (az APU szintjéből, AudioFx): minden effekt újraépül; a zene érintetlen. */
+	public static function setSfxQuality(q:Int):Void
+	{
+		if (q == sfxQ || !initialized)
+			return;
+		sfxQ = q;
+		for (n in rawSfx.keys())
+			sounds.set(n, toSound(reduce(rawSfx.get(n), q), 1, 0.8));
+		// a régi hangcsatornák a régi hangot játszanák: újak készülnek a következő lejátszáskor
+		for (v in voices)
+			if (v != null)
+			{
+				v.stop();
+				FlxG.sound.list.remove(v, true);
+				v.destroy();
+			}
+		voices = new Map();
+	}
+
+	public static function sfxQuality():Int
+		return sfxQ;
 
 	/**
 	 * A böngésző hangkörnyezete (AudioContext) induláskor felfüggesztett; a Flixel a billentyűket képkockánként olvassa (nem eseménykezelőből),

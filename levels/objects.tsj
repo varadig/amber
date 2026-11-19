@@ -5,7 +5,7 @@
 	"tiledversion": "1.10.2",
 	"tilewidth": 48,
 	"tileheight": 24,
-	"tilecount": 41,
+	"tilecount": 42,
 	"columns": 0,
 	"margin": 0,
 	"spacing": 0,
@@ -455,7 +455,7 @@
 				{
 					"name": "label",
 					"type": "string",
-					"value": "VISOR"
+					"value": "GPU"
 				},
 				{
 					"name": "friend",
@@ -551,7 +551,7 @@
 				{
 					"name": "label",
 					"type": "string",
-					"value": "PROCESSOR"
+					"value": "CPU"
 				},
 				{
 					"name": "friend",
@@ -712,9 +712,14 @@
 			"class": "Lamp",
 			"properties": [
 				{
-					"name": "angle",
-					"type": "float",
-					"value": 90
+					"name": "radius",
+					"type": "int",
+					"value": 110
+				},
+				{
+					"name": "intensity",
+					"type": "int",
+					"value": 1
 				},
 				{
 					"name": "flicker",
@@ -722,19 +727,38 @@
 					"value": true
 				},
 				{
-					"name": "intensity",
-					"type": "float",
-					"value": 1
-				},
-				{
-					"name": "radius",
+					"name": "angle",
 					"type": "int",
-					"value": 110
+					"value": 90
 				},
 				{
 					"name": "spread",
-					"type": "float",
+					"type": "int",
 					"value": 50
+				}
+			]
+		},
+		{
+			"id": 41,
+			"image": "sprites/part13.png",
+			"imagewidth": 10,
+			"imageheight": 10,
+			"class": "Part",
+			"properties": [
+				{
+					"name": "icon",
+					"type": "int",
+					"value": 13
+				},
+				{
+					"name": "label",
+					"type": "string",
+					"value": "APU"
+				},
+				{
+					"name": "friend",
+					"type": "int",
+					"value": -1
 				}
 			]
 		}

@@ -8,7 +8,8 @@ try {
     Tap "F9" "F9" 120
     Shot "cheat_main.png"
     "cheat open: " + (Js "window.__ps.subState != null && window.__ps.subState.page === 'main'")
-    # PARTS lap: 2. tétel (Down), Enter, majd a 3. tétel kiválasztása
+    # PARTS lap: 3. tétel (SAVE STATES, HERO után; 2x Down), Enter, majd az első tétel kiválasztása
+    Tap "ArrowDown" "ArrowDown" 40
     Tap "ArrowDown" "ArrowDown" 40
     Tap "Enter" "Enter" 13
     "page: " + (Js "window.__ps.subState.page")

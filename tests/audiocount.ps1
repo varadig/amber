@@ -22,10 +22,10 @@ try {
     Start-Sleep -Seconds 5
     "after level change 2: " + (Js "window.__Audio.debug()")
     # respawn a szünetből (R)
-    Key "keyDown" "p" "KeyP" 80; Start-Sleep -Milliseconds 150; Key "keyUp" "p" "KeyP" 80; Start-Sleep -Milliseconds 400
+    Key "keyDown" "p" "KeyP" 80; Start-Sleep -Milliseconds 700; Key "keyUp" "p" "KeyP" 80; Start-Sleep -Milliseconds 700
     Js "window.__ps.player.x += 200" | Out-Null
     $x0 = [double](Js "window.__ps.player.x")
-    Key "keyDown" "r" "KeyR" 82; Start-Sleep -Milliseconds 100; Key "keyUp" "r" "KeyR" 82; Start-Sleep -Milliseconds 800
+    Key "keyDown" "r" "KeyR" 82; Start-Sleep -Milliseconds 700; Key "keyUp" "r" "KeyR" 82; Start-Sleep -Milliseconds 1200
     "respawn from pause: paused=" + (Js "window.__ps.paused") + " moved=" + ([double](Js "window.__ps.player.x") -ne $x0)
     "music after respawn: " + (Js "window.__Audio.debug()")
     "errors: " + ((Js "window.__errors") -join '; ')

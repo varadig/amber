@@ -16,7 +16,8 @@
             "values": [
                 "WALKER",
                 "FLYER",
-                "CRAWLER"
+                "CRAWLER",
+                "HUNTER"
             ],
             "valuesAsFlags": false
         },
@@ -476,6 +477,44 @@
         },
         {
             "id": 27,
+            "name": "Lamp",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "radius",
+                    "type": "int",
+                    "value": 110
+                },
+                {
+                    "name": "intensity",
+                    "type": "int",
+                    "value": 1
+                },
+                {
+                    "name": "flicker",
+                    "type": "bool",
+                    "value": true
+                },
+                {
+                    "name": "angle",
+                    "type": "int",
+                    "value": 90
+                },
+                {
+                    "name": "spread",
+                    "type": "int",
+                    "value": 50
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 28,
             "name": "BuildingRoom",
             "type": "class",
             "color": "#ff8060c0",
@@ -503,7 +542,7 @@
             ]
         },
         {
-            "id": 28,
+            "id": 29,
             "name": "Decor",
             "type": "class",
             "color": "#ff505050",
@@ -515,7 +554,7 @@
             ]
         },
         {
-            "id": 29,
+            "id": 30,
             "name": "Text",
             "type": "class",
             "color": "#ffffffff",

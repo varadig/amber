@@ -186,11 +186,11 @@ class Player extends FlxSprite
 
 	/** Futósebesség: csupaszon lassú. */
 	function runSpeed():Float
-		return Parts.has(Parts.LEGS) ? byTier(Parts.LEGS, [118.0, 130.0, 140.0, 150.0, 160.0]) : 78.0;
+		return Parts.has(Parts.LEGS) ? byTier(Parts.LEGS, [118.0, 128.0, 138.0]) : 78.0;
 
 	/** Ugrás-erő: csupaszon csak egy kis szökkenés. */
 	function jumpPower():Float
-		return Parts.has(Parts.LEGS) ? byTier(Parts.LEGS, [332.0, 365.0, 382.0, 398.0, 412.0]) : 215.0;
+		return Parts.has(Parts.LEGS) ? byTier(Parts.LEGS, [332.0, 352.0, 368.0]) : 215.0;
 
 	/** A teljes ugrás magassága pixelben (a gödörből kijutás ellenőrzéséhez). */
 	public function jumpReach():Float
@@ -318,7 +318,7 @@ class Player extends FlxSprite
 			// vízszintes mozgás: gyorsulás / lassulás (a talajon fürgébb)
 			var target = dirF * runSpeed();
 			// a szervók (GEAR) nélkül a levegőben alig irányítható
-			var air = Parts.has(Parts.GEAR) ? byTier(Parts.GEAR, [820.0, 1000.0, 1150.0, 1300.0, 1450.0]) : 380.0;
+			var air = Parts.has(Parts.GEAR) ? byTier(Parts.GEAR, [820.0, 940.0, 1060.0]) : 380.0;
 			var chipBonus = chip >= 3 ? (chip - 2) * 300.0 : 0.0; // a III. szinttől élesebb a talajon való irányítás
 			var accel = onFloor ? (chip == 0 ? 650.0 : 1250.0 + chipBonus) : air;
 			if (dir == 0)
@@ -452,7 +452,7 @@ class Player extends FlxSprite
 	/** Ellenségre ugrás utáni pattanás (a gomb nyomva tartásával magasabbra). */
 	public function bounce():Void
 	{
-		var gearF = Parts.has(Parts.GEAR) ? byTier(Parts.GEAR, [1.0, 1.15, 1.2, 1.25, 1.3]) : 0.8;
+		var gearF = Parts.has(Parts.GEAR) ? byTier(Parts.GEAR, [1.0, 1.08, 1.14]) : 0.8;
 		velocity.y = (Input.jumpHeld() ? -jumpPower() * 0.92 : -jumpPower() * 0.62) * gearF;
 		dashesLeft = maxDashes();
 		coyote = 0;

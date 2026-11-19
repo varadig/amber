@@ -13,10 +13,10 @@
         },
         "level3.tmj": {
             "scale": 2,
-            "selectedLayer": 0,
+            "selectedLayer": 5,
             "viewCenter": {
-                "x": 217.25,
-                "y": 236.5
+                "x": 1503.25,
+                "y": 328.5
             }
         },
         "objects.tsj": {

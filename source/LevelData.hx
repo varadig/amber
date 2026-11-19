@@ -181,7 +181,7 @@ class LevelData
 			{room: "building", icon: -1, label: "ARCHIVE"}
 		],
 		[
-			{room: "tower", icon: Parts.VISOR, label: "VISOR"},
+			{room: "tower", icon: Parts.VISOR, label: "GPU"},
 			{room: "seq", icon: -1, label: "BONUS"},
 			{room: "lock", icon: Parts.THRUSTER, label: "THRUSTER"},
 			{room: "crate", icon: -1, label: "BONUS"},
@@ -190,7 +190,7 @@ class LevelData
 		[
 			{room: "seq", icon: Parts.CLAWS, label: "CLAWS"},
 			{room: "gated", icon: -1, label: "BONUS"},
-			{room: "well", icon: Parts.CHIP, label: "PROCESSOR"},
+			{room: "well", icon: Parts.CHIP, label: "CPU"},
 			{room: "lock", icon: -1, label: "BONUS"},
 			{room: "building", icon: -1, label: "ARCHIVE", guard: true}
 		],
@@ -252,12 +252,12 @@ class LevelData
 		[
 			{room: "start", icon: Parts.LEGS, label: "LEGS"},
 			{room: "building", icon: Parts.CORE, label: "CORE", guard: true},
-			{room: "tower", icon: Parts.VISOR, label: "VISOR"}
+			{room: "tower", icon: Parts.VISOR, label: "GPU"}
 		],
 		[
 			{room: "open", icon: Parts.THRUSTER, label: "THRUSTER", guard: true},
 			{room: "tower", icon: Parts.CLAWS, label: "CLAWS"},
-			{room: "well", icon: Parts.CHIP, label: "PROCESSOR"}
+			{room: "well", icon: Parts.CHIP, label: "CPU"}
 		],
 		[
 			{room: "open", icon: Parts.BLASTER, label: "BLASTER"},

@@ -13,7 +13,7 @@ class Companions
 	public static inline var ORB = 2;
 	public static inline var COUNT = 3;
 
-	public static final NAMES = ["WHEELIE", "TALL", "ORB"];
+	public static final NAMES = ["MICRO", "TALL", "ORB"];
 
 	public static var owned:Array<Bool> = [false, false, false];
 	static var saved:Array<Bool> = [false, false, false];

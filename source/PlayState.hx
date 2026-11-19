@@ -323,6 +323,14 @@ class PlayState extends FlxState
 	var hudGems:FlxText;
 	var hudScore:FlxText;
 	var hudParts2:FlxText;
+	var hudLevel:FlxText;
+	var pauseMenu:PauseMenu;
+	/** A bal kar előző iránya a szünet-menüben (csak az új kitérés léptet). */
+	var pauseStick:Int = 0;
+
+	/** "LEVEL 2: COPPER WELLS" (a HUD-on és a szünet-menüben; magyarul: "2. PÁLYA: RÉZKUTAK"). */
+	function levelTitle():String
+		return "LEVEL " + (level + 1) + ": " + data.name;
 	var hudScan:FlxText;
 	/** Képernyőszéli nyíl a következő cél felé, ha az nem látszik. */
 	var navArrow:FlxText;
@@ -374,6 +382,9 @@ class PlayState extends FlxState
 	// A HUD külön kamerán (hudCam) rajzol, amin nincs shader: a sérülés-kisülés, a fáradtság-elmosás és a homályos látás a játékot érinti,
 	// a fontos információ (szívek, akku, alkatrészek) viszont mindig tisztán olvasható.
 	static var sharedHud:HudShader;
+	/** A szünet-menü kamerájának shadere (effektek nélkül: a menü éles marad). */
+	static var sharedMenu:HudShader;
+	var menuCam:flixel.FlxCamera;
 	static var sharedLamp:LampShader;
 	var hudCam:flixel.FlxCamera;
 	var hudLayer:flixel.group.FlxGroup;
@@ -497,6 +508,7 @@ class PlayState extends FlxState
 			grates.add(b);
 		}
 		add(grates);
+		addTunnelLids();
 		plates = new FlxTypedGroup();
 		for (p in data.plates)
 			plates.add(new Plate(p.x, p.y, p.id, p.hold));
@@ -597,7 +609,10 @@ class PlayState extends FlxState
 		door = new FlxSprite(data.door.x, data.door.y);
 		door.loadGraphic(Art.door(), true, 16, 24, false, "door");
 		door.animation.add("closed", [0], 1);
-		door.animation.add("open", [1, 2], 6);
+		// nyitás: a szárnyak széthúzódnak (egyszer), utána a nyitott ajtó csillog (openExitDoor)
+		door.animation.add("open", [1, 2, 3, 4, 5, 6], 14, false);
+		door.animation.add("idleOpen", [7, 8], 6);
+		door.animation.onFinish.add(n -> if (n == "open") door.animation.play("idleOpen"));
 		door.animation.play("closed");
 		add(door);
 		if (data.doors.length > 0)
@@ -676,7 +691,8 @@ class PlayState extends FlxState
 
 		batts = new FlxTypedGroup();
 		// a régi szív-tárgyak helyén is akkupakk van (nincs szív: az akku az életerő)
-		for (b in data.batteries.concat(data.hearts))
+		// (jelenleg kikapcsolva: az atomok töltik az akkut, lásd onGem / BATTERY_PICKUPS)
+		for (b in (BATTERY_PICKUPS ? data.batteries.concat(data.hearts) : []))
 		{
 			var it = makePickup(b.x, b.y, Art.battery(), 8, 10, "battery");
 			it.animation.add("glow", [0, 1], 3);
@@ -792,6 +808,18 @@ class PlayState extends FlxState
 		hudLayer.cameras = [hudCam];
 		super.add(hudLayer);
 		buildHud();
+		// a szünet-menü saját kamerán, a HUD fölött: a szünet-shader a játékot ÉS a HUD-ot is háttérbe tolja, csak a menü éles
+		menuCam = new flixel.FlxCamera(0, 0, FlxG.width, FlxG.height);
+		menuCam.bgColor = 0x00000000;
+		menuCam.pixelPerfectRender = true;
+		menuCam.antialiasing = false;
+		if (sharedMenu == null)
+			sharedMenu = new HudShader();
+		menuCam.filters = [new openfl.filters.ShaderFilter(sharedMenu)];
+		FlxG.cameras.add(menuCam, false);
+		pauseMenu = new PauseMenu();
+		pauseMenu.cameras = [menuCam];
+		super.add(pauseMenu);
 		var own = [for (p in data.parts) if (p.friend == null || p.friend < 0) p.label];
 		var fr = [for (p in data.parts) if (p.friend != null && p.friend >= 0) p.label];
 		var names = own.join("  ") + (fr.length > 0 ? "\nFRIEND PARTS: " + fr.join("  ") : "");
@@ -800,11 +828,12 @@ class PlayState extends FlxState
 		bannerT = 3.6;
 		#if cheats
 		applyDevGoto();
+		devApply();
 		#end
 		mark("create end");
 		#if test
 		js.Syntax.code("window.__ps = {0}; window.__cam = {1}; window.__parts = {2}; window.__setBatt = {3}; window.__getBatt = {4}; window.__LevelLoader = {5}; window.__Audio = {6}; window.__Parts = {7}; window.__Looks = {8}", this, FlxG.camera, Parts.owned, (v:Float) -> Parts.battery = v, () -> Parts.battery, LevelLoader, Audio, Parts, Looks);
-		js.Syntax.code("window.__Music = {0}; window.__Lang = {1}", Music, Lang);
+		js.Syntax.code("window.__Music = {0}; window.__Lang = {1}; window.__Main_pause = {2}; window.__DevSave = {3}; window.__devLoad = {4}; window.__AudioFx = {5}; window.__Prefs = {6}", Music, Lang, () -> Main.amberPause(), DevSave, PlayState.devLoad, AudioFx, Prefs);
 		#end
 	}
 
@@ -944,6 +973,8 @@ class PlayState extends FlxState
 			hudParts.push(s);
 		}
 		hudParts2 = label("", 16, 8, 0xFFBBBBBB);
+		// melyik pályán vagyunk (a PARTS sor alatt, halványan)
+		hudLevel = label(levelTitle(), 27, 8, 0xFF888888);
 		hudScan = new LangText(6, 39, 200, "", 8);
 		hudScan.scrollFactor.set(0, 0);
 		add(hudScan);
@@ -1085,7 +1116,8 @@ class PlayState extends FlxState
 			navArrow.visible = false;
 			return;
 		}
-		var dist = Std.int(Math.sqrt((nt.x - player.x) * (nt.x - player.x) + (nt.y - player.y) * (nt.y - player.y)) / 16);
+		var me:FlxSprite = ctrl != null ? ctrl : player; // a távolság a kiválasztott robottól
+			var dist = Std.int(Math.sqrt((nt.x - me.x) * (nt.x - me.x) + (nt.y - me.y) * (nt.y - me.y)) / 16);
 		navArrow.visible = true;
 		navArrow.alpha = 0.6 + 0.4 * Math.abs(Math.sin(time * 4));
 		if (offX != 0)
@@ -1114,7 +1146,8 @@ class PlayState extends FlxState
 		hudParts2.text = "PARTS " + partsFound + "/" + data.parts.length;
 		// iránymutatás: a következő cél (alkatrész / szerelőasztal / kijárat), mindig látszik
 		var nt = navTarget();
-		var ndx = nt.x - player.x, ndy = nt.y - player.y;
+		var me:FlxSprite = ctrl != null ? ctrl : player; // a távolság a kiválasztott robottól
+		var ndx = nt.x - me.x, ndy = nt.y - me.y;
 		var narrow = Math.abs(ndx) > Math.abs(ndy) ? (ndx > 0 ? ">>" : "<<") : (ndy < 0 ? "^^" : "vv");
 		hudScan.text = "NEXT " + nt.label + " " + narrow + " " + Std.int(Math.sqrt(ndx * ndx + ndy * ndy) / 16) + "M";
 		updateNavArrow(nt);
@@ -1159,7 +1192,7 @@ class PlayState extends FlxState
 			var rt = navTarget();
 			bd.fillRect(new openfl.geom.Rectangle(mx(rt.x) - 1, 0, 4, 7), 0xFFFFFFFF);
 		}
-		bd.fillRect(new openfl.geom.Rectangle(mx(player.x) - 1, 0, 3, 7), 0xFFFFFFFF);
+		bd.fillRect(new openfl.geom.Rectangle(mx((ctrl != null ? ctrl : player).x) - 1, 0, 3, 7), 0xFFFFFFFF); // a kiválasztott robot
 		radarSpr.dirty = true;
 	}
 
@@ -1179,7 +1212,8 @@ class PlayState extends FlxState
 		// (a bemutató és a világtáblák nyers angol szövegek: a gépelés előtt fordítjuk, a részszövegek már nem lennének a szótárban)
 		if (bannerT > 0)
 			lines.push(Lang.t(bannerStr));
-		else if (ctrl != null && lines.length == 0)
+		// a közeli világtábla (pl. a kapcsolók sorrendje) a súgó mellett is látszik (második szakaszként), különben eltűnne, amikor a kapcsolóra lépünk
+		else if (ctrl != null && lines.length < 2)
 			for (w in worldTexts)
 				if (!w.solved && Math.abs(ctrl.x - (w.x + 100)) < 150 && Math.abs(ctrl.y - w.y) < 90)
 				{
@@ -1230,6 +1264,197 @@ class PlayState extends FlxState
 	var infoChars:Float = 0;
 	var infoShown:Int = -1;
 	var infoH:Float = 14;
+
+	/**
+		Eszköz-súgó: az irányított robot közelében lévő eszközhöz (terminál, láda, nyomólap, kar, kapcsoló, zárt kapu, aljzat,
+		szerelőasztal, repedezett fal, rács) kiírja, mit kell vele tenni (az info-dobozban). A kijárat / épületajtó súgója előbbre való
+		(ha az látszik, ez nem írja felül). Kikapcsolható: beállítások menü, DEVICE HINTS (Prefs.hints).
+	**/
+	function deviceHints():Void
+	{
+		if (hint.visible || ctrl == null || !Prefs.hints || mode != 0)
+			return;
+		var msg:String = null;
+		var isHero = ctrl == player;
+		for (s in terminals)
+			if (msg == null && !termSolved.exists(s.ID) && nearTo(ctrl, s, 14, 20))
+				msg = "UP / E: USE THE COMPUTER";
+		if (msg == null && isHero && player.carrying != null)
+			msg = "SQUARE / G: PUT THE CRATE DOWN";
+		for (cr in crates)
+			if (msg == null && cr.alive && !cr.carried && nearTo(ctrl, cr, 22, 18))
+				msg = isHero ? "SQUARE / G: PICK UP THE CRATE" : "X / SHIFT: LIFT THE CRATE (TALL)";
+		for (p in plates)
+			if (msg == null && !p.pressed && nearTo(ctrl, p, 18, 20))
+				msg = "PUT A CRATE ON THE PLATE: THE WALL BREAKS";
+		for (l in levers)
+			if (msg == null && !l.flipped && nearTo(ctrl, l, 16, 20))
+				msg = "UP / E: PULL THE LEVER";
+		for (s in switches)
+			if (msg == null && nearTo(ctrl, s, 14, 20))
+			{
+				var order = data.seqs.get(s.gid);
+				var st = seqState.exists(s.gid) ? seqState.get(s.gid) : 0;
+				if (order != null && st < order.length)
+					msg = "UP / E: PRESS THE SWITCHES IN ORDER";
+			}
+		for (s in sockets)
+			if (msg == null && !s.filled && nearTo(ctrl, s, 18, 22))
+				msg = carryCell == s.gid ? "UP / E: INSERT THE POWER CELL" : "SOCKET: BRING A POWER CELL";
+		for (b in benches)
+			if (msg == null && !Companions.owned[b.ID] && nearTo(ctrl, b, 20, 24))
+				msg = friendFound[b.ID] >= 3 ? "UP / E: BUILD YOUR FRIEND" : "WORKBENCH: FIND THE FRIEND PARTS";
+		if (msg == null)
+			gates.forEach(g ->
+			{
+				if (msg == null && g.locked && !g.isOpen && !keysHeld.exists(g.gid) && nearTo(ctrl, g, 22, 30))
+					msg = "LOCKED: FIND THE KEY";
+			});
+		for (c in cracked)
+			if (msg == null && c.alive && nearTo(ctrl, c, 22, 20))
+				msg = "CRACKED WALL: SHOOT IT OR RAM IT (MICRO)";
+		for (g in grates)
+			if (msg == null && g.alive && nearTo(ctrl, g, 22, 24))
+				msg = "ONLY MICRO FITS THROUGH";
+		if (msg != null)
+		{
+			hint.visible = true;
+			hint.text = msg;
+		}
+	}
+
+	/**
+		A rácsos (csak a MICRO-nak járható) járatok látványa: a rács melletti egycsempés járat (fölötte fal, benne szabad hely)
+		mennyezetére 6 px-es tégla-sáv kerül, így a járat alacsonynak látszik (a MICRO magasságához illik, Amber nem látszik beférőnek).
+		Csak látvány: az ütközés a csempéké marad.
+	**/
+	function addTunnelLids():Void
+	{
+		var T = LevelData.T;
+		for (g in grates)
+		{
+			var gc = Std.int(g.x / T);
+			var gr = Std.int(g.y / T);
+			for (dir in [-1, 1])
+			{
+				var c = gc + dir;
+				var n = 0;
+				while (n < 24 && data.isSolid(c, gr - 1) && !data.isSolid(c, gr))
+				{
+					var lid = new FlxSprite(c * T, gr * T);
+					lid.loadGraphic(Art.tunnelLid());
+					lid.immovable = true;
+					lid.solid = false;
+					lid.moves = false;
+					add(lid);
+					c += dir;
+					n++;
+				}
+			}
+		}
+	}
+
+	/**
+		Láda-rés: ha egy (letett vagy tolt) láda 6 px-en belül egy egycsempés rés / lyuk fölé kerül, a rés fölé igazodik és beleesik
+		(különben pixelre pontosan kellene odatenni, pl. a nyomólap a talajba vájt résben).
+	**/
+	function crateSlots():Void
+	{
+		var T = LevelData.T;
+		for (cr in crates)
+		{
+			if (!cr.alive || cr.carried)
+				continue;
+			var col = Std.int((cr.x + cr.width / 2) / T);
+			var row = Std.int((cr.y + cr.height + 1) / T);
+			var dx = col * T - cr.x;
+			if (dx != 0 && Math.abs(dx) < 6 && !data.isSolid(col, row) && !data.isSolid(col, row - 1) && (data.isSolid(col - 1, row) || data.isSolid(col + 1, row)))
+			{
+				cr.x = col * T;
+				cr.velocity.x = 0;
+			}
+		}
+	}
+
+	/** A kijárati ajtó kinyílik (széthúzódó szárnyak, majd csillogó nyílás) a saját hangjával; ha már nyitva van, nem csinál semmit. */
+	function openExitDoor():Void
+	{
+		var n = door.animation.name;
+		if (n == "open" || n == "idleOpen")
+			return;
+		door.animation.play("open");
+		Audio.play("doorOpen", 1);
+		FlxG.camera.shake(0.003, 0.25);
+	}
+
+	/** Szünet be / ki: a keretes menü és a szünet-shader (Main.pauseTarget), a zene megáll / folytatódik. */
+	function setPaused(on:Bool):Void
+	{
+		paused = on;
+		overlay.visible = false;
+		Main.pauseTarget = on ? 1 : 0;
+		if (on)
+		{
+			Audio.pauseMusic();
+			pauseMenu.show(levelTitle());
+			pauseStick = 0;
+		}
+		else
+		{
+			Audio.resumeMusic();
+			pauseMenu.hide();
+		}
+	}
+
+	/**
+		A szünet-menü kezelése: fel / le (nyilak, W / S, D-pad, bal kar) a sorok között, Enter / Space / Z / A választ.
+		A régi gyorsgombok is maradnak: O / háromszög beállítások, R / négyzet / Share vissza a mentési pontra (az ESC / P / START a folytatás, az F a teljes képernyő: a Main kezeli).
+	**/
+	function updatePauseMenu():Void
+	{
+		var k = FlxG.keys.justPressed;
+		var sy = Input.stickY();
+		var st = sy < -0.5 ? -1 : (sy > 0.5 ? 1 : 0);
+		var fresh = st != pauseStick;
+		pauseStick = st;
+		var up = k.UP || k.W || Input.just(flixel.input.gamepad.FlxGamepadInputID.DPAD_UP) || (fresh && st == -1);
+		var down = k.DOWN || k.S || Input.just(flixel.input.gamepad.FlxGamepadInputID.DPAD_DOWN) || (fresh && st == 1);
+		if (up || down)
+		{
+			pauseMenu.sel = (pauseMenu.sel + (up ? pauseMenu.count - 1 : 1)) % pauseMenu.count;
+			pauseMenu.refresh();
+			Audio.play("select", 0.5);
+		}
+		var choice = -1;
+		if (k.ENTER || k.SPACE || k.Z || Input.just(flixel.input.gamepad.FlxGamepadInputID.A))
+			choice = pauseMenu.sel;
+		if (FlxG.keys.justPressed.O || Input.just(flixel.input.gamepad.FlxGamepadInputID.Y))
+			choice = PauseMenu.SETTINGS;
+		if (Input.respawnPausedPressed())
+			choice = PauseMenu.RESPAWN;
+		// vissza gomb (PS4: kör, billentyű: Backspace): folytatás
+		if (Input.just(flixel.input.gamepad.FlxGamepadInputID.B) || k.BACKSPACE)
+			choice = PauseMenu.RESUME;
+		switch (choice)
+		{
+			case PauseMenu.RESUME:
+				setPaused(false);
+			case PauseMenu.RESPAWN:
+				setPaused(false);
+				toCheckpoint(false);
+			case PauseMenu.SETTINGS:
+				openSubState(new SettingsSubState());
+			case PauseMenu.LANGUAGE:
+				// a következő elérhető nyelv (lang/*.json); a menü és a játék szövegei azonnal átfordulnak
+				Lang.next();
+				pauseMenu.refresh();
+				Audio.play("select", 0.8);
+			case PauseMenu.FULLSCREEN:
+				Main.toggleFullscreen();
+				Audio.play("select", 0.8);
+			default:
+		}
+	}
 
 	function showToast(txt:String, secs:Float = 2.8):Void
 	{
@@ -1299,34 +1524,31 @@ class PlayState extends FlxState
 		Main.tiredTarget = player != null && player.powerDown > 0 ? 1.0 : (Parts.battery < 25 ? (25 - Parts.battery) / 25 * 0.75 : 0.0);
 		if (subState == null && hudLayer != null)
 			hudLayer.visible = true;
+		// a szünet-effekt a HUD-ra is (a menük / mini-játékok alatt nem: azok is a HUD-kamerán rajzolnak)
+		sharedHud.setPause(subState == null ? Main.amberPause() : 0, Main.shaderTime());
 		#if cheats
 		cheatUpdate();
 		#end
 		if (Input.pausePressed() && mode == 0)
+			setPaused(!paused);
+		#if cheats
+		// fejlesztői mentés: 5 mp-enként a pillanatnyi állapot (DevSave "latest"; a böngésző-frissítéskor ebből lesz dátumozott mentés)
+		if (mode == 0 && !paused && !exiting)
 		{
-			paused = !paused;
-			if (paused)
-				Audio.pauseMusic();
-			else
-				Audio.resumeMusic();
-			overlay.text = "PAUSED\n\nESC / P / START: RESUME\nR / SQUARE / SHARE: RESPAWN AT CHECKPOINT\nO / TRIANGLE: SETTINGS (VOLUME, FULLSCREEN)\nF: FULLSCREEN";
-			overlay.visible = paused;
+			devSaveT += elapsed;
+			if (devSaveT > 5)
+			{
+				devSaveT = 0;
+				DevSave.saveLatest(devSnapshot());
+			}
 		}
+		#end
 		if (paused)
 		{
 			Audio.keepHeld();
-			if (FlxG.keys.justPressed.O || Input.just(flixel.input.gamepad.FlxGamepadInputID.Y))
-			{
-				openSubState(new SettingsSubState());
-				return;
-			}
-			if (Input.respawnPausedPressed())
-			{
-				paused = false;
-				overlay.visible = false;
-				Audio.resumeMusic();
-				toCheckpoint(false);
-			}
+			// (a super.update szünetben nem fut: a menü saját animációját / kurzorát itt léptetjük)
+			pauseMenu.update(elapsed);
+			updatePauseMenu();
 			return;
 		}
 		if (landT > 0)
@@ -1434,6 +1656,7 @@ class PlayState extends FlxState
 		FlxG.collide(crates, gates);
 		FlxG.collide(crates, grates);
 		FlxG.collide(crates, cracked);
+		crateSlots();
 		collideFriends();
 		clampRobots();
 		FlxG.collide(grounded, solidMap);
@@ -1483,12 +1706,19 @@ class PlayState extends FlxState
 			if (allRobotsExited() || exitT > 9)
 				levelClear();
 		}
-		// a társak leesése: a mentési pontra kerülnek vissza
+		// a társak leesése: az irányított robot közelében egy biztonságos felületre kerülnek (ha nincs ilyen, a mentési pontra)
 		companions.forEachAlive(c ->
 		{
 			if (c.mode != 3 && ((c.y > data.killRow * 16 && !inAnyRoom(c)) || c.y > worldH + 40))
 			{
-				c.reset(respawn.x - 4, respawn.y);
+				var spot = c != ctrl ? safeSpot(c, ctrl) : null;
+				if (spot != null)
+				{
+					c.reset(spot.x, spot.y);
+					spot.put();
+				}
+				else
+					c.reset(respawn.x - 4, respawn.y);
 				c.velocity.set(0, 0);
 			}
 		});
@@ -1503,9 +1733,15 @@ class PlayState extends FlxState
 			if (hd > 300 || Math.abs(player.y - ctrl.y) > 180 || heroStuckT > 1.6)
 			{
 				heroStuckT = 0;
-				player.reset(ctrl.x - 18, ctrl.y - 6);
-				player.velocity.set(0, 0);
-				player.invuln = 0.5;
+				// biztonságos felületre a kiválasztott robot közelében (nem fix helyre mellé); ha nincs ilyen, később újra próbálja
+				var spot = safeSpot(player, ctrl);
+				if (spot != null)
+				{
+					player.reset(spot.x, spot.y);
+					player.velocity.set(0, 0);
+					player.invuln = 0.5;
+					spot.put();
+				}
 			}
 		}
 		marker.visible = companions.countLiving() > 0 && !heroExitedAll();
@@ -1531,6 +1767,7 @@ class PlayState extends FlxState
 		}
 		if (nearB >= 0 && Input.interactPressed() && !teleporting)
 			useDoor(bDoors[nearB]);
+		deviceHints();
 
 		if (!inside && player.y > data.killRow * 16)
 			fall();
@@ -1852,10 +2089,11 @@ class PlayState extends FlxState
 		var footRow = Std.int((c.y + c.height + 2) / T);
 		var dir = c1 >= c0 ? 1 : -1;
 		var col = c0;
+		// az út végig azonos szintű (vagy egy csempével magasabb) talajon vezet: lefelé (gödörbe) nem lép az atomért
 		while (true)
 		{
 			var ok = false;
-			for (r in -1...2)
+			for (r in -1...1)
 				if (data.isStandable(col, footRow + r))
 					ok = true;
 			if (!ok)
@@ -1864,20 +2102,28 @@ class PlayState extends FlxState
 				break;
 			col += dir;
 		}
+		// a tárgy alatti talaj nem lehet mélyebben, mint ahol a társ áll
 		var lootRow = Std.int(sy / T);
-		var support = false;
+		var support = -1;
 		for (j in 0...5)
-			if (data.isStandable(c1, lootRow + j))
-				support = true;
-		if (!support)
+			if (support < 0 && data.isStandable(c1, lootRow + j))
+				support = lootRow + j;
+		if (support < 0 || support > footRow)
 			return false;
-		// tüske / veszélyes ellenség a tárgy közelében: nem megy érte
-		var lo = Math.min(c.x + c.width / 2, sx) - 6;
-		var hi = Math.max(c.x + c.width / 2, sx) + 6;
+		// tüske vagy élő ellenség a tárgy felé vezető sávban (a társ magasságában, ±40 px): nem megy érte
+		var feet = c.y + c.height;
+		var lo = Math.min(c.x + c.width / 2, sx) - 10;
+		var hi = Math.max(c.x + c.width / 2, sx) + 10;
 		for (i in 0...spikes.length)
 		{
 			var s = spikes.members[i];
-			if (s != null && s.alive && s.exists && s.x < hi && s.x + s.width > lo && Math.abs(s.y - (c.y + c.height)) < 24)
+			if (s != null && s.alive && s.exists && s.x < hi && s.x + s.width > lo && Math.abs(s.y - feet) < 40)
+				return false;
+		}
+		for (i in 0...enemies.length)
+		{
+			var e = enemies.members[i];
+			if (e != null && e.alive && e.exists && e.dying < 0 && e.x < hi + 16 && e.x + e.width > lo - 16 && Math.abs(e.y + e.height - feet) < 40)
 				return false;
 		}
 		return true;
@@ -1925,6 +2171,72 @@ class PlayState extends FlxState
 	}
 
 	/** Tüske vagy nem rálépható (tüskés hátú) ellenség közvetlenül a társ előtt (kb. 6-20 px): a társ átugorja. */
+	/**
+		Biztonságos újra-megjelenési hely a `r` robotnak (lemaradt / elakadt / leesett társ, követő hős) a `near` robot közelében:
+		szilárd talaj, amely mindkét oldalon folytatódik (nem perem), a test elfér (fal, zárt kapu, repedt fal nélkül), nincs ott tüske
+		vagy ellenség, és a földi társnak nem csapda-gödör. Előbb a `near` talajszintjén keres, a háta mögött kezdve, kifelé haladva.
+		A bal felső sarkot adja (FlxPoint, a hívó `put`-olja), vagy null-t.
+	**/
+	function safeSpot(r:FlxSprite, near:FlxSprite):FlxPoint
+	{
+		var T = LevelData.T;
+		var col = Std.int((near.x + near.width / 2) / T);
+		// a `near` alatti talaj sora (levegőben lejjebb keresve)
+		var base = Std.int((near.y + near.height + 2) / T);
+		for (k in 0...7)
+			if (data.isStandable(col, base + k))
+			{
+				base += k;
+				break;
+			}
+		var comp = Std.downcast(r, Companion);
+		var hTiles = Std.int(Math.ceil(r.height / T));
+		var behind = near.flipX ? 1 : -1; // (flipX = balra néz)
+		function ok(c:Int, row:Int):Bool
+		{
+			if (row * T > worldH - T)
+				return false;
+			// talaj alattunk és mindkét szomszédban (nem peremre)
+			for (d in -1...2)
+				if (!data.isStandable(c + d, row) || data.isSolid(c + d, row - 1))
+					return false;
+			for (h in 1...hTiles + 1)
+				if (data.isSolid(c, row - h))
+					return false;
+			var x0 = (c - 1) * T, x1 = (c + 2) * T, y0 = (row - hTiles) * T, y1 = row * T;
+			var hit = false;
+			for (g in [spikes, cracked])
+				g.forEachAlive(s -> if (s.exists && s.x < x1 && s.x + s.width > x0 && s.y < y1 && s.y + s.height > y0) hit = true);
+			gates.forEachAlive(g -> if (g.visible && g.x < x1 && g.x + g.width > x0 && g.y < y1 && g.y + g.height > y0) hit = true);
+			enemies.forEachAlive(e -> if (e.dying < 0 && e.x < x1 + 24 && e.x + e.width > x0 - 24 && e.y < y1 && e.y + e.height > y0 - 16) hit = true);
+			if (hit)
+				return false;
+			// a földi társ ne kerüljön olyan gödörbe, ahonnan nem tud kiugrani
+			if (comp != null && comp.kind != Companions.ORB && comp.trapAtFloor(c, row))
+				return false;
+			return true;
+		}
+		// közelről kifelé; egy szint fel / le csak drágábban (a near szintje az elsődleges)
+		var best = -1, bestRow = 0, bestCost = 1e9;
+		for (dr in [0, -1, 1, -2, 2, 3])
+			for (k in 1...15)
+				for (side in [behind, -behind])
+				{
+					var c = col + side * k;
+					var row = base + dr;
+					var cost = k + Math.abs(dr) * 4 + (side == behind ? 0 : 0.5);
+					if (cost < bestCost && ok(c, row))
+					{
+						best = c;
+						bestRow = row;
+						bestCost = cost;
+					}
+				}
+		if (best < 0)
+			return null;
+		return FlxPoint.get(best * T + T / 2 - r.width / 2, bestRow * T - r.height - 1);
+	}
+
 	function hazardAhead(c:Companion, dir:Int):Bool
 	{
 		var cx = c.x + c.width / 2;
@@ -1960,6 +2272,7 @@ class PlayState extends FlxState
 		c.onSpecial = doSpecial;
 		c.hazardAhead = hazardAhead;
 		c.findLoot = findLoot;
+		c.spawnSpot = (cc:Companion) -> safeSpot(cc, ctrl != cc ? ctrl : player);
 		// a legközelebbi stabil (nem mozgó / leszakadó) talaj: onnan menekül a leszakadó platformról
 		c.safeGround = (cc:Companion) ->
 		{
@@ -2360,7 +2673,7 @@ class PlayState extends FlxState
 	}
 
 	function nameOf(s:FlxSprite):String
-		return s == player ? "ROBOT" : Companions.NAMES[cast(s, Companion).kind];
+		return s == player ? "AMBER" : Companions.NAMES[cast(s, Companion).kind];
 
 	/** Az irányított robot kiválasztása: a többi vár (vagy követ); a kamera az irányított robotot követi. */
 	function setControl(s:FlxSprite):Void
@@ -2421,7 +2734,7 @@ class PlayState extends FlxState
 		Audio.play("door", 1);
 		showToast("FRIEND BUILT: " + Companions.NAMES[kind] + "\nQ: WAIT/FOLLOW  TAB: SWITCH", 3.6);
 		if (partsFound >= data.parts.length)
-			door.animation.play("open");
+			openExitDoor();
 	}
 
 	function onCrumble(p:Player, c:Crumble):Void
@@ -2699,9 +3012,12 @@ class PlayState extends FlxState
 	function onGem(p:FlxSprite, g:Pickup):Void
 	{
 		g.kill();
+		// az atom energiát is ad: lassan tölti az akkut (a külön akkupakkok helyett)
+		if (player.powerDown <= 0)
+			Parts.battery = Math.min(100, Parts.battery + (g.secret ? ATOM_SECRET_CHARGE : ATOM_CHARGE));
 		if (g.secret)
 		{
-			var sv = 3 + Std.int(Math.max(0, Parts.tier(Parts.VISOR) - 2)); // a VISOR III+ szintje többet ér
+			var sv = 3 + Std.int(Math.max(0, Parts.tier(Parts.VISOR) - 2)); // a GPU III. szintje többet ér
 			Parts.atoms += sv;
 			score += 50;
 			Audio.play("key", 0.8);
@@ -2754,7 +3070,7 @@ class PlayState extends FlxState
 			else
 			{
 				msg += "\nALL FOUND: GO TO THE DOOR";
-				door.animation.play("open");
+				openExitDoor();
 			}
 		}
 		showToast(msg, 3.2);
@@ -2765,7 +3081,7 @@ class PlayState extends FlxState
 	/** Rövid mozgó bemutató az új képességről (a sarokban, a hős valódi kinézetével). */
 	function startShowcase(icon:Int, tier:Int):Void
 	{
-		if (icon >= Parts.COUNT)
+		if (!Parts.isAbility(icon))
 			return;
 		if (showcase != null)
 		{
@@ -2952,7 +3268,7 @@ class PlayState extends FlxState
 		if (first)
 			exitT = 0;
 		hint.visible = false;
-		door.animation.play("open");
+		openExitDoor();
 		Audio.play("door", 1);
 		if (r == player)
 		{
@@ -2996,7 +3312,7 @@ class PlayState extends FlxState
 		score += bonus + Std.int(Math.max(0, 600 - time) * 2);
 		var m = Std.int(time / 60), s = Std.int(time % 60);
 		var names = [for (p in data.parts) p.label].join(" ");
-		var lines = "LEVEL " + (level + 1) + " CLEAR\n\nPARTS " + names + "\nATOMS " + gemsGot + "/" + gemsTotal + (bonus > 0 ? "  ALL FOUND +500" : "") + "\nATOM BANK " + Parts.atoms + (canUpgrade() ? "  (WORKSHOP READY)" : "") + "\nTIME " + m + ":" + (s < 10 ? "0" : "") + s + "\nSCORE " + score + "\n\nPRESS JUMP";
+		var lines = "LEVEL " + (level + 1) + " CLEAR\n\nPARTS " + names + "\nATOMS " + gemsGot + "/" + gemsTotal + (bonus > 0 ? "  ALL FOUND +500" : "") + "\nATOM BANK " + Parts.atoms + (WORKSHOP_ENABLED && canUpgrade() ? "  (WORKSHOP READY)" : "") + "\nTIME " + m + ":" + (s < 10 ? "0" : "") + s + "\nSCORE " + score + "\n\nPRESS JUMP";
 		overlay.text = lines;
 		overlay.visible = true;
 		refreshHud();
@@ -3007,16 +3323,23 @@ class PlayState extends FlxState
 	/** Van-e olyan birtokolt alkatrész, amit az atom-bankból fejleszteni lehet (és elég az atom)? */
 	function canUpgrade():Bool
 	{
-		for (i in 0...Parts.COUNT)
+		for (i in Parts.ABILITIES)
 			if (Parts.has(i) && Parts.tier(i) < Parts.maxTier(i) && Parts.atoms >= Workshop.costOf(i))
 				return true;
 		return false;
 	}
 
 	/** A pálya végén: ha van mit fejleszteni, megnyílik a műhely (atomokért II. szintű alkatrész), utána jön a következő pálya. */
+	/** A műhely (atomokért alkatrész-fejlesztés) a pálya végén: jelenleg kikapcsolva (a kód megmarad). */
+	public static inline var WORKSHOP_ENABLED = false;
+	/** Külön akkupakkok a pályán: kikapcsolva, az atomok töltik az akkut (ATOM_CHARGE, titkos: ATOM_SECRET_CHARGE százalék). */
+	public static inline var BATTERY_PICKUPS = false;
+	public static inline var ATOM_CHARGE = 3.0;
+	public static inline var ATOM_SECRET_CHARGE = 8.0;
+
 	function finishLevel():Void
 	{
-		if (canUpgrade() && !workshopShown)
+		if (WORKSHOP_ENABLED && canUpgrade() && !workshopShown)
 		{
 			workshopShown = true;
 			var g = new Workshop();
@@ -3169,7 +3492,7 @@ class PlayState extends FlxState
 		{
 			var d = LevelLoader.load(i);
 			for (p in d.parts)
-				if ((p.friend == null || p.friend < 0) && p.icon >= 0 && p.icon < Parts.COUNT)
+				if ((p.friend == null || p.friend < 0) && Parts.isAbility(p.icon))
 					Parts.add(p.icon);
 		}
 		Parts.commit();
@@ -3235,9 +3558,27 @@ class PlayState extends FlxState
 		showToast("CHEAT: " + Parts.NAMES[id] + " TIER " + Parts.tier(id), 1.6);
 	}
 
+	/** Cheat: alkatrész elvétele (egy szinttel lejjebb; I. szintről teljesen elveszi), megmarad a pályaváltás után is. */
+	public function cheatTakePart(id:Int):Void
+	{
+		if (!Parts.has(id))
+			return;
+		if (Parts.tier(id) > 1)
+			Parts.tiers[id] = Parts.tier(id) - 1;
+		else
+		{
+			Parts.owned[id] = false;
+			Parts.tiers[id] = 0;
+		}
+		Parts.commit();
+		player.applyParts();
+		player.refreshLook();
+		showToast("CHEAT: " + Parts.NAMES[id] + (Parts.has(id) ? " TIER " + Parts.tier(id) : " REMOVED"), 1.6);
+	}
+
 	public function cheatAllParts():Void
 	{
-		for (i in 0...Parts.COUNT)
+		for (i in Parts.ABILITIES)
 			if (!Parts.has(i))
 				Parts.add(i);
 		Parts.commit();
@@ -3248,8 +3589,8 @@ class PlayState extends FlxState
 
 	public function cheatStripParts():Void
 	{
-		Parts.owned = [for (_ in 0...Parts.COUNT) false];
-		Parts.tiers = [for (_ in 0...Parts.COUNT) 0];
+		Parts.owned = [for (_ in 0...Parts.TOTAL) false];
+		Parts.tiers = [for (_ in 0...Parts.TOTAL) 0];
 		Parts.commit();
 		player.applyParts();
 		player.refreshLook();
@@ -3306,7 +3647,7 @@ class PlayState extends FlxState
 				}
 			benchBuilt = true;
 			if (partsFound >= data.parts.length)
-				door.animation.play("open");
+				openExitDoor();
 		}
 		for (c in companions)
 			if (c.kind == kind && c.alive)
@@ -3403,6 +3744,130 @@ class PlayState extends FlxState
 
 	public function cheatRestart():Void
 		cheatGoto(level);
+
+	// ---- fejlesztői mentés (DevSave): pillanatkép, betöltés, visszaállítás ----
+	var devSaveT:Float = 0;
+
+	static function deadIdx<T:flixel.FlxBasic>(g:FlxTypedGroup<T>):Array<Int>
+		return [for (i in 0...g.length) if (g.members[i] != null && !g.members[i].alive) i];
+
+	/** A pálya és a játékos pillanatnyi állapota (JSON-ba írható). */
+	public function devSnapshot():Dynamic
+	{
+		var gateIds:Array<Int> = [];
+		gates.forEach(g ->
+		{
+			if (g.isOpen && gateIds.indexOf(g.gid) < 0)
+				gateIds.push(g.gid);
+		});
+		var terms:Array<Int> = [for (k in termSolved.keys()) k];
+		return {
+			v: 1, level: level, name: data.name,
+			owned: Parts.owned.copy(), tiers: Parts.tiers.copy(), atoms: Parts.atoms, battery: Parts.battery, lives: Parts.lives,
+			friends: Companions.owned.copy(),
+			px: player.x, py: player.y, rx: respawn.x, ry: respawn.y,
+			score: score, time: time, found: found.copy(), partsFound: partsFound, friendFound: friendFound.copy(), benchBuilt: benchBuilt,
+			gems: deadIdx(gems), gemsGot: gemsGot, batts: deadIdx(batts), cracked: deadIdx(cracked),
+			gates: gateIds, plates: [for (i in 0...plates.length) if (plates.members[i].pressed) i],
+			levers: [for (i in 0...levers.length) if (levers.members[i].flipped) i],
+			cps: [for (i in 0...checkpoints.length) if (checkpoints.members[i].animation.name == "on") i], terms: terms
+		};
+	}
+
+	/** Mentés betöltése: a pálya és a megtartott állapot (alkatrészek, atomok, akku, életek, társak) beállítása, majd a pálya újraindul, és a create végén a devApply visszaállítja a többit. */
+	public static function devLoad(s:Dynamic):Void
+	{
+		if (s == null)
+			return;
+		var own:Array<Dynamic> = s.owned;
+		var tiers:Array<Dynamic> = s.tiers;
+		for (i in Parts.ABILITIES)
+		{
+			Parts.owned[i] = own != null && own[i] == true;
+			Parts.tiers[i] = tiers != null && tiers[i] != null ? Std.int(tiers[i]) : 0;
+		}
+		Parts.atoms = Std.int(s.atoms);
+		Parts.battery = s.battery;
+		Parts.lives = Std.int(s.lives);
+		Parts.commit();
+		var fr:Array<Dynamic> = s.friends;
+		for (k in 0...Companions.owned.length)
+			Companions.owned[k] = fr != null && fr[k] == true;
+		Companions.commit();
+		level = Std.int(s.level);
+		DevSave.pending = s;
+		FlxG.timeScale = 1;
+		FlxG.switchState(() -> new PlayState());
+	}
+
+	/** A create végén: a betöltendő mentés pálya-állapotának visszaállítása (felvett tárgyak, nyitott kapuk, megoldott rejtvények, helyzet). */
+	function devApply():Void
+	{
+		var p:Dynamic = DevSave.pending;
+		DevSave.pending = null;
+		if (p == null)
+			return;
+		inline function ints(a:Dynamic):Array<Int>
+			return a == null ? [] : [for (x in (a : Array<Dynamic>)) Std.int(x)];
+		score = Std.int(p.score);
+		time = p.time;
+		for (i in ints(p.gems))
+			if (i < gems.length)
+				gems.members[i].kill();
+		gemsGot = Std.int(p.gemsGot);
+		for (i in ints(p.batts))
+			if (i < batts.length)
+				batts.members[i].kill();
+		for (i in ints(p.cracked))
+			if (i < cracked.length)
+				cracked.members[i].kill();
+		var f:Array<Dynamic> = p.found;
+		if (f != null)
+			for (i in 0...Std.int(Math.min(f.length, found.length)))
+				found[i] = f[i] == true;
+		partsFound = Std.int(p.partsFound);
+		for (it in partItems)
+			if (it.idx >= 0 && found[it.idx])
+				it.kill();
+		var ff:Array<Dynamic> = p.friendFound;
+		if (ff != null)
+			for (k in 0...Std.int(Math.min(ff.length, friendFound.length)))
+				friendFound[k] = Std.int(ff[k]);
+		benchBuilt = p.benchBuilt == true;
+		var gids = ints(p.gates);
+		gates.forEach(g -> if (gids.indexOf(g.gid) >= 0) g.setOpen(true));
+		for (i in ints(p.plates))
+			if (i < plates.length)
+				plates.members[i].setPressed(true);
+		for (i in ints(p.levers))
+			if (i < levers.length)
+				levers.members[i].flip();
+		for (i in ints(p.cps))
+			if (i < checkpoints.length)
+				checkpoints.members[i].animation.play("on");
+		for (t in ints(p.terms))
+		{
+			termSolved.set(t, true);
+			for (s in terminals)
+				if (s.ID == t)
+					s.animation.play("done");
+		}
+		if (partsFound >= data.parts.length && (data.benches.length == 0 || benchBuilt))
+			openExitDoor();
+		respawn.set(p.rx, p.ry);
+		player.reset(p.px, p.py);
+		var k = 0;
+		companions.forEachAlive(c ->
+		{
+			k++;
+			c.reset(p.px - 14 * k, p.py - 4);
+		});
+		inside = p.py > data.killRow * 16 - 40;
+		FlxG.camera.focusOn(player.getMidpoint());
+		bannerT = 0;
+		refreshHud();
+		showToast("STATE LOADED: " + p.when, 2.4);
+	}
 
 	public function cheatGoto(n:Int):Void
 	{

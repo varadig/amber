@@ -118,9 +118,9 @@ class CheatSubState extends FlxSubState
 
 	/** Nyelvváltás (angol / magyar): azonnal átfordítja a játék szövegeit, és a böngésző megjegyzi (Lang). */
 	function langItem():CheatItem
-		return dyn(() -> "LANGUAGE: " + (Lang.hu ? "MAGYAR" : "ENGLISH"), () ->
+		return dyn(() -> "LANGUAGE: " + Lang.displayName(), () ->
 		{
-			Lang.set(!Lang.hu);
+			Lang.next();
 			return false;
 		});
 
@@ -173,16 +173,28 @@ class CheatSubState extends FlxSubState
 				];
 			case "parts":
 				var l:Array<CheatItem> = [];
-				for (i in 0...Parts.COUNT)
+				for (i in Parts.ABILITIES)
 					l.push(ico(dyn(() -> "GIVE " + Parts.NAMES[i] + (Parts.has(i) ? "  (TIER " + Parts.tier(i) + ")" : ""), () ->
 					{
 						g.cheatPart(i);
 						return false;
 					}), i));
+				l.push(sub("TAKE PARTS (LOWER / REMOVE)", "take"));
 				l.push(ico(keep("GIVE 100 ATOMS", () -> g.cheatAtoms(100)), ICON_ATOM));
 				l.push(act("ALL PARTS", g.cheatAllParts));
 				l.push(act("PARTS OF PREVIOUS LEVELS", g.cheatPartsOfEarlierLevels));
 				l.push(act("STRIP ALL PARTS (NAKED ROBOT)", g.cheatStripParts));
+				return l;
+			case "take":
+				// alkatrész elvétele: egy szinttel lejjebb, I. szintről elveszi (csak a birtokoltak)
+				var l:Array<CheatItem> = [];
+				for (i in Parts.ABILITIES)
+					l.push(ico(dyn(() -> Parts.has(i) ? "TAKE " + Parts.NAMES[i] + "  (TIER " + Parts.tier(i) + (Parts.tier(i) > 1 ? " -> " + (Parts.tier(i) - 1) : " -> NONE") + ")" : "  " + Parts.NAMES[i] + "  (NOT OWNED)", () ->
+					{
+						if (Parts.has(i))
+							g.cheatTakePart(i);
+						return false;
+					}), i));
 				return l;
 			case "screen":
 				return [
@@ -213,6 +225,31 @@ class CheatSubState extends FlxSubState
 						return false;
 					}));
 				return l;
+			case "saves":
+				// fejlesztői mentések (DevSave): kézi mentés, folytatás a legutóbbi állapotból, és a dátumozott mentések listája (legújabb elöl)
+				var l:Array<CheatItem> = [
+					item("SAVE NOW", () ->
+					{
+						DevSave.saveNow(g.devSnapshot());
+						buildPage("saves");
+						return false;
+					}),
+					item("CONTINUE (LAST STATE)", () ->
+					{
+						var s = DevSave.latest();
+						if (s == null)
+							return false;
+						PlayState.devLoad(s);
+						return true;
+					})
+				];
+				for (s in DevSave.list())
+					l.push(item(DevSave.describe(s), () ->
+					{
+						PlayState.devLoad(s);
+						return true;
+					}));
+				return l;
 			case "music":
 				// a pályák zenéi meghallgathatók (a téma a háttérben készül el, aztán vált; a menü nyitva marad)
 				var l:Array<CheatItem> = [];
@@ -225,7 +262,7 @@ class CheatSubState extends FlxSubState
 				return l;
 			case "robots":
 				return [
-					act("ADD WHEELIE", () -> g.cheatCompanion(Companions.WHEELIE)),
+					act("ADD MICRO", () -> g.cheatCompanion(Companions.WHEELIE)),
 					act("ADD TALL", () -> g.cheatCompanion(Companions.TALL)),
 					act("ADD ORB", () -> g.cheatCompanion(Companions.ORB)),
 					act("BRING ALL ROBOTS TO ME", g.cheatGather),
@@ -301,6 +338,7 @@ class CheatSubState extends FlxSubState
 						item("CLOSE", () -> true)
 					];
 				return [
+					sub("SAVE STATES (LOAD)", "saves"),
 					sub("HERO", "hero"),
 					sub("PARTS", "parts"),
 					sub("BATTERY & SCREEN EFFECTS", "screen"),
@@ -328,10 +366,12 @@ class CheatSubState extends FlxSubState
 		{
 			case "hero": "HERO";
 			case "parts": "PARTS";
+			case "take": "TAKE PARTS";
 			case "screen": "BATTERY & SCREEN";
 			case "robots": "ROBOTS";
 			case "look": "LOOK (SAVED)";
 			case "music": "MUSIC";
+			case "saves": "SAVE STATES";
 			case "world": "WORLD";
 			case "levels": "JUMP TO LEVEL";
 			case "teleport": "TELEPORT";

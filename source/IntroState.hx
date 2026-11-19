@@ -156,8 +156,8 @@ class IntroState extends FlxState
 				}
 			case 2:
 				robot.animation.play("idle");
-				var rowIcon = [Parts.VISOR, Parts.LEGS, Parts.CHIP];
-				var rowText = ["NO VISOR: ONLY NEAR SIGHT, FAR IS BLURRY", "NO LEGS: SLOW, LOW JUMPS", "NO PROCESSOR: LAGGY CONTROLS"];
+				var rowIcon = [Parts.VISOR, Parts.LEGS, Parts.CHIP, Parts.AUDIO];
+				var rowText = ["NO GPU: ONLY NEAR SIGHT, FAR IS BLURRY", "NO LEGS: SLOW, LOW JUMPS", "NO CPU: LAGGY CONTROLS", "NO APU: MUFFLED, CRACKLY SOUND"];
 				for (i in 0...rowIcon.length)
 				{
 					var g = new FlxGroup();

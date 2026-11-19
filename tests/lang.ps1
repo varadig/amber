@@ -27,7 +27,7 @@ try {
     # megmarad-e a választás: újratöltés ugyanabban a böngészőben
     Send-Cdp "Page.reload" @{} | Out-Null
     Start-Sleep -Seconds 14
-    "remembered after reload: hu=" + (Js "window.__Lang.hu")
+    "remembered after reload: lang=" + (Js "window.__Lang.code")
     "--- workshop rows wrap check (lines > 1 = overlap):"
     Js "(function(){window.__Parts.atoms=500; for(var i=0;i<8;i++){ window.__parts[i]=true; window.__Parts.tiers[i]=1+(i%3); } window.__ps.levelClear();})()" | Out-Null
     Start-Sleep -Seconds 2

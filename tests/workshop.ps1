@@ -5,7 +5,7 @@ try {
     Start-Cdp ($Base + "?level=0") $Out
     Start-Sleep -Seconds 9
     "secret gems: " + (Js "window.__ps.gems.members.filter(function(g){return g.secret;}).length") + " of " + (Js "window.__ps.gems.length") + "  gemsTotal=" + (Js "window.__ps.gemsTotal")
-    Js "(function(){window.__parts[0]=true; window.__Parts.atoms=40; window.__ps.levelClear();})()" | Out-Null
+    Js "(function(){window.__parts[0]=true; window.__Parts.atoms=60; window.__ps.levelClear();})()" | Out-Null
     Start-Sleep -Seconds 2
     "before: tier(LEGS)=" + (Js "window.__Parts.tier(0)") + " atoms=" + (Js "window.__Parts.atoms")
     Js "(function(){window.__ps.finishLevel();})()" | Out-Null

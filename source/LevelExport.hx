@@ -233,7 +233,7 @@ class LevelExport
 		for (p in d.cells)
 			tile("items", "cell", p.x, p.y);
 		for (p in d.parts)
-			tile("items", "part" + (p.icon >= 0 && p.icon < LevelFormat.PART_FRAMES ? p.icon : 0), p.x, p.y, {icon: p.icon, label: p.label, friend: p.friend != null ? p.friend : -1});
+			tile("items", "part" + (p.icon >= 0 && (p.icon < LevelFormat.PART_FRAMES || p.icon == Parts.AUDIO) ? p.icon : 0), p.x, p.y, {icon: p.icon, label: p.label, friend: p.friend != null ? p.friend : -1});
 		for (l in d.lamps)
 			tile("items", "lamp", l.x - 4, l.y - 4, {radius: l.radius, intensity: l.intensity, flicker: l.flicker, angle: l.angle, spread: l.spread});
 		for (p in d.keys)

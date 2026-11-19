@@ -272,8 +272,16 @@ class Companion extends FlxSprite
 					if (fell || (far && !trapAtFloor(Std.int(tx / LevelData.T), Std.int((target.y + target.height + 2) / LevelData.T))))
 					{
 						stuckT = 0;
-						reset(tx - face * 18 - 4, ty - (kind == Companions.TALL ? 24 : 10));
-						velocity.set(0, 0);
+						// nem fix helyre a cél mellé, hanem a közelében egy biztonságos felületre (nem perem / gödör / tüske);
+						// ha nincs ilyen, most nem ugrunk (leesésnél a PlayState a mentési pont közelébe teszi)
+						var spot = spawnSpot != null ? spawnSpot(this) : null;
+						if (spot != null)
+						{
+							reset(spot.x, spot.y);
+							velocity.set(0, 0);
+							route = null;
+							spot.put();
+						}
 					}
 				case 3:
 					enterT += elapsed;
@@ -751,6 +759,8 @@ class Companion extends FlxSprite
 	public var hurry:Float = 0;
 	/** A legközelebbi stabil talaj x-e (NaN, ha nincs): a repedező platformról való menekülés célja. A PlayState állítja. */
 	public var safeGround:Companion->Float = null;
+	/** Biztonságos újra-megjelenési hely az irányított robot közelében (bal felső sarok), vagy null; a PlayState adja (`safeSpot`). */
+	public var spawnSpot:Companion->flixel.math.FlxPoint = null;
 
 	/**
 	 * Felugrás egy magasabb felületre (egyirányú / mozgó / leszakadó platform, legfeljebb a saját ugrásmagasságig): ha a közelben (a saját oszlopunkban
@@ -1237,7 +1247,7 @@ class Companion extends FlxSprite
 	 * A `land` sorban lévő talajon a `col` oszlopban gödör (csapda) van-e: mindkét oldalon (legfeljebb 6 csempén belül) fal áll,
 	 * aminek a teteje magasabb, mint a saját ugrásmagasságunk. Nyitott oldal vagy mászható fal esetén nem csapda.
 	 */
-	function trapAtFloor(col:Int, land:Int):Bool
+	public function trapAtFloor(col:Int, land:Int):Bool
 	{
 		var T = LevelData.T;
 		var jv = kind == Companions.TALL ? 320.0 : 335.0;

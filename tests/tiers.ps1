@@ -1,19 +1,15 @@
-# Teszt: az alkatreszek szintjei V-ig emelkednek, a hatasuk nol; a muhely minden szintet arul.
+# Teszt: minden alkatrész legfeljebb III. szintű; a szintek hatása nő (ugrás); a GPU III. szinten teljes látást, az APU III. szinten tiszta hangot ad.
+# (A műhely jelenleg ki van kapcsolva: PlayState.WORKSHOP_ENABLED; a szintek a Parts.add-dal / cheattel emelkednek.)
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {
     Start-Cdp ($Base + "?level=0") $Out
     Start-Sleep -Seconds 8
-    Js "(function(){var p=window.__ps; p.cheatAllParts(); window.__Parts.atoms=1000; p.levelClear();})()" | Out-Null
-    Start-Sleep -Seconds 2
-    for ($i = 0; $i -lt 6; $i++) {
-        "tier LEGS=" + (Js "window.__Parts.tier(0)") + " reach=" + [math]::Round([double](Js "window.__ps.player.jumpReach()")) + " BLASTER=" + (Js "window.__Parts.tier(5)") + " atoms=" + (Js "window.__Parts.atoms")
-        Js "(function(){window.__ps.finishLevel(); })()" | Out-Null
-        Start-Sleep -Milliseconds 800
-        if ($i -eq 0) { Shot "workshop-tiers.png" }
-        Js "(function(){var s=window.__ps.subState; if(!s||s.sel===undefined) return; s.openT=1; for(var k=0;k<10;k++){ s.sel=k; s.jact=true; s.tick(0.016);} })()" | Out-Null
-        Start-Sleep -Milliseconds 300
+    "max tiers: " + (Js "JSON.stringify([0,1,2,3,4,5,6,7,8,9,13].map(function(i){return window.__Parts.maxTier(i)}))") + " (want all 3)"
+    for ($i = 1; $i -le 4; $i++) {
+        Js "(function(){var p=window.__ps; for(var k=0;k<14;k++){ if(k<10||k==13) window.__Parts.add(k); } p.player.applyParts();})()" | Out-Null
+        Start-Sleep -Milliseconds 500
+        "after add x${i}: LEGS tier=" + (Js "window.__Parts.tier(0)") + " reach=" + [math]::Round([double](Js "window.__ps.player.jumpReach()")) + " GPU radius=" + (Js "window.__Parts.visionRadius()") + " APU fx=" + (Js "window.__AudioFx.debug()")
     }
-    "max tiers: " + (Js "JSON.stringify([0,1,2,3,4,5,6,7,8,9].map(function(i){return window.__Parts.tier(i)}))")
     "errors: " + ((Js "window.__errors") -join '; ')
 } finally { Stop-Cdp }

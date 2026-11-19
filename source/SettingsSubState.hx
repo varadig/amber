@@ -50,8 +50,8 @@ class SettingsSubState extends FlxSubState
 		return "[" + s + "] " + n * 10 + "%";
 	}
 
-	/** Sorok: zene, hangeffekt, teljes képernyő. */
-	static inline var ROWS = 3;
+	/** Sorok: zene, hangeffekt, teljes képernyő, eszköz-súgó. */
+	static inline var ROWS = 4;
 
 	var fsShown:Bool = false;
 
@@ -61,12 +61,22 @@ class SettingsSubState extends FlxSubState
 		rows[0].text = (sel == 0 ? "> " : "  ") + "MUSIC   " + bar(Audio.musicVolume);
 		rows[1].text = (sel == 1 ? "> " : "  ") + "SFX     " + bar(Audio.sfxVolume);
 		rows[2].text = (sel == 2 ? "> " : "  ") + "FULLSCREEN   " + (fsShown ? "ON" : "OFF");
+		rows[3].text = (sel == 3 ? "> " : "  ") + "DEVICE HINTS   " + (Prefs.hints ? "ON" : "OFF");
 		for (i in 0...ROWS)
 			rows[i].color = i == sel ? 0xFFFFD866 : 0xFFFFFFFF;
 	}
 
 	function change(d:Int):Void
 	{
+		if (sel == 3)
+		{
+			// eszköz-súgó be / ki (mentve)
+			Prefs.hints = !Prefs.hints;
+			Prefs.save();
+			Audio.play("select", 0.8);
+			refresh();
+			return;
+		}
 		if (sel == 2)
 		{
 			// (az állapot a böngészőben aszinkron változik: az update frissíti a sort, amint átváltott)
@@ -113,7 +123,7 @@ class SettingsSubState extends FlxSubState
 			sel = 2;
 			change(1);
 		}
-		else if (k.ENTER && sel == 2)
+		else if (k.ENTER && sel >= 2)
 		{
 			change(1);
 			return;
