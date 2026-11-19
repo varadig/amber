@@ -394,6 +394,10 @@ class PlayState extends FlxState
 		bgColor = 0xFF000000;
 		Parts.restore();
 		Companions.restore();
+		// látás: a pálya elején egyből a végleges (VISOR szerinti) sugár, átmenet nélkül
+		Main.clearTarget = Parts.visionRadius();
+		Main.sightTarget = Parts.tier(Parts.VISOR) >= 2 ? 1.2 : 1.0;
+		Main.snapVision = true;
 		data = LevelLoader.load(level);
 		worldW = data.w * LevelData.T;
 		worldH = LevelData.H * LevelData.T;
@@ -1413,7 +1417,7 @@ class PlayState extends FlxState
 			FlxG.overlap(r, partItems, onPart);
 			FlxG.overlap(r, batts, onBatt);
 			FlxG.overlap(r, spikes, onSpike);
-			FlxG.overlap(r, checkpoints, onCheckpoint);
+			passCheckpoints(r);
 		}
 		FlxG.overlap(player, cells, onCell);
 		updateFriendSkills();
@@ -1685,12 +1689,13 @@ class PlayState extends FlxState
 	/** Látványos alkatrész-felvétel: lassítás, táguló gyűrűk, a nagy ikon középre pattan, majd a HUD foglalatába repül. */
 	function partFx(it:Pickup):Void
 	{
-		hitstop = 0.2;
+		// (nincs hitstop: a hős nem áll meg a felvételkor)
 		ring(it.x + 5, it.y + 5, 28, 55);
 		ring(it.x + 5, it.y + 5, 24, 100);
 		ring(it.x + 5, it.y + 5, 18, 150);
 		burst(it.x + 5, it.y + 5, 30, 0xFFFFFFFF, 170);
-		var big = new FlxSprite(235, 92);
+		// a nagy ikon a kép felső részén jelenik meg (nem takarja a közepet, ahol a hős van)
+		var big = new FlxSprite(235, 45);
 		big.loadGraphic(Art.partIcons(), true, 10, 10, false, "parts");
 		big.animation.frameIndex = it.icon;
 		big.scrollFactor.set(0, 0);
@@ -1700,7 +1705,7 @@ class PlayState extends FlxState
 		hudAdding = false;
 		var n = data.parts.length;
 		var sx = 240 - n * 7 + it.idx * 14;
-		FlxTween.tween(big.scale, {x: 7, y: 7}, 0.4, {ease: FlxEase.backOut});
+		FlxTween.tween(big.scale, {x: 5, y: 5}, 0.4, {ease: FlxEase.backOut});
 		FlxTween.tween(big, {x: sx, y: 4.0}, 0.6, {startDelay: 1.4, ease: FlxEase.cubeIn});
 		FlxTween.tween(big.scale, {x: 1, y: 1}, 0.6, {startDelay: 1.4, ease: FlxEase.cubeIn, onComplete: _ ->
 		{
@@ -2632,6 +2637,28 @@ class PlayState extends FlxState
 				c.velocity.y = -230;
 				damagedCompanion(c);
 			}
+		}
+	}
+
+	/** Ellenőrzőpont: nem kell hozzáérni, elég elhaladni az oszlopa mellett (átsétálva, átugorva, fölötte átrepülve is),
+		ha a robot a checkpoint fölötti sávban van (más szinten, pl. épületben / alagútban nem kapcsol be). Teleportnál (nagy ugrás) nem. */
+	function passCheckpoints(r:FlxSprite):Void
+	{
+		var mid = r.x + r.width / 2;
+		var prev = r.last.x + r.width / 2;
+		if (Math.abs(mid - prev) > 40)
+			return;
+		var lo = Math.min(prev, mid) - r.width / 2;
+		var hi = Math.max(prev, mid) + r.width / 2;
+		for (c in checkpoints)
+		{
+			if (!c.alive || c.animation.name == "on")
+				continue;
+			if (hi < c.x || lo > c.x + c.width)
+				continue;
+			if (r.y + r.height < c.y - 112 || r.y > c.y + c.height + 16)
+				continue;
+			onCheckpoint(r, c);
 		}
 	}
 

@@ -20,6 +20,8 @@ class Main extends Sprite
 	/** Tiszta látás sugara (px) és a robot helye a képen: kívül átmenetesen homályos (AmberShader.uClear / uFocusPos). 640 fölött nincs homály. */
 	public static var clearTarget:Float = 700;
 	static var clearNow:Float = 700;
+	/** A PlayState.create állítja: a következő állapotváltás / képkocka a látást átmenet nélkül a célértékre teszi. */
+	public static var snapVision:Bool = false;
 	public static var focusX:Float = 240;
 	public static var focusY:Float = 135;
 	/** VISOR-élesedés effekt: 1-ről 0-ra fut (FOCUS_TIME mp alatt); lásd AmberShader.uFocus. */
@@ -53,12 +55,20 @@ class Main extends Sprite
 		// a kamera szűrője állapotváltáskor elvész (új kamera), ezért minden váltás után újra beállítjuk
 		FlxG.signals.postStateSwitch.add(() ->
 		{
-			sightTarget = 1;
 			tiredTarget = 0;
 			hitFx = 0;
 			focusT = 0;
-			clearTarget = 700;
-			clearNow = 700;
+			if (!snapVision)
+			{
+				sightTarget = 1;
+				clearTarget = 700;
+			}
+			// a PlayState.create már beállította a célt (snapVision): azonnal azzal indulunk, nincs átmenet
+			clearNow = clearTarget;
+			sightNow = sightTarget;
+			amber.uClear.value = [clearNow];
+			amber.uClearNew.value = [clearNow];
+			amber.uSight.value = [sightNow];
 			FlxG.camera.filters = [filter];
 		});
 		FlxG.signals.postGameStart.addOnce(() ->
@@ -73,7 +83,14 @@ class Main extends Sprite
 		{
 			clock += FlxG.elapsed;
 			amber.uTime.value = [clock];
-			if (focusT > 0)
+			if (snapVision)
+			{
+				// állapotváltás után az első képkockán a látás azonnal a célértéken áll
+				snapVision = false;
+				clearNow = clearTarget;
+				sightNow = sightTarget;
+			}
+			else if (focusT > 0)
 			{
 				// VISOR-élesedés: a villódzás + fénysáv alatt a látás nem változik, a végén egyből a célérték
 				focusT -= FlxG.elapsed / FOCUS_TIME;

@@ -104,7 +104,7 @@ class AmberShader extends FlxShader
 				}
 			}
 			float dpx = length((q - uFocusPos / vec2(480.0, 270.0)) * vec2(480.0, 270.0));
-			float blurK = clearR > 640.0 ? 0.0 : smoothstep(clearR, clearR * 1.9 + 45.0, dpx);
+			float blurK = clearR > 640.0 ? 0.0 : smoothstep(clearR, clearR * 1.6 + 30.0, dpx);
 			float sight = min(clamp(uSight, 0.0, 1.0), mix(1.0, 0.0, blurK));
 			if (foc && fp < 0.3)
 				sight = min(sight, 0.4);

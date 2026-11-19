@@ -76,7 +76,7 @@ class Parts
 
 	/** A tiszta látás sugara (px, a 480x270-es képen): VISOR nélkül kis kör a robot körül, szintenként nagyobb; V. szinten az egész kép éles (700 = korlátlan). */
 	public static function visionRadius():Float
-		return has(VISOR) ? at([100.0, 160.0, 230.0, 340.0, 700.0], VISOR) : 52.0;
+		return has(VISOR) ? at([74.0, 115.0, 165.0, 240.0, 700.0], VISOR) : 40.0;
 
 	/** Mennyi akkut vesz el egy találat (a CORE szintje csökkenti). */
 	public static function hitCost():Float
