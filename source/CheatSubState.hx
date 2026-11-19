@@ -116,6 +116,14 @@ class CheatSubState extends FlxSubState
 	function item(label:String, run:Void->Bool):CheatItem
 		return {label: () -> label, run: run};
 
+	/** Nyelvváltás (angol / magyar): azonnal átfordítja a játék szövegeit, és a böngésző megjegyzi (Lang). */
+	function langItem():CheatItem
+		return dyn(() -> "LANGUAGE: " + (Lang.hu ? "MAGYAR" : "ENGLISH"), () ->
+		{
+			Lang.set(!Lang.hu);
+			return false;
+		});
+
 	function dyn(label:Void->String, run:Void->Bool):CheatItem
 		return {label: label, run: run};
 
@@ -205,6 +213,16 @@ class CheatSubState extends FlxSubState
 						return false;
 					}));
 				return l;
+			case "music":
+				// a pályák zenéi meghallgathatók (a téma a háttérben készül el, aztán vált; a menü nyitva marad)
+				var l:Array<CheatItem> = [];
+				for (i in 0...Music.THEME_COUNT)
+					l.push(dyn(() -> (Audio.currentTheme() == i ? "* " : "  ") + "LEVEL " + (i + 1) + ": " + Music.describe(i), () ->
+					{
+						Audio.playMusic(i);
+						return false;
+					}));
+				return l;
 			case "robots":
 				return [
 					act("ADD WHEELIE", () -> g.cheatCompanion(Companions.WHEELIE)),
@@ -255,6 +273,7 @@ class CheatSubState extends FlxSubState
 				return [for (i in 0...MiniGames.COUNT) act(MiniGames.TITLES[i], () -> g.cheatMini(i))];
 			case "toggles":
 				return [
+					langItem(),
 					dyn(() -> "GOD MODE: " + (g.cheatGod ? "ON" : "OFF"), () ->
 					{
 						g.cheatGod = !g.cheatGod;
@@ -286,6 +305,8 @@ class CheatSubState extends FlxSubState
 					sub("PARTS", "parts"),
 					sub("BATTERY & SCREEN EFFECTS", "screen"),
 					sub("LOOK (SHADER STYLES)", "look"),
+					sub("MUSIC (LISTEN)", "music"),
+					langItem(),
 					sub("ROBOTS (FRIENDS)", "robots"),
 					sub("TELEPORT IN THIS LEVEL", "teleport"),
 					sub("WORLD & LEVELS", "world"),
@@ -310,6 +331,7 @@ class CheatSubState extends FlxSubState
 			case "screen": "BATTERY & SCREEN";
 			case "robots": "ROBOTS";
 			case "look": "LOOK (SAVED)";
+			case "music": "MUSIC";
 			case "world": "WORLD";
 			case "levels": "JUMP TO LEVEL";
 			case "teleport": "TELEPORT";
@@ -368,6 +390,7 @@ class CheatSubState extends FlxSubState
 	override public function update(elapsed:Float):Void
 	{
 		super.update(elapsed);
+		Audio.tick(); // a MUSIC lapon választott téma a menü alatt is elkészül
 		if (pendingPage != null)
 		{
 			var p = pendingPage;

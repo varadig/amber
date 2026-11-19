@@ -108,7 +108,7 @@ class Showcase extends FlxGroup
 		}
 		var name = Parts.NAMES[id];
 		var info = tier >= 2 ? "UPGRADED: " + Parts.upInfo(id, tier) : Parts.INFO[id];
-		caption = new FlxText(sx - 12, sy + SH + 3, SW + 24, name + "\n" + info, 8);
+		caption = new LangText(sx - 12, sy + SH + 3, SW + 24, name + "\n" + info, 8);
 		caption.setFormat(null, 8, 0xFFFFFFFF, CENTER);
 		caption.scrollFactor.set(0, 0);
 		add(caption);

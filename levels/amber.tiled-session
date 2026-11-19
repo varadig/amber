@@ -1,0 +1,34 @@
+{
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "level1.tmj": {
+            "scale": 0.4232970505617977,
+            "selectedLayer": 4,
+            "viewCenter": {
+                "x": 551.6220812077476,
+                "y": 328.374600804612
+            }
+        },
+        "level3.tmj": {
+            "scale": 2,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 217.25,
+                "y": 236.5
+            }
+        },
+        "objects.tsj": {
+            "dynamicWrapping": true
+        },
+        "tiles.tsj": {
+            "dynamicWrapping": false
+        }
+    },
+    "openFiles": [
+    ],
+    "project": "amber.tiled-project",
+    "recentFiles": [
+    ]
+}

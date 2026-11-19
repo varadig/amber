@@ -8,6 +8,9 @@ import Puzzle;
 /** Egy útvonal-csempe: oszlop, sor (a talp sora), és az ide vezető él fajtája (0 járás, 1 lelépés, 2 ugrás). */
 typedef RouteNode = {c:Int, r:Int, k:Int};
 
+/** Mozgó platform a társ szemszögéből: vízszintes kiterjedés (px), teteje (px) és vízszintes sebessége (px/s). */
+typedef MoverInfo = {x0:Float, x1:Float, top:Float, vx:Float};
+
 /**
  * Egy társ-robot (a Lost Vikings mintájára: a három robot között váltani lehet, mindegyiket el kell juttatni az ajtóhoz).
  * Módok: 0 követ (a kiválasztott robotot követi), 1 vár (a helyén marad; a TALL ilyenkor platform), 3 az ajtóhoz megy és belép,
@@ -37,6 +40,10 @@ class Companion extends FlxSprite
 	 * A PlayState állítja be: a pályatérkép (`level`) a mozgó platformokat nem ismeri, ezért a követő ezzel látja, hova ugorhat.
 	 */
 	public var movingStand:Int->Int->Null<Float> = null;
+	/** A mozgó platform, amelyen a társ áll (null, ha nem ilyenen áll); a PlayState adja. */
+	public var ridingMover:Companion->MoverInfo = null;
+	/** A legközelebbi mozgó platform előttünk (a megadott irányban, ugrás-közelben); a PlayState adja. */
+	public var moverAhead:Companion->Int->MoverInfo = null;
 	var level:LevelData;
 	var bobT:Float = Math.random() * 6;
 	var stuckT:Float = 0;
@@ -510,6 +517,9 @@ class Companion extends FlxSprite
 			hopDir = dir;
 			return;
 		}
+		// mozgó platformra / -ról nem sétálunk (a platform közben elmozdul, és a résbe esnénk): mindig ugrunk
+		if (moverHop(dir, cx, colAhead, footRow, g, jumpV, spd))
+			return;
 		// magasabb felületre (egyirányú, mozgó vagy leszakadó platform) ugrás, ha a cél följebb van
 		if (wantUp && tryHopUp(dir, g, jumpV, spd))
 			return;
@@ -595,6 +605,92 @@ class Companion extends FlxSprite
 			if (!jumpOk)
 				velocity.x = 0;
 		}
+	}
+
+	/**
+		Mozgó platform: fel- és leszállás mindig ugrással (igaz = ugrott, vagy szándékosan vár; a walkToward ilyenkor kilép).
+		- A platformon állva: ha a lábunk eléri a platform szélét, átugrunk az előttünk lévő talajra (egy kicsit beljebb, a biztonság kedvéért);
+		  ha nincs hova, a platformon maradunk.
+		- A talajon: ha előttünk mozgó platform van (a perem mellett vagy a szakadék fölött), a peremen megállunk, és ráugrunk
+		  (a leszállási pontot a platform sebességével előre számolva); ha épp nem érhető el, a peremen várunk rá.
+	**/
+	function moverHop(dir:Int, cx:Float, colAhead:Int, footRow:Int, g:Float, jumpV:Float, spd:Float):Bool
+	{
+		var T = LevelData.T;
+		var feet = y + height;
+		var riding = ridingMover != null ? ridingMover(this) : null;
+		if (riding != null)
+		{
+			var front = cx + dir * (width / 2 + 4);
+			if ((dir > 0 && front < riding.x1) || (dir < 0 && front > riding.x0))
+				return false; // még a platformon belül: sétálunk
+			// leszállási hely a platform szélén túl (legfeljebb 7 oszlop, -3..+3 sor): talaj vagy másik platform
+			var edge = dir > 0 ? riding.x1 : riding.x0;
+			var c0 = Std.int((edge + dir * 1) / T);
+			// (csak szilárd talaj: a movingStand a saját platformunkat is "talajnak" látná, és a szélén újra meg újra arra ugranánk vissza)
+			for (k in 0...7)
+			{
+				var cc = c0 + dir * k;
+				for (r in -3...4)
+				{
+					var row = footRow + r;
+					if (!level.isStandable(cc, row) || level.isSolid(cc, row - 1) || level.isSolid(cc, row - 2))
+						continue;
+					var tx = cc * T + T / 2 + dir * 3;
+					if (ballistic(tx, row * T, 0.0, g, jumpV, spd))
+						return true;
+				}
+			}
+			// egy másik mozgó platform a közelben (a sajátunkat a moverAhead kihagyja)
+			var other = moverAhead != null ? moverAhead(this, dir) : null;
+			if (other != null && ballistic((other.x0 + other.x1) / 2, other.top, other.vx, g, jumpV, spd))
+				return true;
+			// nincs hova ugrani (még messze a túlpart): a platform közepe felé húzódunk vissza, és ott várjuk, hogy közelebb vigyen
+			// (a szélén megállva a test lecsúszna róla)
+			var mid = (riding.x0 + riding.x1) / 2;
+			velocity.x = Math.abs(mid - cx) > 3 ? (mid > cx ? 1 : -1) * spd * 0.6 : 0;
+			return true;
+		}
+		var m = moverAhead != null ? moverAhead(this, dir) : null;
+		if (m == null)
+			return false;
+		// csak a perem előtt döntünk: amíg előttünk szilárd talaj van, sétálunk
+		if (level.isStandable(colAhead, footRow) && !(m.x0 < colAhead * T + T && m.x1 > colAhead * T))
+			return false;
+		// ráugrás a platform közepére (a repülés alatt a platform elmozdul: előre számolva)
+		if (ballistic((m.x0 + m.x1) / 2, m.top, m.vx, g, jumpV, spd))
+			return true;
+		velocity.x = 0; // most nem érhető el: a peremen várunk rá
+		return true;
+	}
+
+	/**
+		Ugrás egy pontra (tx, a talp célmagassága ty), a cél vízszintes sebességével előre számolva: a legkisebb elég ugrás, amelynél a szükséges
+		vízszintes sebesség nem nagyobb a futásnál (×1,35). Igaz, ha ugrott.
+	**/
+	function ballistic(tx:Float, ty:Float, tvx:Float, g:Float, jumpV:Float, spd:Float):Bool
+	{
+		var cx = x + width / 2;
+		var dyl = ty - (y + height);
+		var v = Math.max(150.0, Math.sqrt(2 * g * Math.max(0.0, -dyl + 6)));
+		while (v <= jumpV)
+		{
+			var disc = v * v + 2 * g * dyl;
+			if (disc >= 0)
+			{
+				var tt = (v + Math.sqrt(disc)) / g;
+				var dist = tx + tvx * tt - cx;
+				if (Math.abs(dist) / tt <= spd * 1.35)
+				{
+					velocity.y = -v;
+					velocity.x = dist / tt;
+					hopDir = 0;
+					return true;
+				}
+			}
+			v += 8;
+		}
+		return false;
 	}
 
 	/** A követés célja magasabban van (legalább egy csempével): az update számolja a mód 0 hívása előtt. */

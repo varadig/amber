@@ -73,7 +73,7 @@ class MiniGame extends FlxSubState
 
 	function txt(s:String, x:Float, y:Float, w:Float, size:Int, color:Int, align:String = "left"):FlxText
 	{
-		var t = new FlxText(x, y, w, s, size);
+		var t = new LangText(x, y, w, s, size);
 		t.setFormat(null, size, color, align == "center" ? CENTER : LEFT);
 		t.scrollFactor.set(0, 0);
 		add(t);
@@ -771,6 +771,8 @@ class Workshop extends MiniGame
 			if (Parts.has(i))
 				rows.push(i);
 		rows.push(-1); // CONTINUE
+		// a kijelölés az első megvehető fejlesztésen áll; ha semmire sincs elég atom, egyből a TOVÁBB-on
+		sel = firstBuyable();
 		for (i in 0...rows.length)
 		{
 			lines.push(txt("", 72, 74 + i * 14, 346, 8, 0xFFBBBBBB));
@@ -842,8 +844,23 @@ class Workshop extends MiniGame
 				Parts.add(id);
 				Audio.play("key", 1);
 				msg.text = "UPGRADED: " + Parts.upInfo(id, Parts.tier(id));
+				// a vásárlás után erre már nem futja: a következő megvehetőre, ha nincs ilyen, a TOVÁBB-ra ugrunk
+				if (!buyable(id))
+					sel = firstBuyable();
 			}
 		}
 		refresh();
+	}
+
+	function buyable(id:Int):Bool
+		return id >= 0 && Parts.tier(id) < Parts.maxTier(id) && Parts.atoms >= costOf(id);
+
+	/** Az első megvehető fejlesztés sora; ha semmire sincs elég atom, a TOVÁBB (utolsó) sor. */
+	function firstBuyable():Int
+	{
+		for (i in 0...rows.length)
+			if (buyable(rows[i]))
+				return i;
+		return rows.length - 1;
 	}
 }

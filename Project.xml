@@ -22,4 +22,6 @@
 	<haxelib name="lime" version="8.3.2" />
 	<haxelib name="openfl" version="9.5.2" />
 	<haxelib name="flixel" version="6.2.1" />
+	<!-- Box2D fizika (MIT): a leomló fal darabjai (Rubble) -->
+	<haxelib name="box2d" version="1.2.4" />
 </project>

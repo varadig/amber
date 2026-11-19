@@ -12,6 +12,23 @@ class Enemy extends FlxSprite
 	public var kind:Int;
 	public var stompable(get, never):Bool;
 	public var dying:Float = -1;
+	/** Látás-köd (0..1): a VISOR tiszta körén kívül láthatatlan, az átmeneti sávban halványul (PlayState.updateFog). */
+	public var fog:Float = 1;
+
+	override public function draw():Void
+	{
+		if (fog >= 0.999)
+		{
+			super.draw();
+			return;
+		}
+		if (fog <= 0.01)
+			return;
+		var a = alpha;
+		alpha = a * fog;
+		super.draw();
+		alpha = a;
+	}
 
 	var level:LevelData;
 	var dir:Int = -1;

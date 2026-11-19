@@ -90,13 +90,13 @@ class IntroState extends FlxState
 		FlxG.cameras.add(uiCam, false);
 		for (i in 0...2)
 		{
-			var l = new FlxText(0, 232 + i * 12, 480, "", 8);
+			var l = new LangText(0, 232 + i * 12, 480, "", 8);
 			l.setFormat(null, 8, 0xFFFFFFFF, LEFT);
 			l.cameras = [uiCam];
 			add(l);
 			capLines.push(l);
 		}
-		hint = new FlxText(0, 258, 480, "JUMP: NEXT     ESC: SKIP", 8);
+		hint = new LangText(0, 258, 480, "JUMP: NEXT     ESC: SKIP", 8);
 		hint.setFormat(null, 8, 0xFF777777, CENTER);
 		hint.cameras = [uiCam];
 		add(hint);
@@ -110,7 +110,8 @@ class IntroState extends FlxState
 
 	function setCaption(i:Int):Void
 	{
-		capFull = CAPTIONS[i];
+		// a feliratot előre fordítjuk: a gépelés részszövegei már nem lennének a szótárban (a magyar szöveg a LangText-en változatlanul átmegy)
+		capFull = [for (l in CAPTIONS[i]) Lang.t(l)];
 		capChars = 0;
 		for (k in 0...capLines.length)
 		{
@@ -165,11 +166,11 @@ class IntroState extends FlxState
 					ic.animation.frameIndex = rowIcon[i];
 					ic.scale.set(2, 2);
 					g.add(ic);
-					var t = new FlxText(120, 48 + i * 26 + 3, 300, rowText[i], 8);
+					var t = new LangText(120, 48 + i * 26 + 3, 300, rowText[i], 8);
 					t.setFormat(null, 8, 0xFFFFFFFF, LEFT);
 					g.add(t);
 					// áthúzás: a hiányzó rész jele
-					var x = new FlxText(88, 48 + i * 26 + 1, 20, "X", 16);
+					var x = new LangText(88, 48 + i * 26 + 1, 20, "X", 16);
 					x.setFormat(null, 16, 0xFFFFFFFF, LEFT);
 					g.add(x);
 					g.forEach(s -> cast(s, FlxSprite).visible = false);
@@ -193,7 +194,7 @@ class IntroState extends FlxState
 					Main.startFocus();
 					Audio.play("key", 0.8);
 				}});
-				var ex = new FlxText(380, 190, 90, "EXIT >", 8);
+				var ex = new LangText(380, 190, 90, "EXIT >", 8);
 				ex.setFormat(null, 8, 0xFFFFFFFF, CENTER);
 				ex.cameras = [uiCam];
 				stage.add(ex);

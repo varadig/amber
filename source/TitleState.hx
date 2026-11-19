@@ -53,7 +53,7 @@ class TitleState extends FlxState
 		hero.animation.play("run");
 		add(hero);
 
-		var title = new FlxText(0, 70, 480, "ÄMBER", 32);
+		var title = new LangText(0, 70, 480, "ÄMBER", 32);
 		title.setFormat(null, 32, 0xFFFFFFFF, CENTER);
 		add(title);
 		var mascot = new FlxSprite(340, 62);
@@ -62,17 +62,17 @@ class TitleState extends FlxState
 		mascot.updateHitbox();
 		add(mascot);
 		FlxTween.tween(mascot, {y: 56}, 0.9, {type: PINGPONG, ease: FlxEase.sineInOut});
-		var sub = new FlxText(0, 136, 480, "REBUILD YOURSELF. THEN BUILD YOUR FRIENDS.", 8);
+		var sub = new LangText(0, 136, 480, "REBUILD YOURSELF. THEN BUILD YOUR FRIENDS.", 8);
 		sub.setFormat(null, 8, 0xFF777777, CENTER);
 		add(sub);
 
-		prompt = new FlxText(0, 168, 480, "PRESS JUMP TO START", 8);
+		prompt = new LangText(0, 168, 480, "PRESS JUMP TO START", 8);
 		prompt.setFormat(null, 8, 0xFFFFFFFF, CENTER);
 		add(prompt);
-		var setHint = new FlxText(0, 186, 480, "O / TRIANGLE: SETTINGS (VOLUME)", 8);
+		var setHint = new LangText(0, 186, 480, "O / TRIANGLE: SETTINGS    F: FULLSCREEN", 8);
 		setHint.setFormat(null, 8, 0xFF777777, CENTER);
 		add(setHint);
-		var help = new FlxText(0, 254, 480, "ARROWS/WASD MOVE   Z/SPACE/L-CLICK JUMP   X/SHIFT DASH   V/J/R-CLICK FIRE   UP/E USE   TAB SWITCH   P PAUSE", 8);
+		var help = new LangText(0, 254, 480, "ARROWS/WASD MOVE   Z/SPACE/L-CLICK JUMP   X/SHIFT DASH   V/J/R-CLICK FIRE   UP/E USE   TAB SWITCH   P PAUSE", 8);
 		help.setFormat(null, 8, 0xFF777777, CENTER);
 		add(help);
 	}

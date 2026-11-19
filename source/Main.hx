@@ -22,6 +22,10 @@ class Main extends Sprite
 	static var clearNow:Float = 700;
 	/** A PlayState.create állítja: a következő állapotváltás / képkocka a látást átmenet nélkül a célértékre teszi. */
 	public static var snapVision:Bool = false;
+
+	/** A shaderben éppen érvényes tiszta-látás sugár (px); a PlayState.updateFog ehhez halványítja a tárgyakat / ellenségeket. */
+	public static function clearRadius():Float
+		return clearNow;
 	public static var focusX:Float = 240;
 	public static var focusY:Float = 135;
 	/** VISOR-élesedés effekt: 1-ről 0-ra fut (FOCUS_TIME mp alatt); lásd AmberShader.uFocus. */
@@ -49,6 +53,7 @@ class Main extends Sprite
 		#end
 		// A borostyán-monitor shader az egész játékon (a játék példányon, hogy a pásztázó-vonalak az ablak felbontásán is élesek legyenek)
 		Looks.load();
+		Lang.load(); // a választott nyelv (cheat-menü: LANGUAGE), a böngésző megjegyzi
 		DevReload.init(); // dev build: élő újratöltés új dev build esetén
 		amber = new AmberShader();
 		var filter = new ShaderFilter(amber);
@@ -161,10 +166,31 @@ class Main extends Sprite
 		{
 			if (e.code != "KeyF" || e.repeat)
 				return;
-			js.Syntax.code("var d = document;
-				var p = d.fullscreenElement ? d.exitFullscreen() : d.documentElement.requestFullscreen();
-				if (p && p.catch) p.catch(function () {});");
+			toggleFullscreen();
 		});
+		#end
+	}
+
+	/**
+		Teljes képernyő be / ki (F billentyű, beállítások menü). A böngésző csak friss billentyű- / egéresemény után engedi
+		(Chrome / Edge: néhány másodpercig tartó "felhasználói aktiválás", ezért a képkockánként olvasott billentyűből is működik);
+		a kontroller gombja nem számít ilyennek: onnan nem kapcsolható be.
+	**/
+	public static function toggleFullscreen():Void
+	{
+		#if js
+		js.Syntax.code("var d = document;
+			var p = d.fullscreenElement ? d.exitFullscreen() : d.documentElement.requestFullscreen();
+			if (p && p.catch) p.catch(function () {});");
+		#end
+	}
+
+	public static function isFullscreen():Bool
+	{
+		#if js
+		return js.Syntax.code("!!document.fullscreenElement");
+		#else
+		return false;
 		#end
 	}
 }

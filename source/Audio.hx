@@ -312,6 +312,10 @@ class Audio
 		unlock();
 	}
 
+	/** A kért zenetéma (cheat-menü: MUSIC). */
+	public static function currentTheme():Int
+		return musicTheme;
+
 	public static function stopMusic():Void
 	{
 		if (FlxG.sound.music != null)

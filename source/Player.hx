@@ -30,6 +30,10 @@ class Player extends FlxSprite
 	public var controlled:Bool = true;
 	/** Követés (Q): a nem irányított hős ezt a robotot követi (null = vár). */
 	public var followTarget:FlxSprite = null;
+	/** A hős által vitt láda (négyzet / X: felvétel, újra: lerakás; a PlayState kezeli). Cipelés közben nincs dash. */
+	public var carrying:Puzzle.Crate = null;
+	/** Ebben a képkockában a gomb ládát fogott / tett le: a dash elmarad (ugyanaz a gomb). */
+	public var grabbedNow:Bool = false;
 	public var level:LevelData = null;
 	var aiJump:Bool = false;
 	var aiJumpT:Float = 0;
@@ -387,7 +391,7 @@ class Player extends FlxSprite
 				y += 2;
 			}
 			// dash (THRUSTER)
-			if (ctl && Parts.has(Parts.THRUSTER) && Input.dashPressed() && dashesLeft > 0 && dashCd <= 0 && stun <= 0)
+			if (ctl && Parts.has(Parts.THRUSTER) && Input.dashPressed() && !grabbedNow && carrying == null && dashesLeft > 0 && dashCd <= 0 && stun <= 0)
 			{
 				dashing = true;
 				dashT = DASH_TIME;

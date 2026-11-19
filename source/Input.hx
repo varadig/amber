@@ -88,6 +88,12 @@ class Input
 		return FlxG.keys.anyJustPressed([X, SHIFT, K]) || (just(FlxGamepadInputID.X) || just(FlxGamepadInputID.B));
 	}
 
+	/** Láda megfogása / lerakása: G, illetve a dash gombjai (X / Shift / K, kontroller: négyzet); a PlayState csak láda közelében / cipelés közben használja. */
+	public static function grabPressed():Bool
+	{
+		return FlxG.keys.anyJustPressed([G, X, SHIFT, K]) || just(FlxGamepadInputID.X);
+	}
+
 	public static function shootPressed():Bool
 	{
 		return FlxG.keys.anyJustPressed([V, J, CONTROL]) || (just(FlxGamepadInputID.Y)) || FlxG.mouse.justPressedRight;

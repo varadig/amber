@@ -15,16 +15,16 @@ class EndState extends FlxState
 		super.create();
 		bgColor = 0xFF000000;
 		FlxG.camera.fade(0xFF000000, 0.5, true);
-		var a = new FlxText(0, 70, 480, "ALL PARTS FOUND", 16);
+		var a = new LangText(0, 70, 480, "ALL PARTS FOUND", 16);
 		a.setFormat(null, 16, 0xFFFFFFFF, CENTER);
 		add(a);
-		var b = new FlxText(0, 100, 480, "THE ROBOT IS WHOLE AGAIN", 16);
+		var b = new LangText(0, 100, 480, "THE ROBOT IS WHOLE AGAIN", 16);
 		b.setFormat(null, 16, 0xFFBBBBBB, CENTER);
 		add(b);
-		var c = new FlxText(0, 150, 480, "FINAL SCORE " + PlayState.totalScore, 8);
+		var c = new LangText(0, 150, 480, "FINAL SCORE " + PlayState.totalScore, 8);
 		c.setFormat(null, 8, 0xFFFFFFFF, CENTER);
 		add(c);
-		prompt = new FlxText(0, 200, 480, "PRESS JUMP", 8);
+		prompt = new LangText(0, 200, 480, "PRESS JUMP", 8);
 		prompt.setFormat(null, 8, 0xFF777777, CENTER);
 		add(prompt);
 	}
