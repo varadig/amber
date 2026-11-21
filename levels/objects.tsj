@@ -5,7 +5,7 @@
 	"tiledversion": "1.10.2",
 	"tilewidth": 48,
 	"tileheight": 24,
-	"tilecount": 42,
+	"tilecount": 43,
 	"columns": 0,
 	"margin": 0,
 	"spacing": 0,
@@ -759,6 +759,20 @@
 					"name": "friend",
 					"type": "int",
 					"value": -1
+				}
+			]
+		},
+		{
+			"id": 42,
+			"image": "sprites/spring.png",
+			"imagewidth": 16,
+			"imageheight": 8,
+			"class": "Spring",
+			"properties": [
+				{
+					"name": "power",
+					"type": "int",
+					"value": 8
 				}
 			]
 		}

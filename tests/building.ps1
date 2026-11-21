@@ -1,4 +1,4 @@
-# Teszt: belépés egy épületbe (felszíni ajtó -> belső terem), a belső terem képe, kilépés.
+﻿# Teszt: belépés egy épületbe (felszíni ajtó -> belső terem), a belső terem képe, kilépés.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 function St { Js "JSON.stringify({inside:window.__ps.inside,x:Math.round(window.__ps.player.x),y:Math.round(window.__ps.player.y),tp:window.__ps.teleporting})" }

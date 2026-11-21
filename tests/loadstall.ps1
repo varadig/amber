@@ -1,4 +1,4 @@
-# Mérés: a pálya betöltése közben mekkora képkocka-kiesések vannak (rAF-különbségek > 150 ms), és az egyes fázisok ideje (window.__marks).
+﻿# Mérés: a pálya betöltése közben mekkora képkocka-kiesések vannak (rAF-különbségek > 150 ms), és az egyes fázisok ideje (window.__marks).
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Level = 4)
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

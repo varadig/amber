@@ -1,4 +1,4 @@
-# Teszt: a TALL feje platform (a hős rááll), az ORB átbillenti a magas kart; képernyőkép a társakról.
+﻿# Teszt: a TALL feje platform (a hős rááll), az ORB átbillenti a magas kart; képernyőkép a társakról.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 function Load($lvl) { Send-Cdp "Page.navigate" @{ url = ($Base + "?level=" + $lvl + "&r=" + (Get-Random)) } | Out-Null; Start-Sleep -Seconds 9 }

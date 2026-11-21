@@ -1,4 +1,4 @@
-# Teszt: dupla hangok keresése: a játék hang-naplója (Audio.log) és a szóló hangok (Audio.debug): ugrások, pálya- és szünet-váltás után.
+﻿# Teszt: dupla hangok keresése: a játék hang-naplója (Audio.log) és a szóló hangok (Audio.debug): ugrások, pálya- és szünet-váltás után.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

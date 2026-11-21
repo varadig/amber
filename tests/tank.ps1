@@ -1,4 +1,4 @@
-# Teszt: a tankos mini-játék többszöri találat után is tovább megy (újraindul, nem fagy le).
+﻿# Teszt: a tankos mini-játék többszöri találat után is tovább megy (újraindul, nem fagy le).
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

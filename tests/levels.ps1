@@ -1,4 +1,4 @@
-# Teszt: mind a 10 pálya betölt-e hiba nélkül (méret, gyémánt, ellenség); az utolsóról képernyőkép.
+﻿# Teszt: mind a 10 pálya betölt-e hiba nélkül (méret, gyémánt, ellenség); az utolsóról képernyőkép.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

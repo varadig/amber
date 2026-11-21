@@ -1,4 +1,4 @@
-# Képernyőképek mind a 10 pálya hátteréről + a hős képkockasávja (nagyítva) a futás-animáció ellenőrzéséhez.
+﻿# Képernyőképek mind a 10 pálya hátteréről + a hős képkockasávja (nagyítva) a futás-animáció ellenőrzéséhez.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

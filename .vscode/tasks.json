@@ -1,11 +1,28 @@
 {
-	// Feladatok: Terminal > Run Task... (vagy Ctrl+Shift+B az alapértelmezett build-hez)
+	// Feladatok: Terminal > Run Task... (vagy Ctrl+Shift+B / Cmd+Shift+B az alapértelmezett build-hez)
+	// Windowson a Windows PowerShell (powershell), macOS / Linux alatt a PowerShell 7 (pwsh) futtatja a scripts/*.ps1 szkripteket.
 	"version": "2.0.0",
-	"options": {
-		"env": {
-			"HAXEPATH": "C:\\HaxeToolkit\\haxe",
-			"NEKO_INSTPATH": "C:\\HaxeToolkit\\neko",
-			"PATH": "C:\\HaxeToolkit\\haxe;C:\\HaxeToolkit\\neko;${env:PATH}"
+	"windows": {
+		"options": {
+			"env": {
+				"HAXEPATH": "C:\\HaxeToolkit\\haxe",
+				"NEKO_INSTPATH": "C:\\HaxeToolkit\\neko",
+				"PATH": "C:\\HaxeToolkit\\haxe;C:\\HaxeToolkit\\neko;${env:PATH}"
+			}
+		}
+	},
+	"osx": {
+		"options": {
+			"env": {
+				"PATH": "${env:HOME}/.local/bin:${env:HOME}/.local/node/bin:/opt/homebrew/bin:/usr/local/bin:${env:PATH}"
+			}
+		}
+	},
+	"linux": {
+		"options": {
+			"env": {
+				"PATH": "${env:HOME}/.local/bin:${env:HOME}/.local/node/bin:/usr/local/bin:${env:PATH}"
+			}
 		}
 	},
 	"tasks": [
@@ -13,57 +30,164 @@
 			"label": "Bake bunker walls into Tiled levels",
 			"detail": "A BuildingRoom téglalapok falait a solid rétegbe írja (a Tiled-ben látszik és szerkeszthető); a szobát walls=false / clear=false-ra állítja",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/bake-bunkers.ps1"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/bake-bunkers.ps1"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/bake-bunkers.ps1"
+				]
+			},
 			"problemMatcher": []
 		},
 		{
 			"label": "Open levels in Tiled",
 			"detail": "A pályák (levels/levelN.tmj) szerkesztése Tiled-ben, valós sprite-előnézettel; mentés után: Build",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-Command", "Start-Process 'C:/Program Files/Tiled/tiled.exe' -ArgumentList '\"${workspaceFolder}/levels/amber.tiled-project\"'"],
+			"command": "open",
+			"args": [
+				"-a",
+				"Tiled",
+				"${workspaceFolder}/levels/amber.tiled-project"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-Command",
+					"Start-Process 'C:/Program Files/Tiled/tiled.exe' -ArgumentList '\"${workspaceFolder}/levels/amber.tiled-project\"'"
+				]
+			},
+			"linux": {
+				"command": "tiled",
+				"args": [
+					"${workspaceFolder}/levels/amber.tiled-project"
+				]
+			},
 			"problemMatcher": []
 		},
 		{
 			"label": "Validate Tiled levels",
 			"detail": "Statikus ellenőrzés a levels/level*.tmj fájlokon",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/tests/validate-levels.ps1"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/tests/validate-levels.ps1"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/tests/validate-levels.ps1"
+				]
+			},
 			"problemMatcher": []
 		},
 		{
 			"label": "Regenerate Tiled assets (sprites, tilesets, project)",
 			"detail": "A sprite-ok / csempekészletek / projekt újragenerálása; a meglévő .tmj-ket NEM írja felül (felülírás: scripts/generate-levels.ps1 -Force)",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/generate-levels.ps1"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/generate-levels.ps1"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/generate-levels.ps1"
+				]
+			},
 			"problemMatcher": []
 		},
 		{
 			"label": "Install dependencies (haxelib)",
 			"detail": "Telepíti a rögzített verziójú lime, openfl, flixel könyvtárakat",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/setup.ps1"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/setup.ps1"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/setup.ps1"
+				]
+			},
 			"problemMatcher": []
 		},
 		{
 			"label": "Build HTML5",
 			"detail": "Release build (cheatek nélkül)",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/build.ps1"],
-			"group": { "kind": "build", "isDefault": true },
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/build.ps1"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/build.ps1"
+				]
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
 			"problemMatcher": []
 		},
 		{
 			"label": "Build HTML5 (dev, cheats)",
 			"detail": "Fejlesztői build cheat-menüvel (F9 / kontroller SELECT) és a címképernyővel; a release-ben a cheatek nincsenek benne",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/build.ps1", "-Cheats"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/build.ps1",
+				"-Cheats"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/build.ps1",
+					"-Cheats"
+				]
+			},
 			"group": "build",
 			"problemMatcher": []
 		},
@@ -71,8 +195,24 @@
 			"label": "Build HTML5 (test)",
 			"detail": "Tesztbuild: egyből a játék indul, window.__ps / __game elérhető (a tesztekhez)",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/build.ps1", "-Test"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/build.ps1",
+				"-Test"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/build.ps1",
+					"-Test"
+				]
+			},
 			"group": "build",
 			"problemMatcher": []
 		},
@@ -80,8 +220,74 @@
 			"label": "Build HTML5 (debug)",
 			"detail": "Debug build (cheatekkel, Flixel debugger)",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/build.ps1", "-Debug"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/build.ps1",
+				"-Debug"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/build.ps1",
+					"-Debug"
+				]
+			},
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "Build desktop (HashLink: Windows .exe / macOS .app)",
+			"detail": "Natív release build a futtató gép rendszerére + zip (export/Amber-windows-*.zip / Amber-mac-*.zip)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/build-desktop.ps1"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/build-desktop.ps1"
+				]
+			},
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "Build desktop (dev, cheats) + run",
+			"detail": "Natív fejlesztői build cheat-menüvel, majd elindítja (nem kiadható)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/build-desktop.ps1",
+				"-Cheats",
+				"-Run"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/build-desktop.ps1",
+					"-Cheats",
+					"-Run"
+				]
+			},
 			"group": "build",
 			"problemMatcher": []
 		},
@@ -89,8 +295,22 @@
 			"label": "Run (local server)",
 			"detail": "Helyi szerver a legutóbbi buildhez (http://localhost:3220, telefonról is elérhető), megnyitja a böngészőt",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/play.ps1"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/play.ps1"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/play.ps1"
+				]
+			},
 			"isBackground": true,
 			"problemMatcher": []
 		},
@@ -98,29 +318,65 @@
 			"label": "Run HTML5 (dev, cheats)",
 			"detail": "Fordít cheat-menüvel, elindítja a helyi szervert és megnyitja a böngészőt",
 			"dependsOrder": "sequence",
-			"dependsOn": ["Build HTML5 (dev, cheats)", "Run (local server)"],
+			"dependsOn": [
+				"Build HTML5 (dev, cheats)",
+				"Run (local server)"
+			],
 			"problemMatcher": []
 		},
 		{
 			"label": "Run HTML5 (release)",
 			"detail": "Release build, majd helyi szerver és böngésző (így látja a játékos)",
 			"dependsOrder": "sequence",
-			"dependsOn": ["Build HTML5", "Run (local server)"],
+			"dependsOn": [
+				"Build HTML5",
+				"Run (local server)"
+			],
 			"problemMatcher": []
 		},
 		{
 			"label": "Stop server",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/stop.ps1"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/stop.ps1"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/stop.ps1"
+				]
+			},
 			"problemMatcher": []
 		},
 		{
 			"label": "Serve on LAN (phone)",
 			"detail": "Szerver a helyi hálózaton élő naplóval (?log=1); a tűzfalhoz: -OpenFirewall rendszergazdai PowerShellből",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/play.ps1", "-NoOpen"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/play.ps1",
+				"-NoOpen"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/play.ps1",
+					"-NoOpen"
+				]
+			},
 			"isBackground": true,
 			"problemMatcher": []
 		},
@@ -128,8 +384,22 @@
 			"label": "Test (headless Edge)",
 			"detail": "Teszt-build + a teljes automata ellenőrzés (képernyőképek: tests/out)",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/test.ps1"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/test.ps1"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/test.ps1"
+				]
+			},
 			"group": "test",
 			"problemMatcher": []
 		},
@@ -137,39 +407,102 @@
 			"label": "Package for itch.io",
 			"detail": "Normál HTML5 build, majd dist/amber-html5.zip (index.html a zip gyökerében)",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/package-itch.ps1"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/package-itch.ps1"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/package-itch.ps1"
+				]
+			},
 			"problemMatcher": []
 		},
 		{
 			"label": "Publish to itch.io",
 			"detail": "Build + feltöltés butlerrel (beállítás: itch.config.json)",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/publish-itch.ps1"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/publish-itch.ps1"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/publish-itch.ps1"
+				]
+			},
 			"problemMatcher": []
 		},
 		{
 			"label": "Release (build + package + publish)",
 			"detail": "Teljes kiadás: release build, cheat-mentesség ellenőrzése, itch.io zip, feltöltés butlerrel",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/release.ps1"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/release.ps1"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/release.ps1"
+				]
+			},
 			"problemMatcher": []
 		},
 		{
 			"label": "Release (build + package, no publish)",
 			"detail": "Mint a teljes kiadás, de feltöltés nélkül: csak a dist/amber-html5.zip készül el és ellenőrződik",
 			"type": "shell",
-			"command": "powershell",
-			"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/release.ps1", "-SkipPublish"],
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/scripts/release.ps1",
+				"-SkipPublish"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/scripts/release.ps1",
+					"-SkipPublish"
+				]
+			},
 			"problemMatcher": []
 		},
 		{
 			"label": "Clean build output",
 			"type": "shell",
 			"command": "haxelib",
-			"args": ["run", "lime", "clean", "html5"],
+			"args": [
+				"run",
+				"lime",
+				"clean",
+				"html5"
+			],
 			"problemMatcher": []
 		}
 	]

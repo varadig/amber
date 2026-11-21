@@ -64,7 +64,7 @@ class AmberShader extends FlxShader
 			float fp = 1.0 - clamp(uFocus, 0.0, 1.0);
 			bool foc = uFocus > 0.0;
 			float flk = 1.0;
-			float fh = fract(sin(floor(uTime * 22.0) * 91.7) * 437.58);
+			float fh = fract(sin(floor(uTime * 9.0) * 91.7) * 437.58);
 			// a képernyő domborúsága; sérüléskor erősebben kidagad (elektromos kisülés)
 			float gl = uHit * uHit;
 			c *= 1.0 + (uLook.y + 0.075 * uHit) * dot(c, c);
@@ -82,10 +82,10 @@ class AmberShader extends FlxShader
 			}
 			if (foc && fp < 0.3)
 			{
-				flk = fh > 0.45 ? 1.0 : 0.12;
+				flk = 0.86 + 0.14 * fh; // enyhe vibrálás (régen 1 / 0.12 villogás: túl erős volt)
 				float fb = floor(q.y * 22.0);
 				float fr = fract(sin(fb * 12.9898 + floor(uTime * 30.0) * 78.233) * 43758.5453);
-				q.x += (fr - 0.5) * 0.06 * step(0.5, fr);
+				q.x += (fr - 0.5) * 0.008 * step(0.8, fr);
 			}
 			if (gl > 0.001)
 			{
@@ -119,8 +119,8 @@ class AmberShader extends FlxShader
 			float blurK = clearR > 640.0 ? 0.0 : smoothstep(clearR, clearR * 1.6 + 30.0, dpx);
 			float sight = min(clamp(uSight, 0.0, 1.0), mix(1.0, 0.0, blurK));
 			if (foc && fp < 0.3)
-				sight = min(sight, 0.4);
-			float rad = (1.0 - sight) * 3.2 + tired * 2.6;
+				sight = min(sight, 0.75);
+			float rad = (1.0 - sight) * 3.2; // (az alacsony akku nem mos el: zavaró volt)
 			vec3 s = flixel_texture2D(bitmap, q).rgb * (rad > 0.01 ? 0.34 : 1.0);
 			if (rad > 0.01)
 			{
@@ -142,7 +142,7 @@ class AmberShader extends FlxShader
 			float v = clamp(l + lg * 0.30, 0.0, 1.0) * (uSight > 1.0 ? 1.12 : 1.0);
 			float nz = fract(sin(dot(floor(q * vec2(480.0, 270.0)) + vec2(uTime * 37.0, uTime * 11.0), vec2(12.9898, 78.233))) * 43758.5453);
 			v += (nz - 0.5) * 0.10 * (1.0 - sight);
-			v *= 1.0 - 0.6 * tired;
+			// (az alacsony akku nem sötétít: zavaró volt; csak enyhe peremsötétítés marad)
 			v *= 0.62 + 0.38 * sight;
 			v *= flk;
 			// kevés színű (poszterizált) hangulat, pl. kézi konzol
@@ -180,14 +180,14 @@ class AmberShader extends FlxShader
 			// a legfényesebb részek a kiemelő szín felé tolódnak (foszfor-izzás)
 			col += uHi * pow(max(v - 0.78, 0.0) * 4.5, 2.0) * 0.10;
 			// perem-sötétítés
-			float vig = 1.0 - (0.42 + 0.3 * tired) * dot(c * 0.78, c * 0.78);
+			float vig = 1.0 - (0.42 + 0.12 * tired) * dot(c * 0.78, c * 0.78);
 			// kisülés: fényes függőleges ívek és felvillanás
 			float arc = step(0.982 - 0.05 * gl, fract(sin(floor(q.x * 480.0) * 7.13 + floor(uTime * 25.0) * 3.7) * 437.58)) * gl;
 			col += uHi * arc * 0.7;
 			col *= 1.0 + gl * 0.5;
 			// élesítő fénysáv és a végi felvillanás
-			col += uHi * sweep * 0.9;
-			col *= 1.0 + (foc ? 0.7 : 0.0) * smoothstep(0.88, 0.93, fp) * (1.0 - smoothstep(0.93, 1.0, fp));
+			col += uHi * sweep * 0.35;
+			col *= 1.0 + (foc ? 0.18 : 0.0) * smoothstep(0.88, 0.93, fp) * (1.0 - smoothstep(0.93, 1.0, fp));
 			if (pz > 0.001)
 			{
 				// szünet: lassan lefelé gördülő világos sáv (képcső-hengerlés), sűrűbb pásztázó-vonalak, erősebb perem-sötétítés

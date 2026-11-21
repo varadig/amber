@@ -29,7 +29,7 @@ class Rubble extends FlxTypedGroup<FlxSprite>
 	/** age: a darab kora; fade: ekkortól halványul el (FADE alatt), utána a test és a kép is törlődik. */
 	var pieces:Array<{body:B2Body, spr:FlxSprite, w:Float, h:Float, age:Float, fade:Float}> = [];
 
-	static inline var FADE = 0.8;
+	static inline var FADE = 0.45;
 	var statics:Map<Int, Bool> = new Map();
 	/** Ennyi ideje nem mozdult egyik darab sem: utána a szimuláció leáll (nincs fölösleges számolás). */
 	var restT:Float = 0;
@@ -79,15 +79,18 @@ class Rubble extends FlxTypedGroup<FlxSprite>
 		// a széteső csempe helyén sosem lehet statikus test (a darabok benne születnének)
 		statics.set(ty * 100000 + tx, true);
 		addStatics(tx - 10, ty - 6, tx + 10, ty + 10);
-		var cx = 5 + Std.random(7);
+		// apró darabok: 4 oszlop x 4 sor, véletlen (3..5 px-es) vágásokkal: csempénként 16 darab
 		var rects = [];
-		for (col in 0...2)
+		var xs = [0, 3 + Std.random(3), 0, 0, 16];
+		xs[2] = xs[1] + 3 + Std.random(3);
+		xs[3] = Std.int(Math.min(14, xs[2] + 3 + Std.random(3)));
+		for (col in 0...4)
 		{
-			var x0 = col == 0 ? 0 : cx;
-			var w = col == 0 ? cx : 16 - cx;
-			var cy = 4 + Std.random(9);
-			rects.push(new Rectangle(x0, 0, w, cy));
-			rects.push(new Rectangle(x0, cy, w, 16 - cy));
+			var ys = [0, 3 + Std.random(3), 0, 0, 16];
+			ys[2] = ys[1] + 3 + Std.random(3);
+			ys[3] = Std.int(Math.min(14, ys[2] + 3 + Std.random(3)));
+			for (row in 0...4)
+				rects.push(new Rectangle(xs[col], ys[row], xs[col + 1] - xs[col], ys[row + 1] - ys[row]));
 		}
 		for (r in rects)
 		{
@@ -117,7 +120,7 @@ class Rubble extends FlxTypedGroup<FlxSprite>
 			b.setLinearVelocity(new B2Vec2(dir * (1.0 + Math.random() * 3.5), -(1.5 + Math.random() * 4.5) * Math.max(0.4, up)));
 			b.setAngularVelocity((Math.random() - 0.5) * 14);
 			// a darabok kicsit eltérő időben tűnnek el (ne egyszerre)
-			pieces.push({body: b, spr: s, w: r.width, h: r.height, age: 0, fade: 4.5 + Math.random() * 1.5});
+			pieces.push({body: b, spr: s, w: r.width, h: r.height, age: 0, fade: 1.0 + Math.random() * 0.9});
 		}
 	}
 

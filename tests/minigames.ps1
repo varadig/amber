@@ -1,4 +1,4 @@
-# Teszt: az épület terminálja (mini-játék) mind a négy játékkal megnyílik, megoldható, és kinyitja a belső terem kapuját; képernyőképek.
+﻿# Teszt: az épület terminálja (mini-játék) mind a négy játékkal megnyílik, megoldható, és kinyitja a belső terem kapuját; képernyőképek.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 function Tap($key, $code, $vk) { Key "keyDown" $key $code $vk; Start-Sleep -Milliseconds 700; Key "keyUp" $key $code $vk; Start-Sleep -Milliseconds 500 }

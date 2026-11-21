@@ -1,4 +1,4 @@
-# Teszt: rejtvény-logika (láda + nyomólap, kulcs + zárt kapu, sorrend-kapcsolók, áramcella + emelő, szerelőasztal + társ, WHEELIE a rács mögött).
+﻿# Teszt: rejtvény-logika (láda + nyomólap, kulcs + zárt kapu, sorrend-kapcsolók, áramcella + emelő, szerelőasztal + társ, WHEELIE a rács mögött).
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 function Up { Key "keyDown" "e" "KeyE" 69; Start-Sleep -Milliseconds 700; Key "keyUp" "e" "KeyE" 69; Start-Sleep -Milliseconds 1200 }

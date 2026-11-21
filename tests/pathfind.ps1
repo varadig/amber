@@ -1,4 +1,4 @@
-# Teszt: a kamrába / alagútba szorult társ útkeresővel kijut, és eléri a hőst (repedezett fal az úton).
+﻿# Teszt: a kamrába / alagútba szorult társ útkeresővel kijut, és eléri a hőst (repedezett fal az úton).
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Level = 4, [int]$Kind = 0)
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

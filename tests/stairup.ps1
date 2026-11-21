@@ -1,4 +1,4 @@
-# Teszt: a követő társ felmászik egy 2 / 3 csempe magas falra / lépcsőfokra (ahová a hős is fel tud ugrani).
+﻿# Teszt: a követő társ felmászik egy 2 / 3 csempe magas falra / lépcsőfokra (ahová a hős is fel tud ugrani).
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Level = 0)
 . "$PSScriptRoot\cdp-lib.ps1"
 function Run($h) {

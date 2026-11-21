@@ -3,13 +3,22 @@
 # Ellenőrzi: JSON, 16 px-es csempe, 56 sor, solid + platforms réteg, Spawn és Door, ismert objektumosztályok, a Part-ok száma, az épületek ajtópárjai, a kapuk azonosítói.
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
-$known = "Spawn", "Door", "Checkpoint", "Gem", "Heart", "Battery", "Spike", "Cracked", "Crumble", "Grate", "Crate", "Cell", "Gate", "Plate", "Lever", "Switch", "Socket", "Key", "PowerCell", "Bench", "Terminal", "Mover", "Enemy", "Part", "Text", "BuildingRoom", "BuildingDoor", "Decor", "Lamp"
+$known = "Spawn", "Door", "Checkpoint", "Gem", "Heart", "Battery", "Spike", "Cracked", "Crumble", "Grate", "Crate", "Cell", "Gate", "Plate", "Lever", "Switch", "Socket", "Key", "PowerCell", "Bench", "Terminal", "Mover", "Enemy", "Part", "Text", "BuildingRoom", "BuildingDoor", "Decor", "Lamp", "Spring"
 $errors = 0; $warnings = 0
 function Err($f, $m) { Write-Host "ERROR  $f : $m" -ForegroundColor Red; $script:errors++ }
 function Warn($f, $m) { Write-Host "WARN   $f : $m" -ForegroundColor Yellow; $script:warnings++ }
 function Layers($ls) { foreach ($l in $ls) { if ($l.type -eq "group") { Layers $l.layers } else { $l } } }
 
-$files = Get-ChildItem (Join-Path $root "levels") -Filter "level*.tmj"
+$tileCls = @{}
+$tsj = Join-Path $root "levels/objects.tsj"
+if (Test-Path $tsj) { foreach ($t in (Get-Content $tsj -Raw -Encoding UTF8 | ConvertFrom-Json).tiles) { $tc = if ($t.type) { $t.type } else { $t.class }; if ($tc) { $tileCls[[int]$t.id] = $tc } } }
+# a kampány-lista (source/Levels.hx, Levels.CAMPAIGN): minden felsorolt fájl létezzen, és ne szerepeljen kétszer
+$campaign = @([regex]::Matches((Get-Content (Join-Path $root "source/Levels.hx") -Raw -Encoding UTF8), 'file:\s*"([^"]+)"') | ForEach-Object { $_.Groups[1].Value })
+if (-not $campaign) { Err "Levels.hx" "üres a kampány-lista (Levels.CAMPAIGN)" }
+foreach ($c in $campaign) { if (-not (Test-Path (Join-Path $root "levels/$c.tmj"))) { Err "Levels.hx" "a kampány-listában szereplő levels/$c.tmj nem létezik (a játék generált pályát ad helyette)" } }
+$campaign | Group-Object | Where-Object { $_.Count -gt 1 } | ForEach-Object { Warn "Levels.hx" "kétszer szerepel a kampányban: $($_.Name)" }
+Write-Host ("Kampány: " + (($campaign | ForEach-Object { $i = 0 } { $i++; "$i. $_" }) -join ", "))
+$files = Get-ChildItem (Join-Path $root "levels") -Filter "*.tmj"
 if (-not $files) { Err "levels" "nincs pályafájl (futtasd: scripts/generate-levels.ps1)"; exit 1 }
 foreach ($f in $files) {
     $n = $f.Name
@@ -25,10 +34,18 @@ foreach ($f in $files) {
         elseif ($l.data.Count -ne $m.width * $m.height) { Err $n "a(z) '$ln' réteg mérete nem egyezik" }
     }
     $objs = @($layers | Where-Object { $_.type -eq "objectgroup" } | ForEach-Object { $_.objects })
+    # az osztály nélküli csempe-objektum osztálya a csempéé (objects.tsj), ahogy a LevelLoader is olvassa
+    $objFirst = ($m.tilesets | Where-Object { "$($_.source)" -match "objects" } | Select-Object -First 1).firstgid
     $cls = @{}
     foreach ($o in $objs) {
         $c = if ($o.class) { $o.class } elseif ($o.type) { $o.type } else { "" }
+        if (-not $c -and $o.gid -and $objFirst) {
+            $idx = ([long]$o.gid -band 0x0FFFFFFF) - $objFirst
+            if ($tileCls.ContainsKey([int]$idx)) { $c = $tileCls[[int]$idx]; if (-not $o.class) { $o | Add-Member -NotePropertyName class -NotePropertyValue $c -Force } }
+            elseif ($idx -lt 0) { Warn $n "csempe (gid $($o.gid)) objektumként az objektum-rétegen (id $($o.id), x $([math]::Round($o.x)), y $([math]::Round($o.y))): a játék nem veszi figyelembe; a talajt a 'solid' rétegre rajzold"; continue }
+        }
         if (-not $c) { Warn $n "osztály nélküli objektum (id $($o.id)): állítsd be a Class mezőt"; continue }
+        if ($o.rotation -and $c -ne "Spike" -and $o.width -ne $o.height -and ([math]::Round($o.rotation / 90) % 2) -ne 0) { Warn $n "elforgatott hosszúkás tárgy: $c (id $($o.id)): a játékban a kép fordul, de a találati doboz (ütközés) vízszintes marad" }
         if ($known -notcontains $c) { Warn $n "ismeretlen osztály: $c (id $($o.id))" }
         $cls[$c] = 1 + [int]$cls[$c]
         if ($o.x -lt 0 -or $o.x -gt $m.width * 16 -or $o.y -lt 0 -or $o.y -gt $m.height * 16 + 32) { Warn $n "a pályán kívüli objektum: $c (id $($o.id))" }

@@ -1,4 +1,4 @@
-# Teszt: ugrás-magasság és -távolság mérése (a játékos a talajon áll, jobbra tartva ugrik).
+﻿# Teszt: ugrás-magasság és -távolság mérése (a játékos a talajon áll, jobbra tartva ugrik).
 param([string]$Url = "http://127.0.0.1:3220/?level=0", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

@@ -1,11 +1,10 @@
-# Teszt: a cheat-menü a mini-játékból is megnyílik (F9), onnan megoldható a mini-játék azonnal, és a terminálok egyenként feloldhatók.
+﻿# Teszt: a cheat-menü a mini-játékból is megnyílik (F9), onnan megoldható a mini-játék azonnal, és a terminálok egyenként feloldhatók.
 param([int]$Port = 3232)
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\cdp-lib.ps1"
 function Tap($key, $code, $vk) { Key "keyDown" $key $code $vk; Start-Sleep -Milliseconds 600; Key "keyUp" $key $code $vk; Start-Sleep -Milliseconds 400 }
-$node = Join-Path (haxelib libpath lime).Trim() "templates\bin\node\node-windows.exe"
-$srv = Start-Process $node -ArgumentList "`"$root\scripts\devserver.js`"", "`"$root\export\html5\bin`"", $Port -PassThru -WindowStyle Hidden
+$srv = Start-DevServer $Port
 Start-Sleep -Seconds 2
 try {
     Start-Cdp "http://127.0.0.1:$Port/?level=1" "$PSScriptRoot\out"

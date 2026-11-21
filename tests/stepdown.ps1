@@ -1,4 +1,4 @@
-# Teszt: a követő társ lelép egy (1 csempe) és egy mélyebb (3 csempe) lépcsőről is a lent álló hős után.
+﻿# Teszt: a követő társ lelép egy (1 csempe) és egy mélyebb (3 csempe) lépcsőről is a lent álló hős után.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Level = 1)
 . "$PSScriptRoot\cdp-lib.ps1"
 function Run($drop, $heroOff) {

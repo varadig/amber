@@ -1,4 +1,4 @@
-# Teszt: az ORB (és a földi társ) magától összeszedi a közeli atomot.
+﻿# Teszt: az ORB (és a földi társ) magától összeszedi a közeli atomot.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Level = 0, [int]$Kind = 2)
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

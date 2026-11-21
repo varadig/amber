@@ -1,4 +1,4 @@
-# Teszt: képességek, fal-kapaszkodás, ajtó-belépés, leszakadó / mozgó platform (képernyőképek: tests/out).
+﻿# Teszt: képességek, fal-kapaszkodás, ajtó-belépés, leszakadó / mozgó platform (képernyőképek: tests/out).
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 function Tp($js) { Js $js | Out-Null }

@@ -1,4 +1,4 @@
-# Teszt: a társak átugorják a szakadékot (nem esnek le), és a pálya végén bemennek az ajtón (nem zuhannak le).
+﻿# Teszt: a társak átugorják a szakadékot (nem esnek le), és a pálya végén bemennek az ajtón (nem zuhannak le).
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Level = 2, [int]$Gap = 3)
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

@@ -3,12 +3,12 @@
 # Kimenet: levels/level1..N.tmj, tiles.tsj, objects.tsj, tiles.png, sprites/*.png, amber.tiled-project (a sprite-ok borostyán árnyalattal, hogy a Tiled-ben valós előnézet legyen).
 # FIGYELEM: a meglévő .tmj-ket (kézi szerkesztés!) csak -Force-szal írja felül; a tileset/sprite/projekt fájlokat mindig frissíti.
 # Működés: teszt-build (a cheats-es LevelExport-tal) -> helyi szerver -> fejnélküli Edge a ?exportlevels=1 címmel -> a window.__levelFiles mentése.
-# Végül normál buildet hagy az export\html5\bin mappában (a friss .tmj-ket beágyazva).
+# Végül normál buildet hagy az export/html5/bin mappában (a friss .tmj-ket beágyazva).
 param([switch]$Force, [int]$Port = 3049)
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
-if (-not $env:HAXEPATH -and (Test-Path "C:\HaxeToolkit\haxe")) { $env:HAXEPATH = "C:\HaxeToolkit\haxe" }
+. "$PSScriptRoot/common.ps1"
 $dest = Join-Path $root "levels"
 New-Item -ItemType Directory -Force $dest | Out-Null
 
@@ -17,13 +17,10 @@ $o = & haxelib run lime build html5 -Dtest 2>&1
 $errs = $o | Select-String -Pattern "\.hx:[0-9]+"
 if ($errs) { $errs | ForEach-Object { Write-Host $_ -ForegroundColor Red }; exit 1 }
 
-$node = Join-Path (haxelib libpath lime).Trim() "templates\bin\node\node-windows.exe"
-if (-not (Test-Path $node)) { $node = (Get-Command node).Source }
-$srv = Start-Process $node -ArgumentList "`"$PSScriptRoot\devserver.js`"", "`"$root\export\html5\bin`"", $Port -PassThru -WindowStyle Hidden
-Start-Sleep -Seconds 2
+$srv = Start-DevServer $Port
 try {
-    . "$root\tests\cdp-lib.ps1"
-    Start-Cdp "http://127.0.0.1:$Port/?exportlevels=1" (Join-Path $root "tests\out")
+    . "$root/tests/cdp-lib.ps1"
+    Start-Cdp "http://127.0.0.1:$Port/?exportlevels=1" (Join-Path $root "tests/out")
     $n = 0
     for ($i = 0; $i -lt 60 -and $n -eq 0; $i++) { Start-Sleep -Seconds 1; $n = [int](Js "window.__levelFiles ? Object.keys(window.__levelFiles).length : 0") }
     if ($n -eq 0) { throw "Az export nem készült el (window.__levelFiles üres)." }

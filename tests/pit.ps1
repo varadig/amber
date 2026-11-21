@@ -1,4 +1,4 @@
-# Teszt: a 3. pálya kútjába (CLAWS nélkül) beesve a vészlift kiemeli a hőst; + alkatrész-bemutató képernyőképek.
+﻿# Teszt: a 3. pálya kútjába (CLAWS nélkül) beesve a vészlift kiemeli a hőst; + alkatrész-bemutató képernyőképek.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

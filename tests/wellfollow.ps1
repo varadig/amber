@@ -1,4 +1,4 @@
-# Teszt: a társ nem ugrik le a kútba (CLAWS nélkül nem jönne ki), a peremen vár; sima lépcsőre viszont lelép.
+﻿# Teszt: a társ nem ugrik le a kútba (CLAWS nélkül nem jönne ki), a peremen vár; sima lépcsőre viszont lelép.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

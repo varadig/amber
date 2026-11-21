@@ -1,4 +1,4 @@
-# Teszt: a követés az alapértelmezés; a tétlen robotok (követő és váró) idővel véletlen apróságot csinálnak (state: look / hop / stroll / beep).
+﻿# Teszt: a követés az alapértelmezés; a tétlen robotok (követő és váró) idővel véletlen apróságot csinálnak (state: look / hop / stroll / beep).
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

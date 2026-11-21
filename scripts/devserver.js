@@ -28,9 +28,36 @@ function countByKind() {
   return r;
 }
 
+const mockScores = [];
 const server = http.createServer((req, res) => {
   const u = new URL(req.url || '/', 'http://localhost');
   const url = decodeURIComponent(u.pathname);
+
+  // Fejlesztői mock a ranglistához (Supabase REST /rest/v1/<tábla>): memóriában tárol, újraindításkor elvész.
+  // Tesztelés (cheat-build): ?lburl=http://127.0.0.1:<port>&lbkey=x  (lásd docs/LEADERBOARD.md)
+  if (url.startsWith('/rest/v1/')) {
+    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS' };
+    if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', (ch) => { body += ch; });
+      req.on('end', () => {
+        try {
+          const r = JSON.parse(body);
+          if (typeof r.name !== 'string' || !/^[A-Z]{3}$/.test(r.name) || !(r.score >= 0)) throw new Error('bad row');
+          mockScores.push({ name: r.name, score: r.score | 0, level: r.level | 0, atoms: r.atoms | 0, completed: !!r.completed });
+          console.log('[ranglista] ' + r.name + ' ' + r.score + ' pálya ' + r.level + (r.completed ? ' (kész)' : ''));
+          res.writeHead(201, cors); res.end();
+        } catch (e) { res.writeHead(400, cors); res.end('bad request'); }
+      });
+      return;
+    }
+    const limit = parseInt(u.searchParams.get('limit') || '10', 10);
+    const rows = mockScores.slice().sort((a, b) => b.score - a.score).slice(0, limit);
+    res.writeHead(200, Object.assign({ 'Content-Type': 'application/json' }, cors));
+    res.end(JSON.stringify(rows));
+    return;
+  }
 
   // --- élő újratöltés ---
   if (url === '/__reload') {

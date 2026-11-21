@@ -66,6 +66,8 @@ class LevelFormat
 		l.push({name: "lamp", cls: "Lamp", def: {radius: 110, intensity: 1.0, flicker: true, angle: 90, spread: 50}});
 		// a később felvett alkatrészek a lista végén (a meglévő csempék gid-je nem tolódik el): 13 = APU (hang-processzor)
 		l.push({name: "part13", cls: "Part", def: {icon: Parts.AUDIO, label: Parts.NAMES[Parts.AUDIO], friend: -1}});
+		// rugós ugrólap: a rálépő robotot `power` csempe magasra dobja (a lista végén: a gid-ek nem tolódnak)
+		l.push({name: "spring", cls: "Spring", def: {power: 8}});
 		return l;
 	}
 

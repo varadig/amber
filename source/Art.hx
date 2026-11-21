@@ -475,6 +475,35 @@ class Art
 	}
 
 	/** Nyomólap 16x6: 0 felemelve, 1 lenyomva. */
+	/** Rugós ugrólap (16x8, 2 kép): 0 kinyúlt, 1 összenyomott (a rugó lenyomásakor). */
+	public static function spring():BitmapData
+	{
+		return cached("spring", () ->
+		{
+			var up = [
+				".66666666666666.",
+				".44444444444444.",
+				"...3.3.3.3.3.3..",
+				"..3.3.3.3.3.3...",
+				"...3.3.3.3.3.3..",
+				"..3.3.3.3.3.3...",
+				".22222222222222.",
+				"1111111111111111"
+			];
+			var down = [
+				"................",
+				"................",
+				"................",
+				".66666666666666.",
+				".44444444444444.",
+				"..3.3.3.3.3.3...",
+				".22222222222222.",
+				"1111111111111111"
+			];
+			return strip([up, down]);
+		});
+	}
+
 	public static function plate():BitmapData
 	{
 		return cached("plate", () ->
@@ -671,6 +700,27 @@ class Art
 					line += r < 2 ? ".44." : (r < 4 ? "3333" : "2222");
 				rows.push(line);
 			}
+			return strip([rows]);
+		});
+	}
+
+	/** Elforgatott tüske (0 fel, 1 jobbra, 2 le, 3 balra; az 1 / 3 8x16-os). */
+	public static function spikesDir(dir:Int):BitmapData
+	{
+		if (dir == 0)
+			return spikes();
+		return cached("spikes" + dir, () ->
+		{
+			// az alap (felfelé mutató) 8 sor x 16 oszlop
+			function g(r:Int, c:Int):String
+				return r < 2 ? ".44.".charAt(c % 4) : (r < 4 ? "3" : "2");
+			var rows:Array<String> = [];
+			if (dir == 2)
+				for (y in 0...8)
+					rows.push([for (x in 0...16) g(7 - y, x)].join(""));
+			else
+				for (y in 0...16)
+					rows.push([for (x in 0...8) dir == 1 ? g(7 - x, y) : g(x, y)].join(""));
 			return strip([rows]);
 		});
 	}

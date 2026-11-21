@@ -162,6 +162,10 @@ class Parts
 		atoms = savedAtoms;
 	}
 
+	/** Elvesztett élet után: az akku a pálya eleji értékre (legalább 60%), a felvett alkatrészek / atomok megmaradnak. */
+	public static function reviveBattery():Void
+		battery = Math.max(savedBattery, 60);
+
 	public static function commit():Void
 	{
 		saved = owned.copy();

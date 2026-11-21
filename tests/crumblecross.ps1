@@ -1,4 +1,4 @@
-# Teszt: a követő társ átkel a leszakadó hídon (ráugrik, és gyorsan átmegy).
+﻿# Teszt: a követő társ átkel a leszakadó hídon (ráugrik, és gyorsan átmegy).
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Level = 1, [int]$Kind = 0)
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

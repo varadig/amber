@@ -1,4 +1,4 @@
-# Mérés: pályaváltáskor (nextLevel) mekkora képkocka-kiesések vannak az új pálya első másodperceiben (rAF-különbségek > 100 ms).
+﻿# Mérés: pályaváltáskor (nextLevel) mekkora képkocka-kiesések vannak az új pálya első másodperceiben (rAF-különbségek > 100 ms).
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Level = 1)
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

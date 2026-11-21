@@ -1,4 +1,4 @@
-# Teszt: a HUD kiírja a pálya nevét; a szünet-menü keretben nyílik, a játékra szünet-shader kerül (uPause), a sorok között lehet lépni,
+﻿# Teszt: a HUD kiírja a pálya nevét; a szünet-menü keretben nyílik, a játékra szünet-shader kerül (uPause), a sorok között lehet lépni,
 # a RESUME folytat, az ESC is; magyarul is. Képek: tests/out/pause-en.png, pause-hu.png
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"

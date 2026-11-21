@@ -1,22 +1,33 @@
-﻿# Minimális Chrome DevTools Protocol kliens a fejnélküli Edge vezérléséhez (Node nélkül).
+﻿# Minimális Chrome DevTools Protocol kliens a fejnélküli böngésző (Edge / Chrome / Brave / Chromium; Windows és macOS) vezérléséhez (Node nélkül).
 # Használat: . "$PSScriptRoot\cdp-lib.ps1"; Start-Cdp <url> <kimeneti-mappa>; Js "<kifejezés>"; ... ; Stop-Cdp
 # A játékot teszt-buildben (`haxelib run lime build html5 -Dtest`) kell kiszolgálni, pl. az 3000-es porton.
 
+. "$PSScriptRoot/../scripts/common.ps1"
 $script:CdpWs = $null
 $script:CdpProc = $null
 $script:CdpOut = $null
 $script:CdpId = 0
 
 function Start-Cdp([string]$Url, [string]$OutDir) {
-    $script:CdpOut = $OutDir
+    # (a hívók gyakran "$PSScriptRoot\out" alakban adják: macOS-en a .NET-nek perjel kell)
+    if (-not $OnWindows) { $OutDir = $OutDir -replace "\\", "/" }
     New-Item -ItemType Directory -Force $OutDir | Out-Null
-    $edge = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
-    if (-not (Test-Path $edge)) { $edge = "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe" }
-    if (-not (Test-Path $edge)) { throw "Az Edge nem található." }
-    $profile = Join-Path $OutDir "edge-cdp"
-    $script:CdpProc = Start-Process $edge -ArgumentList "--headless=new", "--remote-debugging-port=9334", "--window-size=1024,640", "--hide-scrollbars", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist", "--enable-webgl", "--user-data-dir=$profile", "about:blank" -PassThru
-    Start-Sleep -Seconds 3
-    $page = (Invoke-RestMethod "http://127.0.0.1:9334/json") | Where-Object { $_.type -eq "page" } | Select-Object -First 1
+    $script:CdpOut = (Resolve-Path $OutDir).Path
+    $edge = Get-Browser
+    $profile = Join-Path $script:CdpOut "edge-cdp"
+    $bargs = @("--headless=new", "--remote-debugging-port=9334", "--window-size=1024,640", "--hide-scrollbars", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist", "--enable-webgl", "--user-data-dir=`"$profile`"", "--no-first-run", "--no-default-browser-check", "about:blank")
+    if ($OnWindows) { $script:CdpProc = Start-Process $edge -ArgumentList $bargs -PassThru }
+    else {
+        # macOS: a böngésző üzenetei (GPU-figyelmeztetések) ne a teszt kimenetére menjenek
+        $script:CdpProc = Start-Process $edge -ArgumentList $bargs -PassThru -RedirectStandardOutput "/dev/null" -RedirectStandardError (Join-Path $script:CdpOut "browser.log")
+    }
+    # a böngésző indulására várunk (macOS-en lassabban nyitja meg a hibakereső portot)
+    $page = $null
+    for ($i = 0; $i -lt 40 -and -not $page; $i++) {
+        Start-Sleep -Milliseconds 500
+        try { $page = (Invoke-RestMethod "http://127.0.0.1:9334/json" -TimeoutSec 2) | Where-Object { $_.type -eq "page" } | Select-Object -First 1 } catch {}
+    }
+    if (-not $page) { throw "A fejnélküli böngésző nem indult el ($edge)." }
     $script:CdpWs = New-Object System.Net.WebSockets.ClientWebSocket
     $script:CdpWs.Options.KeepAliveInterval = [TimeSpan]::FromSeconds(30)
     $script:CdpWs.ConnectAsync([Uri]$page.webSocketDebuggerUrl, [Threading.CancellationToken]::None).Wait()
@@ -32,7 +43,7 @@ function Stop-Cdp {
     if ($script:CdpWs) { $script:CdpWs.Dispose() }
     if ($script:CdpProc) { Stop-Process -Id $script:CdpProc.Id -Force -ErrorAction SilentlyContinue }
     # Csak a saját (külön profilos) headless példány folyamatai
-    Get-CimInstance Win32_Process -Filter "Name = 'msedge.exe'" | Where-Object { $_.CommandLine -like "*edge-cdp*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    Stop-BrowserProfile "edge-cdp"
 }
 
 # Oldal-váltás után megvárja, hogy az ÚJ oldalon a játék (PlayState) kész legyen (nagy pályáknál a fix várakozás kevés volt: ingadozó tesztek)
@@ -84,6 +95,17 @@ function Js($expr) {
 
 function Key($type, $key, $code, $vk) {
     Send-Cdp "Input.dispatchKeyEvent" @{ type = $type; key = $key; code = $code; windowsVirtualKeyCode = $vk; nativeVirtualKeyCode = $vk } | Out-Null
+}
+
+# Játékidőre vár (window.__ps.time, mp): a fejnélküli böngésző terhelt gépen sokkal lassabb lehet a valós időnél; legfeljebb $MaxReal valós mp.
+function Wait-GameTime([double]$Sec, [int]$MaxReal = 90) {
+    $t0 = [double](Js "window.__ps ? window.__ps.time : 0")
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    while ($sw.Elapsed.TotalSeconds -lt $MaxReal) {
+        Start-Sleep -Milliseconds 200
+        $t = [double](Js "window.__ps ? window.__ps.time : 0")
+        if ($t - $t0 -ge $Sec -or $t -lt $t0) { return }
+    }
 }
 
 function Shot($name) {

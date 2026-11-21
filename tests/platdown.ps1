@@ -1,4 +1,4 @@
-# Teszt: a követő társ lelép / leugrik egy magas (akár 8-10 csempe) egyirányú platformról a lent álló hős után.
+﻿# Teszt: a követő társ lelép / leugrik egy magas (akár 8-10 csempe) egyirányú platformról a lent álló hős után.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Level = 3, [int]$MinH = 2, [int]$HeroOff = 0)
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

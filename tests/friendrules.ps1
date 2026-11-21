@@ -1,4 +1,4 @@
-# Teszt: (A) az ellenség csak az irányított robotot sebzi, (B) a társ felugrik egy magasabb egyirányú platformra, (C) a társ átkel a leszakadó platformokon.
+﻿# Teszt: (A) az ellenség csak az irányított robotot sebzi, (B) a társ felugrik egy magasabb egyirányú platformra, (C) a társ átkel a leszakadó platformokon.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

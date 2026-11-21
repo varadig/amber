@@ -1,10 +1,9 @@
-# Teszt: ha az ORB (repülő) az irányított robot, a földi robotok (hős, WHEELIE) nem követik; visszaváltáskor újra követnek.
+﻿# Teszt: ha az ORB (repülő) az irányított robot, a földi robotok (hős, WHEELIE) nem követik; visszaváltáskor újra követnek.
 param([int]$Port = 3231)
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\cdp-lib.ps1"
-$node = Join-Path (haxelib libpath lime).Trim() "templates\bin\node\node-windows.exe"
-$srv = Start-Process $node -ArgumentList "`"$root\scripts\devserver.js`"", "`"$root\export\html5\bin`"", $Port -PassThru -WindowStyle Hidden
+$srv = Start-DevServer $Port
 Start-Sleep -Seconds 2
 try {
     Start-Cdp "http://127.0.0.1:$Port/?level=3" "$PSScriptRoot\out"

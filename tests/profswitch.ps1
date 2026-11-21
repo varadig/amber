@@ -1,4 +1,4 @@
-# CPU-profil a pályaváltás első másodperceiről (legnagyobb önidejű függvények).
+﻿# CPU-profil a pályaváltás első másodperceiről (legnagyobb önidejű függvények).
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Level = 1)
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

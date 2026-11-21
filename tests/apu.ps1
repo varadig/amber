@@ -1,4 +1,4 @@
-# Teszt: APU (hang-processzor) alkatrész a 2. pályán; a hangminőség-lánc (AudioFx) az APU szintjéből (nélküle tompa / zajos, V. szinten tiszta);
+﻿# Teszt: APU (hang-processzor) alkatrész a 2. pályán; a hangminőség-lánc (AudioFx) az APU szintjéből (nélküle tompa / zajos, V. szinten tiszta);
 # az alkatrész-nevek (GPU, CPU, APU); eszköz-súgó a láda mellett, és kikapcsolva nincs. Kép: tests/out/apu-hint.png, apu-showcase.png
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"

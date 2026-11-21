@@ -1,3 +1,5 @@
+> A kampány pályái és sorrendjük: `source/Levels.hx` (`Levels.CAMPAIGN`). Új pálya: a .tmj a `levels/` mappába + egy sor a listába.
+
 # Pályák szerkesztése Tiled-ben
 
 Az Amber pályái a [Tiled](https://www.mapeditor.org) térképszerkesztőben szerkeszthetők (`levels/levelN.tmj`).
@@ -48,10 +50,11 @@ A rétegek neve szabad (a játék minden objektumréteget beolvas, a rejtetteket
 | `Checkpoint` | – | Ellenőrzőpont (legalább ~26 csempe távolságra egymástól) |
 | `Gem`, `Heart`, `Battery` | – | Gyűjthető: kristály (pont), szív, rejtett akkupakk |
 | `Part` | `icon` (0), `label`, `friend` (-1) | Alkatrész: az `icon` az alkatrész képe (0-9 a saját alkatrészek: LEGS, CORE, VISOR, THRUSTER, CLAWS, BLASTER, PROCESSOR, SERVOS, ANTENNA, JET CELL; 10-12: társ-alkatrész kerete / motorja / feje). A `friend` a társ azonosítója (0 WHEELIE, 1 TALL, 2 ORB), -1 = saját. A kijárathoz mindegyik alkatrész kell |
-| `Cell` | – | Repülő-cella (korlátozott ideig repülni lehet) |
+| `Spring` | `power` (csempe, alapból 8) | Rugós ugrólap a földre: a rálépő robotot `power` csempe magasra dobja |
+| `Cell` | – | Repülő-cella: egy tank (korlátozott ideig repülni lehet), felvétel után 5 mp-cel újra megjelenik. Figyelem: az ikonja ugyanaz, mint a JET CELL alkatrészé (`part9`, `Part`), ami állandó képesség (a talajon újratöltődő tank) |
 | `Key`, `PowerCell` | `id` | Kulcs a zárt kapuhoz, áramcella az azonos `id`-jú aljzatba (`Socket`) |
 | `Enemy` | `kind` (WALKER / FLYER / CRAWLER) | Ellenség |
-| `Spike`, `Cracked`, `Crumble` | – | Tüske; repedezett fal (a WHEELIE töri); leszakadó platform (48 px széles) |
+| `Spike`, `Cracked`, `Crumble` | Spike: `dir` (up / right / down / left, nem kötelező) | Tüske; repedezett fal (a WHEELIE töri); leszakadó platform (48 px széles). A tüske Tiled-ben forgatható: kijelölés, `Z` = 90° jobbra, `Shift+Z` = 90° balra (fal / mennyezet), `Y` = függőleges tükrözés (mennyezeti tüske). Jobbra mutató tüske: a bal oldali fal mellé, balra mutató: a jobb oldali fal mellé, a csempe-rácsra (8 px-re igazítva). Más tárgy is forgatható / tükrözhető (`X` / `Y`): a játékban ott lesz és úgy néz ki, ahogy a Tiled mutatja; a találati doboz nem fordul (négyzetes tárgynál mindegy, hosszúkásnál 90°-ban eltér) |
 | `Mover` | `w` (3 csempe), `axis` (x / y), `range` (px), `speed` (px/mp), `id` (-1), `active` | Mozgó platform; `id`-vel az áramcella-aljzat indítja (emelő) |
 | `Gate` | `id`, `lock` | Kapu-csempe: az azonos `id`-jú nyomólap / kar / terminál nyitja; `lock` = a kulcs nyitja |
 | `Plate` | `id`, `hold` | Nyomólap (`hold`: csak amíg nyomják) |

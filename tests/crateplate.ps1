@@ -1,4 +1,4 @@
-# Teszt: a hős ládát fog (G / négyzet), ládával a fején a nyomólapra állva semmi sem történik, a lap mellé lerakott láda lenyomja,
+﻿# Teszt: a hős ládát fog (G / négyzet), ládával a fején a nyomólapra állva semmi sem történik, a lap mellé lerakott láda lenyomja,
 # és a fal Box2D-vel darabokra omlik (Rubble), végleg nyitva marad. 2. pálya (COPPER WELLS). Képek: tests/out/crateplate-N.png
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
@@ -26,7 +26,7 @@ try {
     Start-Sleep -Seconds 4
     Shot "crateplate-2.png"
     "wall open: " + (Js "$gate.visible===false")
-    # a fejnélküli Edge-ben a játékidő ~6x lassabb: a darabok eltűnését (~7 mp játékidő) a számláló alapján várjuk ki
+    # a fejnélküli Edge-ben a játékidő ~6x lassabb: a darabok eltűnését (~1,5-2,5 mp játékidő) a számláló alapján várjuk ki
     $n = 0
     while ($n -lt 30 -and (Js "window.__ps.rubble.count()") -gt 0) { Start-Sleep -Seconds 3; $n++ }
     "pieces left: " + (Js "window.__ps.rubble.count()") + " (want 0: the rubble fades away)"

@@ -42,7 +42,7 @@ class Main extends Sprite
 	public static var focusY:Float = 135;
 	/** VISOR-élesedés effekt: 1-ről 0-ra fut (FOCUS_TIME mp alatt); lásd AmberShader.uFocus. */
 	static var focusT:Float = 0;
-	static inline var FOCUS_TIME = 2.8;
+	static inline var FOCUS_TIME = 2.0;
 
 	/** A képernyő-shader hangulatának (Looks) újra-beállítása. */
 	public static function applyLook():Void
@@ -55,6 +55,18 @@ class Main extends Sprite
 	public static function startFocus():Void
 		focusT = 1;
 
+	#if hl
+	/**
+		A program legelején (az SDL indulása előtt; a statikus __init__ a main előtt fut): SDL-beállítások környezeti változóként.
+		A Bluetooth-on csatlakozó PS4 / PS5 kontroller csak "bővített" módban rezeg, ezt az SDL 2.28 alapból nem kapcsolja be (a lime sem).
+	**/
+	static function __init__():Void
+	{
+		Sys.putEnv("SDL_JOYSTICK_HIDAPI_PS4_RUMBLE", "1");
+		Sys.putEnv("SDL_JOYSTICK_HIDAPI_PS5_RUMBLE", "1");
+	}
+	#end
+
 	public function new()
 	{
 		super();
@@ -64,6 +76,9 @@ class Main extends Sprite
 			FlxG.signals.postGameStart.addOnce(LevelExport.run);
 		#end
 		// A borostyán-monitor shader az egész játékon (a játék példányon, hogy a pásztázó-vonalak az ablak felbontásán is élesek legyenek)
+		#if (hl && target.threaded && !amber_nothread)
+		Audio.startWorker(); // a zene háttérszála (asztali változat: a renderelés nem lassítja a játékot)
+		#end
 		Looks.load();
 		Lang.load(); // a választott nyelv (cheat-menü: LANGUAGE), a böngésző megjegyzi
 		Prefs.load(); // eszköz-súgó be / ki (beállítások menü)
@@ -86,6 +101,7 @@ class Main extends Sprite
 		{
 			tiredTarget = 0;
 			hitFx = 0;
+			Rumble.stop();
 			focusT = 0;
 			pauseTarget = 0;
 			pauseNow = 0;
@@ -104,6 +120,16 @@ class Main extends Sprite
 		});
 		FlxG.signals.postGameStart.addOnce(() ->
 		{
+			#if desktop
+			// az ablak (Windows: tálca, macOS: Dock) ikonja a játék ikonja, futás közben beállítva
+			try
+			{
+				var img = lime.utils.Assets.getImage("assets/icon.png");
+				if (img != null && lime.app.Application.current != null && lime.app.Application.current.window != null)
+					lime.app.Application.current.window.setIcon(img);
+			}
+			catch (e:Dynamic) {}
+			#end
 			FlxG.mouse.visible = false;
 			FlxG.sound.muteKeys = [];
 			FlxG.sound.volumeUpKeys = [];
@@ -171,6 +197,21 @@ class Main extends Sprite
 			PlayState.level = Std.parseInt(lm.matched(1));
 			direct = true;
 		}
+		// ?map=level0: tetszőleges beágyazott pályafájl (levels/<név>.tmj), lásd PlayState.cheatGotoFile
+		var mm = ~/[?&]map=([A-Za-z0-9_-]+)/;
+		if (mm.match(qs))
+		{
+			var idx = Levels.indexOfFile(mm.matched(1));
+			if (idx >= 0)
+				PlayState.level = idx;
+			else
+			{
+				LevelLoader.fileOverride = mm.matched(1);
+				LevelLoader.overrideLevel = 0;
+				PlayState.level = 0;
+			}
+			direct = true;
+		}
 		var gm = ~/[?&]goto=([A-Za-z0-9,._-]+)/;
 		if (gm.match(qs))
 		{
@@ -184,6 +225,47 @@ class Main extends Sprite
 		direct = true;
 		#end
 		var first:Class<flixel.FlxState> = direct ? PlayState : TitleState;
+		#if !js
+		// rumbletest=1 (asztali cheat-build): a kontroller(ek) kiírása és három próba-rezgés (hibakereséshez)
+		// fpslog=1 (asztali cheat-build): 2 mp-enként a képkocka-idők (átlag / legnagyobb, ms) és a 20 ms fölötti akadások száma
+		if (qs.indexOf("fpslog=1") >= 0)
+		{
+			var last = haxe.Timer.stamp(), sum = 0.0, mx = 0.0, n = 0, slow = 0, acc = 0.0;
+			var t0 = 0.0, upd = 0.0, drw = 0.0;
+			FlxG.signals.preUpdate.add(() -> t0 = haxe.Timer.stamp());
+			FlxG.signals.postUpdate.add(() -> upd += (haxe.Timer.stamp() - t0) * 1000);
+			FlxG.signals.preDraw.add(() -> t0 = haxe.Timer.stamp());
+			FlxG.signals.postDraw.add(() ->
+			{
+				var now = haxe.Timer.stamp();
+				drw += (now - t0) * 1000;
+				var dt = (now - last) * 1000;
+				last = now;
+				sum += dt;
+				n++;
+				acc += dt;
+				if (dt > mx)
+					mx = dt;
+				if (dt > 20)
+					slow++;
+				if (dt > 100)
+					Sys.println('FPSLOG spike ${Math.round(dt)}ms at frame-time ${Math.round(now * 1000) % 100000}');
+				if (acc >= 2000)
+				{
+					Sys.println('FPSLOG avg=${Math.round(sum / n * 10) / 10}ms max=${Math.round(mx)}ms slow=$slow frames=$n update=${Math.round(upd / n * 10) / 10}ms draw=${Math.round(drw / n * 10) / 10}ms');
+					upd = 0;
+					drw = 0;
+					sum = 0;
+					mx = 0;
+					n = 0;
+					slow = 0;
+					acc = 0;
+				}
+			});
+		}
+		if (qs.indexOf("rumbletest=1") >= 0 || qs.indexOf("rumblelist=1") >= 0)
+			FlxG.signals.postGameStart.addOnce(() -> Rumble.selfTest(qs.indexOf("rumbletest=1") >= 0));
+		#end
 		if (qs.indexOf("intro=1") >= 0)
 		{
 			first = IntroState; // ?intro=1: a bevezető közvetlen megnyitása (teszt); ?intro=1&manual=1: nincs automatikus lépés
@@ -214,11 +296,15 @@ class Main extends Sprite
 		});
 		#if hl
 		// a lime HL-kötése a címet UTF-16 bájtokként adja át (az első 0 bájtnál elvágódik: "A"):
-		// a kívánt bájtokat (ANSI kódlap: Windows-1250 / 1252, az Ä mindkettőben 0xC4) kettesével egy-egy karakterbe csomagoljuk
+		// a kívánt bájtokat (Windowson ANSI kódlap: Windows-1250 / 1252, az Ä mindkettőben 0xC4; máshol UTF-8) kettesével egy-egy karakterbe csomagoljuk
 		var win = lime.app.Application.current != null ? lime.app.Application.current.window : null;
 		if (win != null)
 		{
-			var b = haxe.io.Bytes.ofHex("c46d626572"); // "Ämber"
+			#if windows
+			var b = haxe.io.Bytes.ofHex("c46d626572"); // "Ämber" (ANSI)
+			#else
+			var b = haxe.io.Bytes.ofString("Ämber"); // macOS / Linux: az SDL UTF-8-at vár
+			#end
 			var t = new StringBuf();
 			var i = 0;
 			while (i < b.length)

@@ -1,4 +1,4 @@
-# Diagnosztika: WebGL elérhető-e a fejnélküli Edge-ben, és a kamera szűrői.
+﻿# Diagnosztika: WebGL elérhető-e a fejnélküli Edge-ben, és a kamera szűrői.
 param([string]$Url = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

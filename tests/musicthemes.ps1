@@ -1,4 +1,4 @@
-# Teszt: mind a 10 zenetéma (rétegenként más hangszer) hibátlanul renderelődik: nincs NaN, a csúcs normalizált,
+﻿# Teszt: mind a 10 zenetéma (rétegenként más hangszer) hibátlanul renderelődik: nincs NaN, a csúcs normalizált,
 # és a háttér-renderelés egy képkockás szelete sem akad (step(5) leghosszabb ideje). Kiírja a téma hangszereit is.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"

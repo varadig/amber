@@ -292,8 +292,16 @@ class CheatSubState extends FlxSubState
 					act("NEXT LEVEL", g.cheatNextLevel),
 					act("PREVIOUS LEVEL", g.cheatPrevLevel),
 					act("RESTART LEVEL", g.cheatRestart),
-					sub("JUMP TO LEVEL", "levels")
+					sub("JUMP TO LEVEL", "levels"),
+					sub("LEVEL SELECT (ALL LEVEL FILES)", "levelfiles")
 				];
+			case "levelfiles":
+				// a kampány pályái (Levels.CAMPAIGN) a sorszámukkal, a listán kívüliek "--"-vel
+				return [for (f in LevelLoader.availableFiles())
+					{
+						var k = Levels.indexOfFile(f[0]);
+						act((k >= 0 ? (k + 1 < 10 ? " " : "") + (k + 1) + ". " : "--  ") + f[0] + ".tmj" + (f[1] != "" ? "  " + f[1] : ""), () -> g.cheatGotoFile(f[0]));
+					}];
 			case "teleport":
 				return [for (s in g.cheatSpots()) act(s.name, () -> g.cheatTeleportTo(s.x, s.y))];
 			case "levels":
@@ -374,6 +382,7 @@ class CheatSubState extends FlxSubState
 			case "saves": "SAVE STATES";
 			case "world": "WORLD";
 			case "levels": "JUMP TO LEVEL";
+			case "levelfiles": "LEVEL SELECT";
 			case "teleport": "TELEPORT";
 			case "enemies": "ENEMIES";
 			case "minigames": "MINI-GAMES";

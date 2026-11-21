@@ -1,4 +1,4 @@
-# Teszt: a követő társ átugorja a tüskét; a TALL átkel a leszakadó hídon; az ORB távolabb lebeg a hőstől.
+﻿# Teszt: a követő társ átugorja a tüskét; a TALL átkel a leszakadó hídon; az ORB távolabb lebeg a hőstől.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Level = 1)
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

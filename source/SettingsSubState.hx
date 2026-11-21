@@ -24,17 +24,17 @@ class SettingsSubState extends FlxSubState
 
 		var bg = new FlxSprite(0, 0).makeGraphic(480, 270, 0xDD000000);
 		add(bg);
-		var title = new LangText(0, 70, 480, "SETTINGS", 16);
+		var title = new LangText(0, 62, 480, "SETTINGS", 16);
 		title.setFormat(null, 16, 0xFFFFFFFF, CENTER);
 		add(title);
 		for (i in 0...ROWS)
 		{
-			var r = new LangText(0, 104 + i * 22, 480, "", 8);
+			var r = new LangText(0, 94 + i * 20, 480, "", 8);
 			r.setFormat(null, 8, 0xFFFFFFFF, CENTER);
 			add(r);
 			rows.push(r);
 		}
-		hint = new LangText(0, 196, 480, "UP/DOWN SELECT   LEFT/RIGHT CHANGE   ESC / START: BACK", 8);
+		hint = new LangText(0, 204, 480, "UP/DOWN SELECT   LEFT/RIGHT CHANGE   ESC / START: BACK", 8);
 		hint.setFormat(null, 8, 0xFF777777, CENTER);
 		add(hint);
 		Audio.previewOn();
@@ -50,8 +50,8 @@ class SettingsSubState extends FlxSubState
 		return "[" + s + "] " + n * 10 + "%";
 	}
 
-	/** Sorok: zene, hangeffekt, teljes képernyő, eszköz-súgó. */
-	static inline var ROWS = 4;
+	/** Sorok: zene, hangeffekt, teljes képernyő, eszköz-súgó, kontroller-rezgés. */
+	static inline var ROWS = 5;
 
 	var fsShown:Bool = false;
 
@@ -62,12 +62,26 @@ class SettingsSubState extends FlxSubState
 		rows[1].text = (sel == 1 ? "> " : "  ") + "SFX     " + bar(Audio.sfxVolume);
 		rows[2].text = (sel == 2 ? "> " : "  ") + "FULLSCREEN   " + (fsShown ? "ON" : "OFF");
 		rows[3].text = (sel == 3 ? "> " : "  ") + "DEVICE HINTS   " + (Prefs.hints ? "ON" : "OFF");
+		rows[4].text = (sel == 4 ? "> " : "  ") + "VIBRATION   " + (Prefs.rumble ? "ON" : "OFF");
 		for (i in 0...ROWS)
 			rows[i].color = i == sel ? 0xFFFFD866 : 0xFFFFFFFF;
 	}
 
 	function change(d:Int):Void
 	{
+		if (sel == 4)
+		{
+			// kontroller-rezgés be / ki (mentve); bekapcsoláskor egy próba-rezgés
+			Prefs.rumble = !Prefs.rumble;
+			Prefs.save();
+			Audio.play("select", 0.8);
+			if (Prefs.rumble)
+				Rumble.play(0.6, 0.6, 250);
+			else
+				Rumble.stop();
+			refresh();
+			return;
+		}
 		if (sel == 3)
 		{
 			// eszköz-súgó be / ki (mentve)

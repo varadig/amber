@@ -3,8 +3,7 @@ param([int]$Port = 3233)
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\cdp-lib.ps1"
-$node = Join-Path (haxelib libpath lime).Trim() "templates\bin\node\node-windows.exe"
-$srv = Start-Process $node -ArgumentList "`"$root\scripts\devserver.js`"", "`"$root\export\html5\bin`"", $Port -PassThru -WindowStyle Hidden
+$srv = Start-DevServer $Port
 Start-Sleep -Seconds 2
 try {
     for ($lv = 0; $lv -lt 10; $lv++) {

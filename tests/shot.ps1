@@ -1,4 +1,4 @@
-# Fejnélküli Edge-teszt: elindítja a teszt-buildet (-Dtest), vár, képernyőképet készít és kiírja a játékos állapotát.
+﻿# Fejnélküli Edge-teszt: elindítja a teszt-buildet (-Dtest), vár, képernyőképet készít és kiírja a játékos állapotát.
 #   powershell -ExecutionPolicy Bypass -File tests/shot.ps1 -Url http://127.0.0.1:3220/ -Out <mappa>
 param([string]$Url = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Wait = 6)
 . "$PSScriptRoot\cdp-lib.ps1"

@@ -1,4 +1,4 @@
-# Teszt: a toronyhoz teleportál, képernyőkép + mozgás-próba (jobbra futás, ugrás).
+﻿# Teszt: a toronyhoz teleportál, képernyőkép + mozgás-próba (jobbra futás, ugrás).
 param([string]$Url = "http://127.0.0.1:3220/?level=0", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

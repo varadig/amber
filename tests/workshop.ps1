@@ -1,4 +1,4 @@
-# Teszt: pálya végén a műhely megnyílik, atomért II. szintre fejleszt; titkos atom (LENS nélkül láthatatlan, 3 atomot ér); társak platform-ugrása.
+﻿# Teszt: pálya végén a műhely megnyílik, atomért II. szintre fejleszt; titkos atom (LENS nélkül láthatatlan, 3 atomot ér); társak platform-ugrása.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

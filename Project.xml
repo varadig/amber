@@ -9,12 +9,31 @@
 	<!-- Windows (HashLink, scripts/build-windows.ps1): a lime HL-ben az ékezetes ablakcímből csak az "Ä" marad, ezért ékezet nélkül -->
 	<window if="desktop" orientation="landscape" fullscreen="false" resizable="true" title="Amber" />
 
+	<!-- A játék ikonja (favicon, Windows .ico, macOS .icns) a HaxeFlixel alapikonja helyett: scripts/make-icon.js készíti (pixelre pontos méretenként) -->
+	<icon path="assets/icon/icon-16.png" size="16" />
+	<icon path="assets/icon/icon-24.png" size="24" />
+	<icon path="assets/icon/icon-32.png" size="32" />
+	<icon path="assets/icon/icon-48.png" size="48" />
+	<icon path="assets/icon/icon-64.png" size="64" />
+	<icon path="assets/icon/icon-96.png" size="96" />
+	<icon path="assets/icon/icon-128.png" size="128" />
+	<icon path="assets/icon/icon-192.png" size="192" />
+	<icon path="assets/icon/icon-256.png" size="256" />
+	<icon path="assets/icon/icon-512.png" size="512" />
+	<icon path="assets/icon/icon-1024.png" size="1024" />
+	<!-- méret nélküli tartalék: a HaxeFlixel méret nélküli SVG-logója (priority -10) helyett minden más méretre is ez legyen -->
+	<icon path="assets/icon/icon-1024.png" priority="10" />
+	<!-- asztali változatban az ablak / Dock ikonja futás közben is (Main: window.setIcon) -->
+	<assets path="assets/icon/icon-256.png" rename="assets/icon.png" type="image" if="desktop" />
+
 	<source path="source" />
 
 	<!-- A pályák Tiled-térképei (levels/levelN.tmj, szerkesztés: docs/LEVELS.md), beágyazva; hiányzó pályát a generátor készít -->
 	<assets path="levels" rename="assets/levels" include="*.tmj" type="text" embed="true" />
 	<!-- Nyelvi fájlok (lang/<kód>.json, leírás: a fájlok _info mezője); minden itt lévő fájl választható nyelv (szünet-menü: LANGUAGE) -->
 	<assets path="lang" rename="assets/lang" include="*.json" type="text" embed="true" />
+	<!-- Globális ranglista (Supabase) beállítása: url / key / table (docs/LEADERBOARD.md) -->
+	<assets path="assets/config" rename="assets/config" include="*.json" type="text" embed="true" />
 
 	<!-- Tesztbuild (-Dtest): egyből a játék indul, a PlayState elérhető a window.__ps-en -->
 	<!-- Cheatek (CheatSubState, F9): csak debug és teszt (-Dtest) buildben; a release-ben a kód ki sem fordul. -Dcheats-szel kézzel is bekapcsolható. -->

@@ -18,6 +18,7 @@ param([switch]$NoBuild) # -NoBuild: a build már kész (pl. scripts/release.ps1)
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
+. "$PSScriptRoot/common.ps1"
 
 # --- Beállítások ---------------------------------------------------------------
 $config = Get-Content (Join-Path $root "itch.config.json") -Raw | ConvertFrom-Json
@@ -28,8 +29,8 @@ if ([string]::IsNullOrWhiteSpace($config.user)) {
 $target = "$($config.user)/$($config.game):$($config.channel)"
 
 # --- butler beszerzése (egyszer, a tools/butler mappába) ---------------------------
-$butlerDir = Join-Path $root "tools\butler"
-$butler = Join-Path $butlerDir "butler.exe"
+$butlerDir = Join-Path $root "tools/butler"
+$butler = Join-Path $butlerDir $(if ($OnWindows) { "butler.exe" } else { "butler" })
 if (-not (Test-Path $butler)) {
     $onPath = Get-Command butler -ErrorAction SilentlyContinue
     if ($onPath) {
@@ -39,17 +40,17 @@ if (-not (Test-Path $butler)) {
         Write-Host "butler letöltése az itch.io hivatalos tárolójából..."
         New-Item -ItemType Directory -Force $butlerDir | Out-Null
         $zip = Join-Path $butlerDir "butler.zip"
-        Invoke-WebRequest "https://broth.itch.zone/butler/windows-amd64/LATEST/archive/default" -OutFile $zip -UseBasicParsing
+        # macOS: a butler csak x86-64-re készül (Apple Siliconon Rosettával fut)
+        $plat = if ($OnWindows) { "windows-amd64" } elseif ($OnMac) { "darwin-amd64" } else { "linux-amd64" }
+        Invoke-WebRequest "https://broth.itch.zone/butler/$plat/LATEST/archive/default" -OutFile $zip -UseBasicParsing
         Expand-Archive $zip -DestinationPath $butlerDir -Force
         Remove-Item $zip
+        if (-not $OnWindows) { & chmod +x $butler }
     }
 }
 & $butler -V
 
 # --- Build ------------------------------------------------------------------------
-$env:HAXEPATH = "C:\HaxeToolkit\haxe"
-$env:NEKO_INSTPATH = "C:\HaxeToolkit\neko"
-$env:Path = "C:\HaxeToolkit\haxe;C:\HaxeToolkit\neko;$env:Path"
 if (-not $NoBuild) {
     & haxelib run lime build html5
     if ($LASTEXITCODE -ne 0) { throw "A build nem sikerült." }
@@ -67,7 +68,7 @@ if ($LASTEXITCODE -eq 0 -and $hash) {
 # --- Feltöltés --------------------------------------------------------------------
 # A butler csak a változásokat tölti fel; ha még nincs bejelentkezve, böngészős engedélyezést kér.
 Write-Host "Feltöltés: $target (verzió: $version)"
-& $butler push "export\html5\bin" $target --userversion $version
+& $butler push "export/html5/bin" $target --userversion $version
 if ($LASTEXITCODE -ne 0) { throw "A feltöltés nem sikerült." }
 
 & $butler status $target

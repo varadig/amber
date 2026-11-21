@@ -4,16 +4,13 @@
 
 $ErrorActionPreference = "Stop"
 
-$haxeDir = "C:\HaxeToolkit\haxe"
-$nekoDir = "C:\HaxeToolkit\neko"
-if (-not (Test-Path "$haxeDir\haxe.exe")) {
-    Write-Host "Haxe nem található itt: $haxeDir" -ForegroundColor Red
-    Write-Host "Telepítsd a Haxe 4.3.6-ot (https://haxe.org/download/ vagy: winget install HaxeFoundation.Haxe --version 4.3.6)"
+. "$PSScriptRoot/common.ps1"
+if (-not (Get-Command haxe -ErrorAction SilentlyContinue)) {
+    Write-Host "Haxe nem található (a PATH-on)." -ForegroundColor Red
+    if ($OnWindows) { Write-Host "Telepítsd a Haxe 4.3.6-ot (https://haxe.org/download/ vagy: winget install HaxeFoundation.Haxe --version 4.3.6)" }
+    else { Write-Host "Telepítsd a Haxe 4.3.6-ot (https://haxe.org/download/ macOS-csomag, vagy Homebrew: brew install haxe)" }
     exit 1
 }
-$env:HAXEPATH = $haxeDir
-$env:NEKO_INSTPATH = $nekoDir
-$env:Path = "$haxeDir;$nekoDir;$env:Path"
 
 $version = (& haxe -version).Trim()
 Write-Host "Haxe: $version"
@@ -24,12 +21,13 @@ if ($version -ne "4.3.6") {
 # haxelib tároló beállítása, ha még nincs
 & haxelib config *> $null
 if ($LASTEXITCODE -ne 0) {
-    New-Item -ItemType Directory -Force "$haxeDir\lib" | Out-Null
-    & haxelib setup "$haxeDir\lib"
+    $libDir = if ($OnWindows -and (Test-Path "C:/HaxeToolkit/haxe")) { "C:\HaxeToolkit\haxe\lib" } else { Join-Path $HOME "haxelib" }
+    New-Item -ItemType Directory -Force $libDir | Out-Null
+    & haxelib setup $libDir
 }
 
 # A projekt ezekre a verziókra van írva (lásd CLAUDE.md / Project.xml)
-$libs = [ordered]@{ "lime" = "8.3.2"; "openfl" = "9.5.2"; "flixel" = "6.2.1" }
+$libs = [ordered]@{ "lime" = "8.3.2"; "openfl" = "9.5.2"; "flixel" = "6.2.1"; "box2d" = "1.2.4" }
 foreach ($name in $libs.Keys) {
     $ver = $libs[$name]
     Write-Host "haxelib install $name $ver"

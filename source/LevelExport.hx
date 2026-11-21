@@ -78,6 +78,7 @@ class LevelExport
 			case "flyer": {b: Art.flyer(), w: 14, h: 8, f: 0};
 			case "crawler": {b: Art.crawler(), w: 14, h: 10, f: 0};
 			case "lamp": {b: Art.lamp(), w: 8, h: 8, f: 0};
+			case "spring": {b: Art.spring(), w: 16, h: 8, f: 0};
 			case "cell": {b: Art.partIcons(), w: 10, h: 10, f: Parts.JET};
 			default: {b: Art.atom(), w: 8, h: 8, f: 0};
 		}

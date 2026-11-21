@@ -1,4 +1,4 @@
-# Teszt: teljes képernyő a beállítások menüből (FULLSCREEN sor: jobbra / balra) és az F billentyűvel; a sor állapota követi a böngészőt.
+﻿# Teszt: teljes képernyő a beállítások menüből (FULLSCREEN sor: jobbra / balra) és az F billentyűvel; a sor állapota követi a böngészőt.
 # Kép: tests/out/fullscreen-settings.png
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"

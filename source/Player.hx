@@ -193,6 +193,10 @@ class Player extends FlxSprite
 		return Parts.has(Parts.LEGS) ? byTier(Parts.LEGS, [332.0, 352.0, 368.0]) : 215.0;
 
 	/** A teljes ugrás magassága pixelben (a gödörből kijutás ellenőrzéséhez). */
+	/** Egy teli tank (mp): a JET szintje növeli (I-IV: 1 / 1,25 / 1,5 / 2-szeres). */
+	public static function jetTank():Float
+		return FLIGHT_TIME * [1.0, 1.25, 1.5, 2.0][Std.int(Math.max(0, Math.min(3, Parts.tier(Parts.JET) - 1)))];
+
 	public function jumpReach():Float
 		return jumpPower() * jumpPower() / (2 * GRAV);
 
@@ -328,7 +332,9 @@ class Player extends FlxSprite
 			velocity.x = approach(velocity.x, target, accel * elapsed);
 
 			// változó ugrásmagasság: elengedéskor erősebb gravitáció; a csúcson kis lebegés
-			if (velocity.y < 0 && !jumpHeld)
+			if (springRise && velocity.y >= 0)
+				springRise = false;
+			if (velocity.y < 0 && !jumpHeld && !springRise)
 				acceleration.y = GRAV * 2.7;
 			else if (Math.abs(velocity.y) < 45 && jumpHeld)
 				acceleration.y = GRAV * 0.55;
@@ -370,6 +376,9 @@ class Player extends FlxSprite
 						onWallJump();
 				}
 			}
+			// a JET CELL alkatrész birtokában a tank a talajon újratöltődik (a felvehető cella alkatrész nélkül is ad egy tankot)
+			if (Parts.has(Parts.JET) && onFloor)
+				flightT = Math.max(flightT, jetTank());
 			// repülés (JET CELL): az ugrás gomb nyomva tartva felfelé hajt, amíg el nem fogy az üzemanyag
 			if (flightT > 0 && jumpHeld && stun <= 0 && !onFloor && buffer <= 0)
 			{
@@ -447,6 +456,19 @@ class Player extends FlxSprite
 	public function squash(sx:Float, sy:Float):Void
 	{
 		scale.set(sx, sy);
+	}
+
+	/** Rugós ugrólap dobása: az emelkedés a gomb elengedésére sem rövidül (a teljes magasság a rugóé). */
+	public var springRise:Bool = false;
+
+	public function springLaunch(vy:Float):Void
+	{
+		velocity.y = -vy;
+		springRise = true;
+		dashesLeft = maxDashes();
+		coyote = 0;
+		dashing = false;
+		squash(0.75, 1.3);
 	}
 
 	/** Ellenségre ugrás utáni pattanás (a gomb nyomva tartásával magasabbra). */

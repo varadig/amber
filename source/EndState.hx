@@ -27,6 +27,9 @@ class EndState extends FlxState
 		prompt = new LangText(0, 200, 480, "PRESS JUMP", 8);
 		prompt.setFormat(null, 8, 0xFF777777, CENTER);
 		add(prompt);
+		// globális ranglista: a végigjátszott futás beküldése
+		if (Leaderboard.canSubmit() && PlayState.totalScore > 0)
+			openSubState(new LeaderboardSubState(PlayState.totalScore, LevelData.COUNT, Parts.atoms, true, "ALL PARTS FOUND"));
 	}
 
 	override public function update(elapsed:Float):Void
@@ -34,7 +37,7 @@ class EndState extends FlxState
 		super.update(elapsed);
 		t += elapsed;
 		prompt.visible = Std.int(t * 2) % 2 == 0;
-		if (t > 0.8 && Input.confirmPressed())
+		if (subState == null && t > 0.8 && Input.confirmPressed())
 		{
 			PlayState.level = 0;
 			PlayState.totalScore = 0;

@@ -1,4 +1,4 @@
-# Teszt: a követő társ mozgó platformra nem sétál rá / le, hanem ugrik (Companion.moverHop): a platform előtt indul, a hős a túloldalon;
+﻿# Teszt: a követő társ mozgó platformra nem sétál rá / le, hanem ugrik (Companion.moverHop): a platform előtt indul, a hős a túloldalon;
 # figyeli, hogy a társ leesik-e a mélybe (a platform alá kerül), felugrik-e a platformra, és átér-e a hőshöz. 3. pálya (2 mozgó platform).
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Level = 2, [int]$Kind = 0, [switch]$Reverse)
 # -Reverse: a társ a platform jobb oldalán indul, a hős a bal oldalon

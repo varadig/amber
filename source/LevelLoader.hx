@@ -20,8 +20,17 @@ class LevelLoader
 				return t;
 		}
 		#end
-		var id = "assets/levels/level" + (level + 1) + ".tmj";
-		if (openfl.utils.Assets.exists(id))
+		// a pálya fájlja a kampány-listából (Levels.CAMPAIGN); ha nincs a listában, a generátor készít pályát
+		var file = Levels.fileOf(level);
+		var id = file == null ? "" : "assets/levels/" + file + ".tmj";
+		#if cheats
+		// fejlesztői pályaválasztó: tetszőleges pályafájl (pl. level0.tmj) a megadott pálya-sorszám helyén (cheat-menü / ?map=level0)
+		if (fileOverride != null && level == overrideLevel)
+			id = "assets/levels/" + fileOverride + ".tmj";
+		else
+			fileOverride = null;
+		#end
+		if (id != "" && openfl.utils.Assets.exists(id))
 		{
 			var d = parse(level, openfl.utils.Assets.getText(id));
 			if (d != null)
@@ -29,6 +38,43 @@ class LevelLoader
 		}
 		return LevelData.generate(level);
 	}
+
+	#if cheats
+	/** A betöltendő pályafájl neve kiterjesztés nélkül (pl. "level0"), ha a pálya-sorszám `overrideLevel`; null = a szokásos levelN.tmj. */
+	public static var fileOverride:String = null;
+	public static var overrideLevel:Int = -1;
+
+	/** A beágyazott pályafájlok (assets/levels/*.tmj) név szerint, a számozottak sorszám szerint; [fájlnév, a pálya neve a térképből]. */
+	public static function availableFiles():Array<Array<String>>
+	{
+		var r:Array<Array<String>> = [];
+		for (id in openfl.utils.Assets.list())
+		{
+			var m = ~/^assets\/levels\/([^\/]+)\.tmj$/;
+			if (!m.match(id))
+				continue;
+			var name = "";
+			try
+			{
+				var props:Array<Dynamic> = Json.parse(openfl.utils.Assets.getText(id)).properties;
+				if (props != null)
+					for (p in props)
+						if (p.name == "name")
+							name = Std.string(p.value);
+			}
+			catch (e:Dynamic) {}
+			r.push([m.matched(1), name]);
+		}
+		// előbb a kampány pályái a sorrendjük szerint, utána a listán kívüliek
+		function key(f:String):Float
+		{
+			var k = Levels.indexOfFile(f);
+			return k >= 0 ? k : 1e6;
+		}
+		r.sort((a, b) -> key(a[0]) != key(b[0]) ? (key(a[0]) < key(b[0]) ? -1 : 1) : (a[0] < b[0] ? -1 : (a[0] > b[0] ? 1 : 0)));
+		return r;
+	}
+	#end
 
 	#if test
 	public static var testText:Map<Int, String> = new Map();
@@ -109,9 +155,34 @@ class LevelLoader
 					def = sd.def;
 				}
 				y -= num(o.height, 0); // a csempe-objektum origója a bal alsó sarok
+				// Tiled-forgatás (Z / Shift+Z): a bal alsó sarok körül, órairányban; a tárgy a forgatott kép befoglaló téglalapjának
+				// bal felső sarkába kerül (ahol a Tiled mutatja). A játékbeli tárgy nem forog (a tüske kivételével: lásd "Spike").
+				var deg = num(o.rotation, 0);
+				if (deg != 0)
+				{
+					var w = num(o.width, 16), h = num(o.height, 16);
+					var a = deg * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a);
+					var mx = 1e9, my = 1e9;
+					for (c in [[0.0, -h], [w, -h], [w, 0.0], [0.0, 0.0]])
+					{
+						mx = Math.min(mx, c[0] * cs - c[1] * sn);
+						my = Math.min(my, c[0] * sn + c[1] * cs);
+					}
+					// egész pixelre (a forgatás lebegőpontos hibái ne csússzanak el)
+					x = Math.round(o.x + mx);
+					y = Math.round(o.y + my);
+				}
+				var gidF:Int = (o.gid : Int);
+				var fx = (gidF & 0x80000000) != 0, fy = (gidF & 0x40000000) != 0;
+				if ((deg != 0 || fx || fy) && cls != "Spike")
+					d.rotated.push({x: x, y: y, w: num(o.width, 16), h: num(o.height, 16), angle: deg, fx: fx, fy: fy});
 			}
 			if (cls == null)
 				return;
+			// egész pixelre: a Tiled rács nélkül tört koordinátát ír (pl. 76.106), amit a játék a kamera helyzetétől függően
+			// hol lefelé, hol felfelé kerekítve rajzol: a szomszédos tárgyhoz képest 1 px-et ugrálna
+			x = Math.round(x);
+			y = Math.round(y);
 			var p = propsOf(o.properties, def);
 			var pt:Pt = {x: x, y: y};
 			var id:Int = p.id != null ? Std.int(p.id) : 0;
@@ -123,12 +194,40 @@ class LevelLoader
 				case "Gem": d.gems.push(pt);
 				case "Heart": d.hearts.push(pt);
 				case "Battery": d.batteries.push(pt);
-				case "Spike": d.spikes.push(pt);
+				case "Spike":
+					// irány a Tiled-forgatásból (Z / Shift+Z, 90 fokonként) és a függőleges tükrözésből (Y), vagy a `dir` tulajdonságból
+					var gid:Int = o.gid != null ? (o.gid : Int) : 0;
+					var dir = (gid & 0x40000000) != 0 ? 2 : 0;
+					var rot = Math.round(num(o.rotation, 0) / 90) % 4;
+					if (rot < 0)
+						rot += 4;
+					dir = (dir + rot) % 4;
+					// a helye (a forgatott befoglaló téglalap bal felső sarka) fent, általánosan számolva
+					var r:Pt = {x: x, y: y};
+					// a tüske a 8 px-es rácsra (a kézzel forgatott tüske ritkán áll pontosan a fal mellett)
+					if (num(o.rotation, 0) != 0)
+					{
+						r.x = Math.round(r.x / 8) * 8;
+						r.y = Math.round(r.y / 8) * 8;
+					}
+					if (p.dir != null)
+						dir = switch (Std.string(p.dir).toLowerCase())
+						{
+							case "right": 1;
+							case "down": 2;
+							case "left": 3;
+							default: 0;
+						};
+					d.spikes.push(r);
+					while (d.spikeDirs.length < d.spikes.length - 1)
+						d.spikeDirs.push(0);
+					d.spikeDirs.push(dir);
 				case "Cracked": d.crackeds.push(pt);
 				case "Crumble": d.crumbles.push(pt);
 				case "Grate": d.grates.push(pt);
 				case "Crate": d.crates.push(pt);
 				case "Cell": d.cells.push(pt);
+				case "Spring": d.springs.push({x: x, y: y, power: p.power != null ? (p.power : Float) : 8.0});
 				case "Gate": d.gates.push({x: x, y: y, id: id, lock: p.lock == true});
 				case "Plate": d.plates.push({x: x, y: y, id: id, hold: p.hold == true});
 				case "Lever": d.levers.push({x: x, y: y, id: id});

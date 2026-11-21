@@ -3,8 +3,7 @@ param([int]$Port = 3238)
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\cdp-lib.ps1"
-$node = Join-Path (haxelib libpath lime).Trim() "templates\bin\node\node-windows.exe"
-$srv = Start-Process $node -ArgumentList "`"$root\scripts\devserver.js`"", "`"$root\export\html5\bin`"", $Port -PassThru -WindowStyle Hidden
+$srv = Start-DevServer $Port
 Start-Sleep -Seconds 2
 $fail = 0
 function Check($name, $cond) { if ($cond) { "OK    $name" } else { "HIBA  $name"; $script:fail++ } }

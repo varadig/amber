@@ -515,6 +515,24 @@
         },
         {
             "id": 28,
+            "name": "Spring",
+            "type": "class",
+            "color": "#ffc08020",
+            "drawFill": true,
+            "members": [
+                {
+                    "name": "power",
+                    "type": "int",
+                    "value": 8
+                }
+            ],
+            "useAs": [
+                "object",
+                "tile"
+            ]
+        },
+        {
+            "id": 29,
             "name": "BuildingRoom",
             "type": "class",
             "color": "#ff8060c0",
@@ -542,7 +560,7 @@
             ]
         },
         {
-            "id": 29,
+            "id": 30,
             "name": "Decor",
             "type": "class",
             "color": "#ff505050",
@@ -554,7 +572,7 @@
             ]
         },
         {
-            "id": 30,
+            "id": 31,
             "name": "Text",
             "type": "class",
             "color": "#ffffffff",

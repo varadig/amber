@@ -200,6 +200,8 @@ class Crumble extends FlxSprite
 class Mover extends FlxSprite
 {
 	public var dx:Float = 0;
+	/** Függőleges elmozdulás ebben a képkockában (a rajta állókat a PlayState viszi: `carryOnMovers`). */
+	public var dy:Float = 0;
 	/** Vízszintes sebesség (px/s): a követő társak ebből számolják az ugrás célpontját. */
 	public var vx:Float = 0;
 	public var gid:Int = -1;
@@ -231,12 +233,17 @@ class Mover extends FlxSprite
 	override public function update(elapsed:Float):Void
 	{
 		dx = 0;
+		dy = 0;
 		if (powered)
 		{
 			t += elapsed;
 			var k = (1 - Math.cos(t * omega)) / 2 * range;
 			if (vertical)
-				y = oy - k;
+			{
+				var ny = oy - k;
+				dy = ny - y;
+				y = ny;
+			}
 			else
 			{
 				var nx = ox + k;
@@ -267,6 +274,8 @@ class PlayState extends FlxState
 	var grounded:FlxGroup;
 	var gems:FlxTypedGroup<Pickup>;
 	var partItems:FlxTypedGroup<Pickup>;
+	var springs:FlxTypedGroup<FlxSprite>;
+	var springPower:Map<FlxSprite, Float> = new Map();
 	var cells:FlxTypedGroup<Pickup>;
 	var checkpoints:FlxTypedGroup<Pickup>;
 	var spikes:FlxTypedGroup<FlxSprite>;
@@ -319,6 +328,8 @@ class PlayState extends FlxState
 
 	var hudLives:FlxText;
 	var gameOverNow:Bool = false;
+	/** A játék végén a ranglista már megnyílt (egyszer). */
+	var lbShown:Bool = false;
 	var hudParts:Array<FlxSprite> = [];
 	var hudGems:FlxText;
 	var hudScore:FlxText;
@@ -330,7 +341,14 @@ class PlayState extends FlxState
 
 	/** "LEVEL 2: COPPER WELLS" (a HUD-on és a szünet-menüben; magyarul: "2. PÁLYA: RÉZKUTAK"). */
 	function levelTitle():String
+	{
+		#if cheats
+		if (LevelLoader.fileOverride != null)
+			return LevelLoader.fileOverride.toUpperCase() + ": " + data.name;
+		#end
 		return "LEVEL " + (level + 1) + ": " + data.name;
+	}
+
 	var hudScan:FlxText;
 	/** Képernyőszéli nyíl a következő cél felé, ha az nem látszik. */
 	var navArrow:FlxText;
@@ -422,7 +440,8 @@ class PlayState extends FlxState
 		mark("create start");
 		super.create();
 		Audio.init();
-		Audio.playMusic(level);
+		Audio.playMusic(Levels.musicOf(level));
+		Audio.nextTheme = Levels.musicOf(level + 1);
 		bgColor = 0xFF000000;
 		Parts.restore();
 		Companions.restore();
@@ -439,10 +458,11 @@ class PlayState extends FlxState
 		mark("level data loaded");
 		// háttér: csillagok és két réteg távoli rom (paralaxis)
 		// pályánként más: égitest + távoli és közeli réteg stílusa (romok, gyár, árbocok, kupolák, hűtőtornyok, fogaskerekek, barlang, akvadukt, kábelek, felhőkarcolók)
-		var li = level % 10;
-		addBackdrop(Art.stars(480 + Std.int(worldW * 0.05), 7 + level * 5, [1, 0, 2, 3, 0, 1, 0, 2, 3, 1][li]), 0.05, 0.03, -70);
-		addBackdrop(Art.backdrop(480 + Std.int(worldW * 0.18), 11 + level, "5", 30, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9][li]), 0.18, 0.12, -70);
-		addBackdrop(Art.backdrop(480 + Std.int(worldW * 0.34), 29 + level, "6", 60, [0, 0, 9, 1, 2, 1, 6, 2, 3, 4][li]), 0.34, 0.2, -60);
+		var bk = Levels.backdropOf(level); // a pálya háttér-stílusa (Levels.CAMPAIGN)
+		var li = bk % 10;
+		addBackdrop(Art.stars(480 + Std.int(worldW * 0.05), 7 + bk * 5, [1, 0, 2, 3, 0, 1, 0, 2, 3, 1][li]), 0.05, 0.03, -70);
+		addBackdrop(Art.backdrop(480 + Std.int(worldW * 0.18), 11 + bk, "5", 30, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9][li]), 0.18, 0.12, -70);
+		addBackdrop(Art.backdrop(480 + Std.int(worldW * 0.34), 29 + bk, "6", 60, [0, 0, 9, 1, 2, 1, 6, 2, 3, 4][li]), 0.34, 0.2, -60);
 
 		mark("backdrops done");
 		// épületek: homlokzat a felszínen, falpapír a belső termekben (a csempék mögé)
@@ -468,15 +488,28 @@ class PlayState extends FlxState
 		addLamps();
 
 		spikes = new FlxTypedGroup();
-		for (s in data.spikes)
+		for (i in 0...data.spikes.length)
 		{
+			var s = data.spikes[i];
+			var dir = i < data.spikeDirs.length ? data.spikeDirs[i] : 0;
 			var sp = new FlxSprite(s.x, s.y);
-			sp.loadGraphic(Art.spikes(), false, 16, 8, false, "spikes");
-			sp.width = 12;
-			sp.height = 5;
-			sp.offset.set(2, 3);
-			sp.x += 2;
-			sp.y += 3;
+			sp.ID = dir; // az irány (onSpike: a lökés iránya)
+			if (dir % 2 == 0)
+				sp.loadGraphic(Art.spikesDir(dir), false, 16, 8, false, "spikes" + dir);
+			else
+				sp.loadGraphic(Art.spikesDir(dir), false, 8, 16, false, "spikes" + dir);
+			// a találati doboz a tüske tövénél (a hegyek nem sebeznek)
+			var ox = 0, oy = 0;
+			switch (dir)
+			{
+				case 0: sp.width = 12; sp.height = 5; ox = 2; oy = 3;
+				case 2: sp.width = 12; sp.height = 5; ox = 2; oy = 0;
+				case 1: sp.width = 5; sp.height = 12; ox = 0; oy = 2;
+				default: sp.width = 5; sp.height = 12; ox = 3; oy = 2;
+			}
+			sp.offset.set(ox, oy);
+			sp.x += ox;
+			sp.y += oy;
 			sp.immovable = true;
 			spikes.add(sp);
 		}
@@ -688,6 +721,16 @@ class PlayState extends FlxState
 			cells.add(it);
 		}
 		add(cells);
+		springs = new FlxTypedGroup();
+		for (sd in data.springs)
+		{
+			var sp = new FlxSprite(sd.x, sd.y);
+			sp.loadGraphic(Art.spring(), true, 16, 8, false, "spring");
+			sp.immovable = true;
+			springPower.set(sp, sd.power); // a dobás magassága (csempe)
+			springs.add(sp);
+		}
+		add(springs);
 
 		batts = new FlxTypedGroup();
 		// a régi szív-tárgyak helyén is akkupakk van (nincs szív: az akku az életerő)
@@ -708,7 +751,7 @@ class PlayState extends FlxState
 		{
 			var k = e.kind;
 			// a 2. pályától minden második WALKER üldöző (HUNTER): észreveszi a robotot, és rárohan
-			if (k == LevelData.WALKER && level >= 1 && walkerIdx++ % 2 == 1)
+			if (k == LevelData.WALKER && Levels.huntersOf(level) && walkerIdx++ % 2 == 1)
 				k = LevelData.HUNTER;
 			var en = new Enemy(k, e.x, e.y, data);
 			enemies.add(en);
@@ -826,6 +869,7 @@ class PlayState extends FlxState
 		// rövid bemutató: pályanév + a keresendő alkatrészek (a hiányzó rendszerek a HUD-on és a játékban úgyis látszanak)
 		bannerStr = data.name + "\nFIND " + data.parts.length + " PARTS: " + names;
 		bannerT = 3.6;
+		applyRotations();
 		#if cheats
 		applyDevGoto();
 		devApply();
@@ -849,6 +893,59 @@ class PlayState extends FlxState
 	}
 
 	/** Teljes képernyős fény-réteg (a világ felett, a HUD alatt): nyalábok, ragyogás és sötétség a lámpás termekben. */
+	/**
+	 * A Tiled-ben forgatott / tükrözött tárgyak képe is forogjon (`LevelData.rotated`): a tárgy sprite-ját a helye és a képmérete alapján
+	 * keresi meg a világ csoportjaiban. Csak a kép fordul (`angle`, a közepe körül, a forgatott befoglaló téglalap közepére igazítva);
+	 * a találati doboz marad (négyzetes tárgynál ugyanaz, hosszúkásnál 90°-ban eltér).
+	 */
+	function applyRotations():Void
+	{
+		if (data.rotated.length == 0)
+			return;
+		var sprites:Array<FlxSprite> = [];
+		function walk(g:FlxTypedGroup<flixel.FlxBasic>):Void
+		{
+			for (b in g.members)
+			{
+				if (b == null)
+					continue;
+				if (Std.isOfType(b, FlxTypedGroup))
+					walk(cast b);
+				else if (Std.isOfType(b, FlxSprite))
+					sprites.push(cast b);
+			}
+		}
+		walk(cast this);
+		for (r in data.rotated)
+		{
+			var best:FlxSprite = null;
+			var bd = 3.0;
+			for (s in sprites)
+			{
+				if (s.angle != 0 || s.frameWidth != Std.int(r.w) || s.frameHeight != Std.int(r.h))
+					continue;
+				var dd = Math.abs(s.x - s.offset.x - r.x) + Math.abs(s.y - s.offset.y - r.y);
+				if (dd < bd)
+				{
+					bd = dd;
+					best = s;
+				}
+			}
+			if (best == null)
+				continue;
+			best.angle = r.angle;
+			best.flipX = r.fx;
+			best.flipY = r.fy;
+			// a kép közepe a forgatott befoglaló téglalap közepére (90° / 270°-nál a szélesség és a magasság felcserélődik)
+			var q = Math.round(((r.angle % 360) + 360) % 360 / 90) % 2;
+			if (q == 1)
+			{
+				best.offset.x -= (r.h - r.w) / 2;
+				best.offset.y -= (r.w - r.h) / 2;
+			}
+		}
+	}
+
 	function createLightOverlay():Void
 	{
 		if (data.lamps.length == 0)
@@ -1394,6 +1491,8 @@ class PlayState extends FlxState
 		overlay.visible = false;
 		Main.pauseTarget = on ? 1 : 0;
 		if (on)
+			Rumble.stop(); // szünetben ne rezegjen tovább a kontroller
+		if (on)
 		{
 			Audio.pauseMusic();
 			pauseMenu.show(levelTitle());
@@ -1453,6 +1552,90 @@ class PlayState extends FlxState
 				Main.toggleFullscreen();
 				Audio.play("select", 0.8);
 			default:
+		}
+	}
+
+	/**
+		A mélybe zuhant láda (a felszíni halálsor alatt, épületen kívül, vagy a pályán kívül) visszakerül a kiinduló helyére:
+		nélküle a nyomólap / kapu nem nyitható, a pálya elakadna. Kis villanás + üzenet + hang.
+	**/
+	/** Áll-e másik láda közvetlenül a láda mellett a `dir` (1 jobbra, -1 balra) oldalon (függőlegesen átfedve: nem egymáson). */
+	function crateBehind(cr:Crate, dir:Int):Bool
+	{
+		for (i in 0...crates.length)
+		{
+			var o = crates.members[i];
+			if (o == null || o == cr || !o.alive || o.carried)
+				continue;
+			if (o.y >= cr.y + cr.height - 3 || cr.y >= o.y + o.height - 3)
+				continue;
+			var gap = dir > 0 ? o.x - (cr.x + cr.width) : cr.x - (o.x + o.width);
+			if (gap > -8 && gap < 2.5)
+				return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Láda-láda ütközés: nem csúszhatnak egymásba. Egymás mellett: a gyorsabban mozgó lép vissza, és mindkettő megáll
+	 * (a láda nem tolja tovább a másikat); egymáson: a felső a másik tetejére kerül (egymásra rakhatók).
+	 */
+	function separateCrates():Void
+	{
+		for (i in 0...crates.length)
+		{
+			var a = crates.members[i];
+			if (a == null || !a.alive || a.carried)
+				continue;
+			for (j in i + 1...crates.length)
+			{
+				var b = crates.members[j];
+				if (b == null || !b.alive || b.carried)
+					continue;
+				var ox = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+				var oy = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+				if (ox <= 0 || oy <= 0)
+					continue;
+				if (oy < ox)
+				{
+					var top = a.y < b.y ? a : b;
+					var bot = top == a ? b : a;
+					top.y = bot.y - top.height;
+					if (top.velocity.y > bot.velocity.y)
+						top.velocity.y = bot.velocity.y;
+					top.touching = top.touching | FlxDirectionFlags.FLOOR;
+				}
+				else
+				{
+					var mover = Math.abs(a.velocity.x - a.last.x) >= Math.abs(b.velocity.x - b.last.x) && Math.abs(a.x - a.last.x) >= Math.abs(b.x - b.last.x) ? a : b;
+					var other = mover == a ? b : a;
+					if (mover.x + mover.width / 2 < other.x + other.width / 2)
+						mover.x = other.x - mover.width;
+					else
+						mover.x = other.x + other.width;
+					mover.velocity.x = 0;
+					other.velocity.x = 0;
+				}
+			}
+		}
+	}
+
+	function rescueCrates():Void
+	{
+		for (i in 0...crates.length)
+		{
+			var cr = crates.members[i];
+			if (cr == null || !cr.alive || cr.carried)
+				continue;
+			// a halálsor alatt kezdő láda (barlang) ott nem számít elveszettnek, csak ha a pálya aljáról is kiesett
+			var deep = cr.y > data.killRow * 16 && cr.oy <= data.killRow * 16 && !inAnyRoom(cr);
+			var lost = deep || cr.y > worldH + 40 || cr.x < -40 || cr.x > worldW + 40;
+			if (!lost)
+				continue;
+			cr.resetPos();
+			burst(cr.x + cr.width / 2, cr.y + cr.height / 2, 14, 0xFFFFFFFF, 70);
+			showToast("THE CRATE FELL INTO THE DEPTHS: IT IS BACK AT ITS START", 3.2);
+			Audio.play("checkpoint", 0.7);
 		}
 	}
 
@@ -1583,6 +1766,13 @@ class PlayState extends FlxState
 			super.update(elapsed);
 			if (modeT > (gameOverNow ? 2.6 : 1.8))
 			{
+				if (gameOverNow && !lbShown && Leaderboard.canSubmit() && score > 0)
+				{
+					// globális ranglista: névbeírás és a lista; bezárás után jön a visszaállítás
+					lbShown = true;
+					openSubState(new LeaderboardSubState(score, level + 1, Parts.atoms, false, "GAME OVER"));
+					return;
+				}
 				if (gameOverNow)
 				{
 					// vége: minden elvész, újra az 1. pályáról
@@ -1593,7 +1783,7 @@ class PlayState extends FlxState
 					FlxG.switchState(() -> new PlayState());
 				}
 				else
-					FlxG.resetState();
+					reviveAtCheckpoint();
 			}
 			return;
 		}
@@ -1645,18 +1835,35 @@ class PlayState extends FlxState
 		{
 			FlxG.collide(player, platMap);
 			FlxG.collide(player, crumbles, onCrumble);
+			carryOnMovers(player);
 			FlxG.collide(player, movers, onMover);
 		}
 		FlxG.collide(player, cracked);
 		FlxG.collide(player, gates);
 		FlxG.collide(player, grates);
-		FlxG.collide(player, crates);
+		// a hős egyszerre csak egy ládát tol: ha a tolt láda mögött (a tolás irányában) egy másik láda áll, mozdíthatatlan
+		for (i in 0...crates.length)
+		{
+			var cr = crates.members[i];
+			if (cr == null || !cr.alive || cr.carried)
+				continue;
+			var dir = player.x + player.width / 2 < cr.x + cr.width / 2 ? 1 : -1;
+			// a rajta álló hős nem tolhatja (a talpa a láda tetején / felette)
+			var blk = crateBehind(cr, dir) || player.y + player.height <= cr.y + 4;
+			cr.immovable = blk;
+			FlxG.collide(player, cr);
+			cr.immovable = false;
+			if (blk)
+				cr.velocity.x = 0;
+		}
 		FlxG.collide(crates, solidMap);
 		FlxG.collide(crates, platMap);
 		FlxG.collide(crates, gates);
 		FlxG.collide(crates, grates);
 		FlxG.collide(crates, cracked);
+		separateCrates();
 		crateSlots();
+		rescueCrates();
 		collideFriends();
 		clampRobots();
 		FlxG.collide(grounded, solidMap);
@@ -1676,6 +1883,8 @@ class PlayState extends FlxState
 			FlxG.overlap(r, spikes, onSpike);
 			passCheckpoints(r);
 		}
+		updateCellRespawn(elapsed);
+		updateSprings(elapsed);
 		FlxG.overlap(player, cells, onCell);
 		updateFriendSkills();
 		updatePuzzles();
@@ -1961,10 +2170,9 @@ class PlayState extends FlxState
 	function partFx(it:Pickup):Void
 	{
 		// (nincs hitstop: a hős nem áll meg a felvételkor)
-		ring(it.x + 5, it.y + 5, 28, 55);
-		ring(it.x + 5, it.y + 5, 24, 100);
-		ring(it.x + 5, it.y + 5, 18, 150);
-		burst(it.x + 5, it.y + 5, 30, 0xFFFFFFFF, 170);
+		// visszafogott: egy gyűrű és kevés szikra (a sok villogó részecske zavaró volt)
+		ring(it.x + 5, it.y + 5, 16, 70);
+		burst(it.x + 5, it.y + 5, 10, 0xFFFFFFFF, 110);
 		// a nagy ikon a kép felső részén jelenik meg (nem takarja a közepet, ahol a hős van)
 		var big = new FlxSprite(235, 45);
 		big.loadGraphic(Art.partIcons(), true, 10, 10, false, "parts");
@@ -2035,13 +2243,23 @@ class PlayState extends FlxState
 		FlxG.overlap(companions, crates, null, (c:Companion, cr:Crate) ->
 		{
 			if (c.mode == 4)
-				return FlxObject.separate(c, cr);
+			{
+				// az irányított társ is csak egy ládát tol
+				var blk = crateBehind(cr, c.x + c.width / 2 < cr.x + cr.width / 2 ? 1 : -1) || c.y + c.height <= cr.y + 4;
+				cr.immovable = blk;
+				var r = FlxObject.separate(c, cr);
+				cr.immovable = false;
+				if (blk)
+					cr.velocity.x = 0;
+				return r;
+			}
 			var was = cr.immovable;
 			cr.immovable = true;
 			FlxObject.separate(c, cr);
 			cr.immovable = was;
 			return false;
 		});
+		companions.forEachAlive(c -> if (c.kind != Companions.ORB) carryOnMovers(c));
 		FlxG.collide(companions, movers);
 		// a mozgó platform viszi a rajta álló társat (a talp a platform tetején, vízszintesen átfedik egymást); az ütközés-callback erre nem volt megbízható
 		companions.forEachAlive(c ->
@@ -2494,6 +2712,9 @@ class PlayState extends FlxState
 	 * A rejtvény-elemek logikája: nyomólapok (a hős, láda vagy társ lenyomja), karok (ORB / hős), sorrend-kapcsolók, kulcs + zárt kapu,
 	 * áramcella + aljzat + emelő, szerelőasztal (társ megépítése), társ-parancsok.
 	 */
+	/** A nyomólap-csoportok (gid), amelyek fala már leomlott: a lapjaik lenyomva maradnak. */
+	var platesDone:Map<Int, Bool> = new Map();
+
 	function updatePuzzles():Void
 	{
 		var act = Input.interactPressed();
@@ -2514,25 +2735,57 @@ class PlayState extends FlxState
 			}
 		// nyomólapok: csak a rátett (letett, nem cipelt) láda nyomja le; a hozzá tartozó fal ekkor darabokra omlik, és végleg nyitva marad
 		plateHintT -= FlxG.elapsed;
+		// több azonos id-jű nyomólap: a fal csak akkor omlik le, ha MINDEGYIKEN egyszerre láda áll (addig a láda levétele felengedi a lapot)
+		var groupDown:Map<Int, Bool> = new Map();
+		var groupNew:Map<Int, Plate> = new Map();
 		for (p in plates)
 		{
-			if (p.pressed)
+			if (platesDone.exists(p.gid))
 				continue;
 			var on = false;
 			for (cr in crates)
 				if (!cr.carried && cr.alive && p.overlaps(cr))
 					on = true;
-			if (on)
+			if (on != p.pressed)
 			{
-				p.setPressed(true);
-				Audio.play("plate", 1);
-				setGate(p.gid, true, p);
+				p.setPressed(on);
+				if (on)
+				{
+					Audio.play("plate", 1);
+					groupNew.set(p.gid, p);
+				}
+			}
+			if (!on)
+			{
+				groupDown.set(p.gid, false);
+				if (plateHintT <= 0 && ctrl != null && p.overlaps(ctrl))
+				{
+					plateHintT = 4;
+					showToast("TOO LIGHT: PUT A CRATE ON THE PLATE", 2.4);
+				}
+			}
+			else if (!groupDown.exists(p.gid))
+				groupDown.set(p.gid, true);
+		}
+		for (gid => all in groupDown)
+		{
+			if (all)
+			{
+				platesDone.set(gid, true);
+				setGate(gid, true, groupNew.exists(gid) ? groupNew.get(gid) : null);
 				showToast("THE WALL CRUMBLES", 2.2);
 			}
-			else if (plateHintT <= 0 && ctrl != null && p.overlaps(ctrl))
+			else if (groupNew.exists(gid))
 			{
-				plateHintT = 4;
-				showToast("TOO LIGHT: PUT A CRATE ON THE PLATE", 2.4);
+				var n = 0, m = 0;
+				for (p in plates)
+					if (p.gid == gid)
+					{
+						m++;
+						if (p.pressed)
+							n++;
+					}
+				showToast("PLATES DOWN: " + n + " / " + m, 2.2);
 			}
 		}
 		// karok: az ORB (vagy a hős Fel / E-vel) átbillenti
@@ -2743,6 +2996,87 @@ class PlayState extends FlxState
 			c.trigger();
 	}
 
+	/**
+		A függőlegesen mozgó platform viszi a rajta állót: a talp az előző képkockában a platform tetején volt (|talp - régi teteje| < 3,5),
+		vízszintesen átfedik egymást, és nem ugrik épp felfelé. Lefelé menet enélkül a robot minden képkockában leválna (rázkódás, ugrás-kiesés).
+	**/
+	function carryOnMovers(o:FlxObject):Void
+	{
+		if (o.velocity.y < -1)
+			return;
+		var feet = o.y + o.height;
+		for (i in 0...movers.length)
+		{
+			var m = movers.members[i];
+			if (m == null || !m.alive || !m.exists || m.dy == 0)
+				continue;
+			if (Math.abs(feet - (m.y - m.dy)) < 3.5 && o.x + o.width > m.x && o.x < m.x + m.width)
+			{
+				o.y = m.y - o.height;
+				if (o.velocity.y > 0)
+					o.velocity.y = 0;
+				break;
+			}
+		}
+	}
+
+	/** Felvett JET CELL-ek újratöltődése (a megállók "töltőállomások": a légi szakaszon újra lehet tankolni). */
+	var cellRespawn:Map<Pickup, Float> = new Map();
+
+	static inline var CELL_RESPAWN = 5.0;
+
+	/**
+	 * Rugós ugrólap: az irányított robotot (a talpa a lap tetején / a lábánál, nem emelkedik) `power` csempe magasra dobja
+	 * (v = gyök(2 g h), a hősnél az ugrás gomb elengedése sem rövidíti). A követő társakat nem dobja (a teleport / útkereső hozza őket).
+	 */
+	function updateSprings(elapsed:Float):Void
+	{
+		for (i in 0...springs.length)
+		{
+			var s = springs.members[i];
+			if (s == null || !s.alive)
+				continue;
+			if (s.animation.frameIndex == 1)
+			{
+				s.ID--;
+				if (s.ID <= 0)
+					s.animation.frameIndex = 0;
+			}
+			var r:FlxSprite = ctrl;
+			if (r == null || !r.alive || !r.visible)
+				continue;
+			var feet = r.y + r.height;
+			var cx = r.x + r.width / 2;
+			if (r.velocity.y < 0 || cx < s.x + 1 || cx > s.x + 15 || feet < s.y - 2 || feet > s.y + s.height + 1)
+				continue;
+			var vy = Math.sqrt(2 * 960 * (springPower.get(s) * 16 + 6));
+			if (r == player)
+				player.springLaunch(vy);
+			else
+				r.velocity.y = -vy;
+			s.animation.frameIndex = 1;
+			s.ID = 8; // ennyi képkockáig marad összenyomva
+			Audio.play("walljump", 1);
+			burst(s.x + 8, s.y + 2, 6, 0xFFFFFFFF, 60);
+		}
+	}
+
+	function updateCellRespawn(elapsed:Float):Void
+	{
+		for (c in cellRespawn.keys())
+		{
+			var t = cellRespawn.get(c) - elapsed;
+			if (t > 0)
+			{
+				cellRespawn.set(c, t);
+				continue;
+			}
+			cellRespawn.remove(c);
+			c.revive();
+			burst(c.x + 5, c.y + 5, 8, 0xFFFFFFFF, 50);
+		}
+	}
+
 	function onMover(p:Player, m:Mover):Void
 	{
 		if (p.isTouching(FlxDirectionFlags.FLOOR))
@@ -2821,6 +3155,12 @@ class PlayState extends FlxState
 		{
 			if (cr.carried || !cr.alive)
 				continue;
+			// a talpa alatti láda (rajta áll; pl. két láda ugyanabban a gödörben): ez az elsődleges
+			if (Math.abs(cr.y - feet) < 4 && hx > cr.x - 3 && hx < cr.x + 19)
+			{
+				best = cr;
+				break;
+			}
 			var dx = Math.abs(cr.x + 8 - hx);
 			var dy = Math.abs(cr.y + 16 - feet);
 			if (dx < 8 + player.width / 2 + 7 && dy < 12 && dx < bd)
@@ -3053,10 +3393,12 @@ class PlayState extends FlxState
 			}
 			player.refreshLook();
 			player.applyParts();
+			// JET CELL alkatrész: azonnal teli tank (a talajon újratöltődik)
+			if (it.icon == Parts.JET)
+				player.flightT = Player.jetTank();
 		}
 		score += 250;
 		Audio.play("key", 1);
-		burst(it.x + 5, it.y + 5, 16, 0xFFFFFFFF, 100);
 		// (nincs képernyő-villanás: zavaró volt; a látványt a partFx gyűrűi és a bemutató adja)
 		partFx(it);
 		if (it.friend < 0)
@@ -3097,29 +3439,34 @@ class PlayState extends FlxState
 	function onCell(p:Player, c:Pickup):Void
 	{
 		c.kill();
-		p.flightT = Player.FLIGHT_TIME * [1.0, 1.25, 1.5, 2.0][Std.int(Math.max(0, Math.min(3, Parts.tier(Parts.JET) - 1)))];
+		cellRespawn.set(c, CELL_RESPAWN);
+		p.flightT = Player.jetTank();
 		Audio.play("heal", 0.9);
 		burst(c.x + 5, c.y + 5, 10, 0xFFFFFFFF, 70);
-		showToast("JET CELL: HOLD JUMP IN THE AIR TO FLY", 3.2);
+		showToast("JET CELL: HOLD JUMP IN THE AIR TO FLY (REFILLS IN 5 S)", 3.2);
 	}
+
+	/** A sérülés forrásának x-e (a lökés ettől el): oldalfali tüskénél a fal felőli széle. */
+	function spikeSrcX(s:FlxSprite):Float
+		return s.ID == 1 ? s.x - 8 : (s.ID == 3 ? s.x + s.width + 8 : s.x + s.width / 2);
 
 	function onSpike(p:FlxSprite, s:FlxSprite):Void
 	{
 		// a tüske is csak az irányított robotot sebzi
 		if (p == player)
 		{
-			if (p == ctrl && player.takeHit(s.x + 6))
+			if (p == ctrl && player.takeHit(spikeSrcX(s)))
 			{
-				player.velocity.y = -230;
+				player.velocity.y = s.ID == 2 ? 60 : -230;
 				damaged();
 			}
 		}
 		else
 		{
 			var c = cast(p, Companion);
-			if (c == ctrl && c.takeHit(s.x + 6))
+			if (c == ctrl && c.takeHit(spikeSrcX(s)))
 			{
-				c.velocity.y = -230;
+				c.velocity.y = s.ID == 2 ? 60 : -230;
 				damagedCompanion(c);
 			}
 		}
@@ -3241,6 +3588,30 @@ class PlayState extends FlxState
 		FlxG.camera.focusOn(player.getMidpoint());
 		combo = 0;
 		refreshHud();
+	}
+
+	/**
+	 * Elvesztett élet után (nem a játék vége): folytatás az utolsó ellenőrzőponttól, ugyanúgy, mint leeséskor:
+	 * a felvett alkatrészek / atomok, a kinyitott kapuk és a megépített társak megmaradnak, az akku a pálya eleji értékre töltődik.
+	 * (Régen a pálya újraindult, és a pályán felvett minden elveszett: leeséskor viszont megmaradt, ez nem volt következetes.)
+	 */
+	function reviveAtCheckpoint():Void
+	{
+		mode = 0;
+		modeT = 0;
+		overlay.visible = false;
+		Parts.reviveBattery();
+		wasDown = false;
+		lowT = 0;
+		if (ctrl != player)
+			setControl(player);
+		player.powerDown = 0;
+		player.visible = true;
+		player.alpha = 1;
+		toCheckpoint(false);
+		Audio.play("checkpoint", 1);
+		showToast("BACKUP RESTORED AT THE CHECKPOINT", 2.6);
+		burst(player.x + 4, player.y + 6, 14, 0xFFFFFFFF, 90);
 	}
 
 	/** Elvész a jel: egy élet fogy; ha elfogy mind, vége a játéknak (újra az 1. pályáról, minden elvész). */
@@ -3743,7 +4114,12 @@ class PlayState extends FlxState
 		cheatGoto(Std.int(Math.max(0, level - 1)));
 
 	public function cheatRestart():Void
-		cheatGoto(level);
+	{
+		if (LevelLoader.fileOverride != null)
+			cheatGotoFile(LevelLoader.fileOverride);
+		else
+			cheatGoto(level);
+	}
 
 	// ---- fejlesztői mentés (DevSave): pillanatkép, betöltés, visszaállítás ----
 	var devSaveT:Float = 0;
@@ -3838,7 +4214,14 @@ class PlayState extends FlxState
 		gates.forEach(g -> if (gids.indexOf(g.gid) >= 0) g.setOpen(true));
 		for (i in ints(p.plates))
 			if (i < plates.length)
-				plates.members[i].setPressed(true);
+			{
+				var pl = plates.members[i];
+				pl.setPressed(true);
+				// a lap csoportja kész, ha a fala már nyitva van
+				for (g in gates)
+					if (g.gid == pl.gid && g.isOpen)
+						platesDone.set(pl.gid, true);
+			}
 		for (i in ints(p.levers))
 			if (i < levers.length)
 				levers.members[i].flip();
@@ -3872,8 +4255,27 @@ class PlayState extends FlxState
 	public function cheatGoto(n:Int):Void
 	{
 		FlxG.timeScale = 1;
+		LevelLoader.fileOverride = null;
 		level = n;
 		// a cheattel hozzáadott alkatrészek/atomok/akku maradjanak meg a pályaugrás után (a create restore()-ja a mentettre áll vissza)
+		Parts.commit();
+		FlxG.switchState(() -> new PlayState());
+	}
+
+	/** Pályaválasztó (cheat-menü): tetszőleges beágyazott pályafájl. A kampány pályája (Levels.CAMPAIGN) a saját helyén indul,
+	 * a többi (pl. level0.tmj) az 1. pálya helyén (receptek, zene, háttér az 1. pályáé); újraindításkor megmarad, a következő pályára lépve megszűnik. */
+	public function cheatGotoFile(file:String):Void
+	{
+		var idx = Levels.indexOfFile(file);
+		if (idx >= 0)
+		{
+			cheatGoto(idx);
+			return;
+		}
+		FlxG.timeScale = 1;
+		LevelLoader.fileOverride = file;
+		LevelLoader.overrideLevel = 0;
+		level = 0;
 		Parts.commit();
 		FlxG.switchState(() -> new PlayState());
 	}

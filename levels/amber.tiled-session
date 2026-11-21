@@ -1,34 +1,89 @@
 {
-    "activeFile": "",
+    "activeFile": "level7.tmj",
     "expandedProjectPaths": [
+        "."
     ],
     "fileStates": {
-        "level1.tmj": {
-            "scale": 0.4232970505617977,
-            "selectedLayer": 4,
+        "level0.tmj": {
+            "expandedObjectLayers": [
+                4,
+                5,
+                7,
+                8,
+                6
+            ],
+            "scale": 2.3893,
+            "selectedLayer": 6,
             "viewCenter": {
-                "x": 551.6220812077476,
-                "y": 328.374600804612
+                "x": 4073.368769095551,
+                "y": 214.07943749215252
+            }
+        },
+        "level1.tmj": {
+            "expandedObjectLayers": [
+                8,
+                4,
+                6,
+                5,
+                3
+            ],
+            "scale": 1.1065,
+            "selectedLayer": 7,
+            "viewCenter": {
+                "x": 1432.8965205603254,
+                "y": 492.0921825576141
+            }
+        },
+        "level2.tmj": {
+            "scale": 1.9931,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 199.18719582559837,
+                "y": 331.3933069088355
             }
         },
         "level3.tmj": {
             "scale": 2,
             "selectedLayer": 5,
             "viewCenter": {
-                "x": 1503.25,
-                "y": 328.5
+                "x": 760,
+                "y": 328.75
+            }
+        },
+        "level4.tmj": {
+            "scale": 0.8289,
+            "selectedLayer": 7,
+            "viewCenter": {
+                "x": 525.3951019423332,
+                "y": 543.4913741102666
+            }
+        },
+        "level7.tmj": {
+            "expandedObjectLayers": [
+                5
+            ],
+            "scale": 1.506,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 2041.832669322709,
+                "y": 261.9521912350598
             }
         },
         "objects.tsj": {
-            "dynamicWrapping": true
+            "dynamicWrapping": true,
+            "scaleInDock": 1
         },
         "tiles.tsj": {
-            "dynamicWrapping": false
+            "dynamicWrapping": false,
+            "scaleInDock": 1
         }
     },
+    "map.lastUsedFormat": "json",
     "openFiles": [
+        "level7.tmj"
     ],
     "project": "amber.tiled-project",
     "recentFiles": [
+        "level7.tmj"
     ]
 }

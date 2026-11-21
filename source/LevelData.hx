@@ -163,7 +163,11 @@ class LevelData
 {
 	public static inline var T = 16;
 	public static inline var H = 56;
-	public static inline var COUNT = 10;
+	/** A kampány pályáinak száma: a `Levels.CAMPAIGN` listából. */
+	public static var COUNT(get, never):Int;
+
+	static inline function get_COUNT():Int
+		return Levels.count();
 	public static inline var WALKER = 0;
 	public static inline var FLYER = 1;
 	public static inline var CRAWLER = 2;
@@ -294,10 +298,18 @@ class LevelData
 	public var hearts:Array<Pt> = [];
 	public var enemies:Array<EnemySpawn> = [];
 	public var spikes:Array<Pt> = [];
+	/** A tüskék iránya (párhuzamos a `spikes`-szal; hiányzó = 0): 0 fel (talajon), 1 jobbra (bal falon), 2 le (mennyezeten), 3 balra (jobb falon).
+	 * A 0 / 2 tüske 16x8-as, az 1 / 3 8x16-os téglalap; a `spikes` pont a bal felső sarka. */
+	public var spikeDirs:Array<Int> = [];
+	/** Tiled-ben forgatott / tükrözött tárgyak (a tüske kivételével): a forgatott kép befoglaló téglalapjának bal felső sarka (x, y),
+	 * az eredeti (forgatás előtti) méret (w, h), a szög (fok, órairányban) és a tükrözés; a PlayState a sprite képét forgatja (`applyRotations`). */
+	public var rotated:Array<{x:Float, y:Float, w:Float, h:Float, angle:Float, fx:Bool, fy:Bool}> = [];
 	public var checkpoints:Array<Pt> = [];
 	public var parts:Array<PartSpawn> = [];
 	public var lamps:Array<LampDef> = [];
 	public var cells:Array<Pt> = [];
+	/** Rugós ugrólapok (Tiled `Spring`): bal felső sarok, `power` = a dobás magassága csempében. */
+	public var springs:Array<{x:Float, y:Float, power:Float}> = [];
 	public var crackeds:Array<Pt> = [];
 	public var gates:Array<GateDef> = [];
 	public var plates:Array<PlateDef> = [];

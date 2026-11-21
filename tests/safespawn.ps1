@@ -1,4 +1,4 @@
-# Teszt: a társak / a követő hős újra-megjelenése (lemaradás, elakadás, leesés) biztonságos felületre kerül (PlayState.safeSpot):
+﻿# Teszt: a társak / a követő hős újra-megjelenése (lemaradás, elakadás, leesés) biztonságos felületre kerül (PlayState.safeSpot):
 # a pálya minden 3. oszlopában a hőst a talajra állítjuk, és ellenőrizzük, hogy a MICRO / TALL helye szilárd talaj mindkét szomszéddal,
 # a test elfér, és a régi fix hely (a hős mellett) hány esetben lett volna szakadék fölött. Végül egy valódi leesést is kiprovokálunk.
 param([string]$Base = "http://127.0.0.1:3220/", [int]$Level = 5, [string]$Out = "$PSScriptRoot\out")

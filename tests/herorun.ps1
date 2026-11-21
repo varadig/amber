@@ -1,4 +1,4 @@
-# Képernyőképek a hős futás-animációjáról (nagyított kamera): hero_run_N.png
+﻿# Képernyőképek a hős futás-animációjáról (nagyított kamera): hero_run_N.png
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

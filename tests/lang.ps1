@@ -1,4 +1,4 @@
-# Teszt: magyar nyelv (Lang / LangText): átváltás, a játék szövegei magyarul (HUD, info-doboz, szünet, pálya vége, műhely),
+﻿# Teszt: magyar nyelv (Lang / LangText): átváltás, a játék szövegei magyarul (HUD, info-doboz, szünet, pálya vége, műhely),
 # a választás megmarad az újratöltés után (FlxSave), és visszaváltás angolra. Kiírja a megjelenített szövegeket (szemmel ellenőrizendő).
 # Képek: tests/out/lang-*.png
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")

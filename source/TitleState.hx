@@ -69,7 +69,7 @@ class TitleState extends FlxState
 		prompt = new LangText(0, 168, 480, "PRESS JUMP TO START", 8);
 		prompt.setFormat(null, 8, 0xFFFFFFFF, CENTER);
 		add(prompt);
-		var setHint = new LangText(0, 186, 480, "O / TRIANGLE: SETTINGS    F: FULLSCREEN", 8);
+		var setHint = new LangText(0, 186, 480, Leaderboard.configured() ? "O / TRIANGLE: SETTINGS    L / SQUARE: LEADERBOARD    F: FULLSCREEN" : "O / TRIANGLE: SETTINGS    F: FULLSCREEN", 8);
 		setHint.setFormat(null, 8, 0xFF777777, CENTER);
 		add(setHint);
 		var help = new LangText(0, 254, 480, "ARROWS/WASD MOVE   Z/SPACE/L-CLICK JUMP   X/SHIFT DASH   V/J/R-CLICK FIRE   UP/E USE   TAB SWITCH   P PAUSE", 8);
@@ -87,6 +87,12 @@ class TitleState extends FlxState
 		if (FlxG.keys.justPressed.O || Input.just(flixel.input.gamepad.FlxGamepadInputID.Y))
 		{
 			openSubState(new SettingsSubState());
+			return;
+		}
+		if (Leaderboard.configured() && (FlxG.keys.justPressed.L || Input.just(flixel.input.gamepad.FlxGamepadInputID.X)))
+		{
+			Audio.play("select", 1);
+			openSubState(new LeaderboardSubState());
 			return;
 		}
 		prompt.visible = Std.int(t * 2) % 2 == 0;

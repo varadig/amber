@@ -248,11 +248,14 @@ class Audio
 	static var jobTheme:Int = -1;
 
 	/** A következő renderelendő téma: előbb a kért, aztán a következő pálya témája (előre elkészül, így a pályaváltás nem akad). */
+	/** A következő pálya zenetémája (előre elkészül); -1 = a soron következő téma. A PlayState állítja (Levels.musicOf). */
+	public static var nextTheme:Int = -1;
+
 	static function themeToRender():Int
 	{
 		if (!musicSounds.exists(musicTheme))
 			return musicTheme;
-		var nx = (musicTheme + 1) % Music.THEME_COUNT;
+		var nx = nextTheme >= 0 ? nextTheme % Music.THEME_COUNT : (musicTheme + 1) % Music.THEME_COUNT;
 		return musicSounds.exists(nx) ? -1 : nx;
 	}
 
@@ -261,6 +264,10 @@ class Audio
 	{
 		if (!initialized)
 			return;
+		#if (hl && target.threaded && !amber_nothread)
+		threadTick();
+		return;
+		#end
 		// a kész mintákból a hangpuffer is részletekben készül (különben ~0,3 mp-es akadás a pályák elején)
 		if (soundJob != null)
 		{
@@ -293,6 +300,64 @@ class Audio
 
 	static var soundJob:SoundJob;
 	static var soundJobTheme:Int = -1;
+
+	#if (hl && target.threaded && !amber_nothread)
+	/**
+		Asztali (HashLink) változat: a zene mintái és a WAV-bájtok egy háttérszálon készülnek (a HashLink lassabb a böngésző JS-motorjánál:
+		a képkockánkénti 5 ms-os részletekben a játék az első ~15 mp-ben ~45 FPS-re esett). A főszálon csak a hang létrehozása marad.
+	**/
+	static var workerIn:sys.thread.Deque<Int>;
+	static var workerOut:sys.thread.Deque<{theme:Int, wav:Bytes}>;
+	static var workerBusy:Int = -1;
+
+	/** A háttérszál indítása (a Main a program elején hívja). (-Damber_nothread: a régi, képkockánkénti részletekben renderelés.) */
+	public static function startWorker():Void
+	{
+		if (workerIn == null)
+		{
+			workerIn = new sys.thread.Deque();
+			workerOut = new sys.thread.Deque();
+			var inQ = workerIn, outQ = workerOut;
+			sys.thread.Thread.create(() ->
+			{
+				while (true)
+				{
+					var t = inQ.pop(true);
+					// rövid szakaszok, köztük Sys.sleep: a HashLink szemétgyűjtője csak akkor futhat, ha minden szál "biztonságos ponton" áll;
+					// egyben futtatva a főszál a gyűjtésnél ~0,6 mp-ig várt erre a szálra (akadás)
+					var j = Music.start(t);
+					while (!j.step(2))
+						Sys.sleep(0.0005);
+					var sj = new SoundJob(j.result, 2, 0.8);
+					sj.fill(() -> Sys.sleep(0.0005));
+					outQ.add({theme: t, wav: sj.wav()});
+				}
+			});
+		}
+	}
+
+	static function threadTick():Void
+	{
+		startWorker();
+		var r = workerOut.pop(false);
+		if (r != null)
+		{
+			mark("music samples done (thread)");
+			musicSounds.set(r.theme, Sound.fromAudioBuffer(AudioBuffer.fromBytes(r.wav)));
+			workerBusy = -1;
+			ensureMusic();
+		}
+		if (workerBusy < 0)
+		{
+			var t = themeToRender();
+			if (t >= 0)
+			{
+				workerBusy = t;
+				workerIn.add(t);
+			}
+		}
+	}
+	#end
 
 	/** Védőháló: a zene-példányon kívül semmilyen hosszú (>15 s) hang nem szólhat (szellemzene / dupla indítás ellen); képkockánként hívva. */
 	public static function guard():Void
@@ -340,6 +405,8 @@ class Audio
 		#if test
 		log.push({n: name, v: Std.int(volume * 100), t: Std.int(haxe.Timer.stamp() * 1000) % 1000000});
 		#end
+		// kontroller-rezgés a hangeffekt szerint (a hangerő-beállítástól függetlenül; kikapcsolható: VIBRATION)
+		Rumble.onSound(name, volume);
 		var s = sounds.get(name);
 		if (s == null || sfxVolume <= 0)
 			return;
@@ -571,6 +638,28 @@ class SoundJob
 		b.setInt32(40, dataLen);
 		state = [for (c in 0...channels) 0.0];
 	}
+
+	/** A teljes WAV kitöltése egyben (háttérszálon; a hangot a főszál hozza létre a `wav()` bájtjaiból). */
+	public function fill(?yieldFn:Void->Void):Void
+	{
+		while (i < dataLen)
+		{
+			if (yieldFn != null)
+				yieldFn();
+			var end = Std.int(Math.min(dataLen, i + 20000));
+			for (k in i...end)
+			{
+				var c = k % channels;
+				state[c] += (samples[k] - state[c]) * lp;
+				var v = Math.max(-1, Math.min(1, state[c]));
+				b.set(44 + k, Std.int(Math.round(v * 127)) + 128);
+			}
+			i = end;
+		}
+	}
+
+	public function wav():Bytes
+		return b;
 
 	/** Legfeljebb ~ms milliszekundumnyi munka; igazzal tér vissza, ha kész (result). */
 	public function step(ms:Float):Bool

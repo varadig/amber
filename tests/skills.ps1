@@ -1,4 +1,4 @@
-# Teszt: a barátok ugyanolyan fontosak, mint a hős: felvesznek, ugranak, különleges képességük van; a hős követi a kiválasztott robotot.
+﻿# Teszt: a barátok ugyanolyan fontosak, mint a hős: felvesznek, ugranak, különleges képességük van; a hős követi a kiválasztott robotot.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"
 function Load($lvl) { Send-Cdp "Page.navigate" @{ url = ($Base + "?level=" + $lvl + "&r=" + (Get-Random)) } | Out-Null; Start-Sleep -Seconds 9 }

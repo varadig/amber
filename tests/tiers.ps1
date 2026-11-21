@@ -1,4 +1,4 @@
-# Teszt: minden alkatrész legfeljebb III. szintű; a szintek hatása nő (ugrás); a GPU III. szinten teljes látást, az APU III. szinten tiszta hangot ad.
+﻿# Teszt: minden alkatrész legfeljebb III. szintű; a szintek hatása nő (ugrás); a GPU III. szinten teljes látást, az APU III. szinten tiszta hangot ad.
 # (A műhely jelenleg ki van kapcsolva: PlayState.WORKSHOP_ENABLED; a szintek a Parts.add-dal / cheattel emelkednek.)
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out")
 . "$PSScriptRoot\cdp-lib.ps1"

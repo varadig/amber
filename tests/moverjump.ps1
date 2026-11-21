@@ -1,4 +1,4 @@
-# Teszt: a követő társ átugrik egy mozgó platformra, és átkel rajta a hős felé.
+﻿# Teszt: a követő társ átugrik egy mozgó platformra, és átkel rajta a hős felé.
 param([string]$Base = "http://127.0.0.1:3220/", [string]$Out = "$PSScriptRoot\out", [int]$Level = 2)
 . "$PSScriptRoot\cdp-lib.ps1"
 try {

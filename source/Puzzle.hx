@@ -106,8 +106,8 @@ class SwitchPad extends FlxSprite
 /** Tolható láda: gravitáció, súrlódás; a hős tolja, a nyomólapra állítva lenyomva tartja. */
 class Crate extends FlxSprite
 {
-	var ox:Float;
-	var oy:Float;
+	public var ox:Float;
+	public var oy:Float;
 
 	public function new(x:Float, y:Float)
 	{
