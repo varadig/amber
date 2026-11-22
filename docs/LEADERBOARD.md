@@ -4,7 +4,7 @@ Ugyanaz a megoldás, mint a Moonshardban: a játék a futások eredményét egy 
 Beállítás: `assets/config/leaderboard.json` (url / key / table; beágyazva, módosítás után újra kell fordítani). Amíg az url vagy a kulcs üres,
 a funkció nem látszik a játékban.
 
-Jelenleg a Moonshard Supabase-projektjét használja, külön táblával: **`amber_scores`**. A táblát egyszer létre kell hozni (lásd lent);
+Saját Supabase-projekt (`ujwrpwnuqxuqtrquufue`), tábla: **`amber_scores`**. A táblát egyszer létre kell hozni (lásd lent);
 amíg nincs meg, a lista "OFFLINE" üzenetet mutat, a beküldés pedig kihagyható (a játék működése nem függ tőle).
 
 ## A tábla létrehozása
@@ -30,6 +30,10 @@ alter table public.amber_scores enable row level security;
 -- Bárki olvashat és beküldhet, de módosítani / törölni nem lehet (nincs rá szabály).
 create policy "read amber scores"   on public.amber_scores for select to anon using (true);
 create policy "insert amber scores" on public.amber_scores for insert to anon with check (true);
+
+-- Az újabb Supabase-projektekben az új táblákra a nyilvános (anon) szerepkör nem kap automatikusan jogot:
+-- enélkül a hiba "permission denied for table amber_scores" (42501), a játékban OFFLINE / COULD NOT SEND.
+grant select, insert on public.amber_scores to anon;
 ```
 
 A `check` megkötések a táblán érvényesülnek (3 nagybetű, ésszerű tartományok), így a hibás sorokat a szerver elutasítja.
